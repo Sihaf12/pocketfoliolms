@@ -3,16 +3,27 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "migrate": "psql \"${OWNER_DATABASE_URL:-postgres:///academy}\" -v ON_ERROR_STOP=1 -f db/001_schema.sql -f db/002_rls.sql -f db/003_platform_rls.sql -f db/004_content_versions_rls.sql",
+    "migrate": "psql \"${OWNER_DATABASE_URL:-postgres:///academy}\" -v ON_ERROR_STOP=1 -f db/001_schema.sql -f db/002_rls.sql -f db/003_platform_rls.sql -f db/004_content_versions_rls.sql -f db/005_request_path.sql",
     "test:db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/tests/rls_proof.sql",
     "test:migrate": "sh db/tests/migrate_fresh.sh",
-    "test": "node --test dist/test/*.test.js",
+    "test": "node --test --test-concurrency=1 dist/test/*.test.js",
+    "start": "node dist/src/http/main.js",
     "worker": "node dist/src/outbox/worker.js"
   },
-  "dependencies": { "pg": "^8.13.1" },
-  "devDependencies": { "typescript": "^5.6.3", "@types/node": "^22.9.0", "@types/pg": "^8.11.10" }
+  "dependencies": {
+    "@fastify/cookie": "11.1.2",
+    "fastify": "5.12.5",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.6.3"
+  }
 }

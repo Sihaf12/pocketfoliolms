@@ -8,6 +8,13 @@ export const config = {
     statementTimeoutMs: Number(process.env.STATEMENT_TIMEOUT_MS ?? 8_000),
     slowTransactionMs: Number(process.env.SLOW_TX_MS ?? 1_000),
   },
+  http: {
+    host: process.env.HTTP_HOST ?? '0.0.0.0',
+    port: Number(process.env.HTTP_PORT ?? 3000),
+    // Comma-separated proxy addresses allowed to set X-Forwarded-Host.
+    // Empty means the Host header alone decides the academy.
+    trustProxy: (process.env.TRUST_PROXY ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+  },
   outbox: {
     pollMs: Number(process.env.OUTBOX_POLL_MS ?? 1_000),
     perTenant: Number(process.env.OUTBOX_PER_TENANT ?? 4),

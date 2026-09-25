@@ -9,8 +9,9 @@ the backend that enforces it.
     db/002_rls.sql         RLS policies, audit chaining, outbox functions
     db/003_platform_rls.sql RLS on platform courses, lessons, questions
     db/004_content_versions_rls.sql RLS on version snapshots, via the owning course
-    db/tests/seed.sql      two academies and a course, for the proof tests
-    db/tests/rls_proof.sql 24 assertions run as the unprivileged app role
+    db/005_request_path.sql resolve_tenant(), verify_certificate(), sessions
+    db/tests/seed.sql      academies, courses and certificates for the proof tests
+    db/tests/rls_proof.sql 41 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
 
     src/config.ts               environment-backed configuration
@@ -19,19 +20,24 @@ the backend that enforces it.
     src/outbox/relay.ts         fair-share relay, backoff, dead letter queue
     src/ai/guardrails.ts        dual-layer ingress and egress guardrails
     src/domain/placement.ts     60/40 baseline, gates, check grading
+    src/auth/                   scrypt passwords, RLS-backed sessions
+    src/http/server.ts          Fastify: a public scope and a tenant scope
+    src/http/tenantScope.ts     host -> academy, or 404; never a default
+    src/http/routes/            the REST routes, one file per area
 
-    test/platform.test.ts       19 integration tests against a real database
+    test/platform.test.ts       integration tests against a real database
+    test/http.*.test.ts         the REST routes through app.inject()
 
 ## Running it
 
     createdb academy
     npm run migrate                                      # as the database owner
     psql academy -f db/tests/seed.sql
-    psql academy -U app_user -f db/tests/rls_proof.sql   # 24 assertions
+    psql academy -U app_user -f db/tests/rls_proof.sql   # 41 assertions
 
     npm install
     npm run build
-    npm test                                             # 19 tests
+    npm test                                             # 36 tests
     npm run test:migrate                                 # migrate a fresh database
 
 ### Connections
@@ -48,6 +54,12 @@ PostgreSQL where your OS user is a superuser.
 Migrations create schemas, extensions and the two application roles, so
 they must run as the owner. `app_user` does not exist until
 `002_rls.sql` creates it, and could not create a schema if it did.
+
+The HTTP server (`npm start`) reads `HTTP_HOST`, `HTTP_PORT` and
+`TRUST_PROXY`. The request host alone decides the academy.
+`TRUST_PROXY` is a comma-separated list of proxy addresses allowed to
+forward the public host in `X-Forwarded-Host`; leave it empty unless
+the server sits behind one, or any client could choose an academy.
 
 ## The three decisions worth knowing
 

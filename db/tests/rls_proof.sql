@@ -21,6 +21,7 @@ BEGIN
   FOR t IN SELECT id FROM app.tenants_seed_view LOOP
     PERFORM set_config('app.tenant_id', t.id::text, true);
     DELETE FROM app.outbox_events;
+    DELETE FROM app.sessions;
     DELETE FROM app.enrolments;
     DELETE FROM app.users WHERE email IN ('dual@example.com','smuggled@example.com');
   END LOOP;
@@ -275,6 +276,150 @@ BEGIN
   SELECT count(*) INTO n_course FROM platform.content_versions
    WHERE entity_type='course' AND entity_id = pub;
   PERFORM pg_temp.expect(n_course = 1, 'tenant B still reads snapshots of platform-owned courses');
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 12. The request role cannot read tenant rows directly, with or without
+--     a tenant in scope. Resolution goes through app.resolve_tenant only.
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE a uuid; n integer; blocked_bare boolean := false; blocked_scoped boolean := false;
+BEGIN
+  SELECT id INTO a FROM app.tenants_seed_view WHERE slug='northgate';
+
+  PERFORM set_config('app.tenant_id', '', true);
+  BEGIN
+    SELECT count(*) INTO n FROM app.tenants;
+  EXCEPTION WHEN insufficient_privilege THEN blocked_bare := true;
+  END;
+
+  PERFORM set_config('app.tenant_id', a::text, true);
+  BEGIN
+    SELECT count(*) INTO n FROM app.tenants;
+  EXCEPTION WHEN insufficient_privilege THEN blocked_scoped := true;
+  END;
+
+  PERFORM pg_temp.expect(blocked_bare AND blocked_scoped,
+    'app_user cannot SELECT from app.tenants directly, with or without a tenant');
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 13. Tenant resolution: exact, active only, nothing else
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE a uuid;
+BEGIN
+  SELECT id INTO a FROM app.tenants_seed_view WHERE slug='northgate';
+  PERFORM set_config('app.tenant_id', '', true);
+
+  PERFORM pg_temp.expect(app.resolve_tenant('learn.northgate.ae') = a,
+    'an academy''s primary domain resolves to that academy');
+  PERFORM pg_temp.expect(app.resolve_tenant('LEARN.Northgate.AE') = a,
+    'resolution is case-insensitive');
+  PERFORM pg_temp.expect(
+        app.resolve_tenant('learn.northgate.ae.evil.example') IS NULL
+    AND app.resolve_tenant('evil-learn.northgate.ae') IS NULL
+    AND app.resolve_tenant('northgate.ae') IS NULL
+    AND app.resolve_tenant('%') IS NULL
+    AND app.resolve_tenant('') IS NULL,
+    'lookalike, parent, wildcard and empty hosts resolve to no academy');
+  PERFORM pg_temp.expect(app.resolve_tenant('learn.lapsed.example') IS NULL,
+    'a suspended academy''s domain resolves to no academy');
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 14. Both SECURITY DEFINER functions are locked down the same way
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE f text;
+BEGIN
+  FOREACH f IN ARRAY ARRAY['app.resolve_tenant(text)', 'app.verify_certificate(text)'] LOOP
+    PERFORM pg_temp.expect(
+      (SELECT p.prosecdef
+          AND p.proconfig @> ARRAY['search_path=pg_catalog, pg_temp']
+         FROM pg_proc p WHERE p.oid = f::regprocedure),
+      f || ' is SECURITY DEFINER with a pinned search_path');
+    PERFORM pg_temp.expect(
+          has_function_privilege('app_user', f, 'EXECUTE')
+      AND NOT has_function_privilege('app_control', f, 'EXECUTE'),
+      f || ' is executable by app_user only, not through PUBLIC');
+  END LOOP;
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 15. Public certificate verification: no tenant, three fields, and
+--     revoked, expired and unknown serials are indistinguishable
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE n integer; r record; out_cols integer;
+BEGIN
+  PERFORM set_config('app.tenant_id', '', true);
+
+  SELECT count(*) INTO n FROM app.verify_certificate('PA-7K3M-9QXD');
+  SELECT * INTO r FROM app.verify_certificate('PA-7K3M-9QXD');
+  PERFORM pg_temp.expect(n = 1 AND r.holder_name = 'Amara' AND r.course_title = 'How markets work',
+    'a valid certificate verifies with no tenant in scope');
+
+  SELECT count(*) INTO out_cols
+    FROM pg_proc p, unnest(p.proargmodes) m
+   WHERE p.oid = 'app.verify_certificate(text)'::regprocedure AND m = 't';
+  PERFORM pg_temp.expect(out_cols = 3, 'verification returns exactly three columns');
+
+  PERFORM pg_temp.expect(
+        (SELECT count(*) FROM app.verify_certificate('PA-R2V8-HC4N')) = 0
+    AND (SELECT count(*) FROM app.verify_certificate('PA-W6TJ-P0YB')) = 0
+    AND (SELECT count(*) FROM app.verify_certificate('PA-0000-0000')) = 0,
+    'revoked, expired and unknown serials all return nothing');
+  PERFORM pg_temp.expect(
+        (SELECT count(*) FROM app.verify_certificate('PA-%')) = 0
+    AND (SELECT count(*) FROM app.verify_certificate('pa-7k3m-9qxd')) = 0,
+    'a wildcard or a near-miss serial matches nothing');
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 16. Serials must be random-format, so a guessable one cannot be stored
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE a uuid; u uuid; c uuid; blocked boolean := false;
+BEGIN
+  SELECT id INTO a FROM app.tenants_seed_view WHERE slug='northgate';
+  PERFORM set_config('app.tenant_id', a::text, true);
+  SELECT id INTO u FROM app.users WHERE email = 'yousef@example.com';
+  SELECT id INTO c FROM platform.courses WHERE slug = 'northgate-desk-rules';
+  BEGIN
+    INSERT INTO app.certificates (tenant_id, user_id, course_id, serial, holder_name, course_title)
+    VALUES (a, u, c, 'PA-1', 'Yousef', 'Northgate desk rules');
+  EXCEPTION WHEN check_violation THEN blocked := true;
+  END;
+  PERFORM pg_temp.expect(blocked, 'a serial outside PA-XXXX-XXXX is rejected');
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 17. Sessions are tenant-owned: another academy cannot read or plant one
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE a uuid; b uuid; u uuid; n integer; blocked boolean := false;
+BEGIN
+  SELECT id INTO a FROM app.tenants_seed_view WHERE slug='northgate';
+  SELECT id INTO b FROM app.tenants_seed_view WHERE slug='sable';
+
+  PERFORM set_config('app.tenant_id', a::text, true);
+  SELECT id INTO u FROM app.users WHERE email = 'amara@example.com';
+  INSERT INTO app.sessions (tenant_id, user_id, token_hash, expires_at)
+  VALUES (a, u, sha256('proof-token'::bytea), now() + interval '1 hour');
+  SELECT count(*) INTO n FROM app.sessions WHERE token_hash = sha256('proof-token'::bytea);
+  PERFORM pg_temp.expect(n = 1, 'an academy reads its own session');
+
+  PERFORM set_config('app.tenant_id', b::text, true);
+  SELECT count(*) INTO n FROM app.sessions WHERE token_hash = sha256('proof-token'::bytea);
+  PERFORM pg_temp.expect(n = 0, 'tenant B cannot read tenant A''s session, even holding its token');
+
+  BEGIN
+    INSERT INTO app.sessions (tenant_id, user_id, token_hash, expires_at)
+    VALUES (a, u, sha256('planted'::bytea), now() + interval '1 hour');
+  EXCEPTION WHEN insufficient_privilege THEN blocked := true;
+  END;
+  PERFORM pg_temp.expect(blocked, 'tenant B cannot plant a session in tenant A');
 END $$;
 
 SELECT 'ALL MODULE 1 TESTS PASSED' AS result;

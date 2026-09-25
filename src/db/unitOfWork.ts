@@ -210,6 +210,16 @@ function makeScopedDb(client: PoolClient, tenantId: string, actor: string): Scop
   };
 }
 
+/**
+ * Host to tenant, before any tenant is known. Runs as app_user through a
+ * SECURITY DEFINER function that answers one exact lookup with an id or
+ * NULL; the request role cannot read app.tenants itself.
+ */
+export async function resolveTenantByHost(host: string): Promise<string | null> {
+  const res = await requestPool.query<{ id: string | null }>('SELECT app.resolve_tenant($1) AS id', [host]);
+  return res.rows[0]?.id ?? null;
+}
+
 /** Control-plane work. Crosses tenants deliberately, never on request path. */
 export async function withControl<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await controlPool.connect();

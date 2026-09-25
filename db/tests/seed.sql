@@ -46,6 +46,24 @@ SELECT 'question', q.id, 1, 'published'::platform.review_state, jsonb_build_obje
   FROM platform.questions q JOIN platform.courses c ON c.id = q.course_id WHERE c.slug='northgate-desk-rules'
 ON CONFLICT (entity_type, entity_id, version) DO NOTHING;
 
+-- A suspended academy, so the proofs can show its host resolves to nothing.
+INSERT INTO app.tenants (slug,name,primary_domain,status)
+VALUES ('lapsed','Lapsed Brokerage','learn.lapsed.example','suspended')
+ON CONFLICT (slug) DO NOTHING;
+
+-- One valid, one revoked and one expired certificate, all at northgate.
+INSERT INTO app.certificates (tenant_id,user_id,course_id,serial,holder_name,course_title,issued_at,expires_at,revoked_at,revoke_reason)
+SELECT u.tenant_id, u.id, c.id, v.serial, u.display_name, c.title, v.issued_at, v.expires_at, v.revoked_at, v.reason
+  FROM (VALUES
+    ('amara@example.com',  'how-markets-work',     'PA-7K3M-9QXD', timestamptz '2026-03-01', NULL::timestamptz,       NULL::timestamptz,        NULL),
+    ('yousef@example.com', 'how-markets-work',     'PA-R2V8-HC4N', timestamptz '2026-03-01', NULL,                    timestamptz '2026-04-01', 'issued in error'),
+    ('amara@example.com',  'northgate-desk-rules', 'PA-W6TJ-P0YB', timestamptz '2025-01-01', timestamptz '2025-12-31', NULL,                   NULL)
+  ) AS v(email, slug, serial, issued_at, expires_at, revoked_at, reason)
+  JOIN app.users u ON u.email = v.email
+  JOIN app.tenants t ON t.id = u.tenant_id AND t.slug = 'northgate'
+  JOIN platform.courses c ON c.slug = v.slug
+ON CONFLICT DO NOTHING;
+
 -- TEST HELPER ONLY. MUST NOT BE APPLIED IN PRODUCTION.
 -- Lets the unprivileged role resolve tenant ids by slug without being able
 -- to read tenant rows it does not own. It runs with its owner's rights, so
