@@ -10,6 +10,7 @@ the backend that enforces it.
     db/003_platform_rls.sql RLS on platform courses, lessons, questions
     db/tests/seed.sql      two academies and a course, for the proof tests
     db/tests/rls_proof.sql 20 assertions run as the unprivileged app role
+    db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
 
     src/config.ts               environment-backed configuration
     src/logger.ts               structured logging
@@ -23,13 +24,29 @@ the backend that enforces it.
 ## Running it
 
     createdb academy
-    psql academy -f db/001_schema.sql -f db/002_rls.sql -f db/003_platform_rls.sql
+    npm run migrate                                      # as the database owner
     psql academy -f db/tests/seed.sql
     psql academy -U app_user -f db/tests/rls_proof.sql   # 20 assertions
 
     npm install
     npm run build
     npm test                                             # 19 tests
+    npm run test:migrate                                 # migrate a fresh database
+
+### Connections
+
+Three roles, three URLs. Each has a default that works on a local
+PostgreSQL where your OS user is a superuser.
+
+| Variable               | Role             | Used by                       | Default                          |
+|------------------------|------------------|-------------------------------|----------------------------------|
+| `OWNER_DATABASE_URL`   | database owner   | `npm run migrate`             | `postgres:///academy` (OS user)  |
+| `DATABASE_URL`         | `app_user`       | request path, `npm run test:db` | see `src/config.ts`            |
+| `CONTROL_DATABASE_URL` | `app_control`    | provisioning, outbox relay    | see `src/config.ts`              |
+
+Migrations create schemas, extensions and the two application roles, so
+they must run as the owner. `app_user` does not exist until
+`002_rls.sql` creates it, and could not create a schema if it did.
 
 ## The three decisions worth knowing
 
