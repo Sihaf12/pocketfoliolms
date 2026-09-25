@@ -116,7 +116,10 @@ test('every route except public certificate verification sits behind the tenant 
       url: url.replace(/:[A-Za-z]+/g, '00000000-0000-0000-0000-000000000000'),
       headers: { host: 'learn.unknown.example' },
     });
-    if (PUBLIC.has(key)) {
+    if (method === 'HEAD') {
+      // No body to read; the matching GET checks the error code.
+      if (!PUBLIC.has(key)) assert.equal(res.statusCode, 404, key);
+    } else if (PUBLIC.has(key)) {
       assert.notEqual(res.json().error?.code, 'unknown_academy', `${key} must not need an academy`);
     } else {
       assert.equal(res.statusCode, 404, key);

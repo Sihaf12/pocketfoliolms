@@ -98,16 +98,23 @@ export function placementAnswers(paper: Paper, correctPerTier: Record<string, nu
   return answers;
 }
 
-/** A learner through sign-up, onboarding and placement, with Learn and Safeguard fully correct. */
-export async function placedLearner(app: FastifyInstance, host: string) {
-  const learner = await signup(app, host);
+/**
+ * A learner through sign-up, onboarding and placement. By default Learn
+ * and Safeguard are fully correct, which opens every tier.
+ */
+export async function placedLearner(
+  app: FastifyInstance,
+  host: string,
+  opts: { correctPerTier?: Record<string, number>; ibRefCode?: string } = {},
+) {
+  const learner = await signup(app, host, opts.ibRefCode ? { ibRefCode: opts.ibRefCode } : {});
   await onboard(app, host, learner.token);
   const paper = await drawPlacement(app, host, learner.token);
   const res = await app.inject({
     method: 'POST',
     url: `/api/v1/placement/${paper.attemptId}/submission`,
     headers: { host, ...asLearner(learner.token) },
-    payload: { answers: placementAnswers(paper, { learn: 2, safeguard: 2 }) },
+    payload: { answers: placementAnswers(paper, opts.correctPerTier ?? { learn: 2, safeguard: 2 }) },
   });
   if (res.statusCode !== 200) throw new Error(`placement failed: ${res.statusCode} ${res.body}`);
   return learner;

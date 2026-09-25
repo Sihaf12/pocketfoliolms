@@ -38,7 +38,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 45 tests
+    npm test                                             # 55 tests
     npm run test:migrate                                 # migrate a fresh database
 
 ### Connections

@@ -46,6 +46,53 @@ SELECT c.id, v.tier::platform.tier, true, v.prompt,
  WHERE c.slug = 'how-markets-work'
    AND NOT EXISTS (SELECT 1 FROM platform.questions q WHERE q.prompt = v.prompt);
 
+-- Two more platform courses: one in the Apply tier, to prove gating, and
+-- one northgate will switch off, to prove the catalogue is respected.
+INSERT INTO platform.courses (slug,title,tier,summary,est_minutes,review_state,published_at)
+VALUES ('reading-the-tape','Reading the tape','apply','Order flow in practice',12,'published',now()),
+       ('risk-basics','Risk basics','safeguard','Position sizing and stops',8,'published',now())
+ON CONFLICT (slug) DO NOTHING;
+
+INSERT INTO platform.lessons (course_id,position,title,body_md)
+SELECT c.id, v.position, v.title, v.body
+  FROM (VALUES ('how-markets-work', 1, 'What a market is', 'Buyers, sellers and a price between them.'),
+               ('how-markets-work', 2, 'Orders and fills', 'Market orders take liquidity; limit orders make it.'),
+               ('reading-the-tape', 1, 'The order book',   'Depth on each side of the spread.'),
+               ('risk-basics',      1, 'Sizing a position', 'Risk a fixed fraction, not a fixed amount.')) AS v(slug, position, title, body)
+  JOIN platform.courses c ON c.slug = v.slug
+ON CONFLICT DO NOTHING;
+
+-- Knowledge-check questions, each answered by key 'a'. The first lesson
+-- has four, so a three-question paper is a real draw.
+INSERT INTO platform.questions (course_id,lesson_id,tier,prompt,options,correct_key,rationales)
+SELECT l.course_id, l.id, c.tier, v.prompt,
+       '[{"key":"a","text":"Right"},{"key":"b","text":"Wrong"}]'::jsonb, 'a',
+       '{"a":"That is the definition.","b":"That confuses the two sides."}'::jsonb
+  FROM (VALUES ('how-markets-work', 1, 'Check market 1'), ('how-markets-work', 1, 'Check market 2'),
+               ('how-markets-work', 1, 'Check market 3'), ('how-markets-work', 1, 'Check market 4'),
+               ('how-markets-work', 2, 'Check orders 1'), ('how-markets-work', 2, 'Check orders 2'),
+               ('how-markets-work', 2, 'Check orders 3'),
+               ('reading-the-tape', 1, 'Check tape 1'),   ('reading-the-tape', 1, 'Check tape 2'),
+               ('reading-the-tape', 1, 'Check tape 3')) AS v(slug, position, prompt)
+  JOIN platform.courses c ON c.slug = v.slug
+  JOIN platform.lessons l ON l.course_id = c.id AND l.position = v.position
+ WHERE NOT EXISTS (SELECT 1 FROM platform.questions q WHERE q.prompt = v.prompt);
+
+-- Catalogues. Northgate offers everything but has switched Risk basics
+-- off. Sable's catalogue even names northgate's private course, which
+-- RLS on platform.courses must still hide from sable.
+INSERT INTO app.tenant_catalogues (tenant_id,course_id,enabled,position)
+SELECT t.id, c.id, v.enabled, v.position
+  FROM (VALUES ('northgate','how-markets-work',     true,  1),
+               ('northgate','northgate-desk-rules', true,  2),
+               ('northgate','reading-the-tape',     true,  3),
+               ('northgate','risk-basics',          false, 4),
+               ('sable',    'how-markets-work',     true,  1),
+               ('sable',    'northgate-desk-rules', true,  2)) AS v(slug, course, enabled, position)
+  JOIN app.tenants t ON t.slug = v.slug
+  JOIN platform.courses c ON c.slug = v.course
+ON CONFLICT (tenant_id, course_id) DO NOTHING;
+
 -- Version snapshots of the private course and everything under it, plus
 -- one of the platform course, so the proof can show which ones sable reads.
 INSERT INTO platform.content_versions (entity_type,entity_id,version,review_state,snapshot)

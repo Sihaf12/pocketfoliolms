@@ -6,6 +6,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { withTenant, type ScopedDb } from '../db/unitOfWork.js';
 import { readSession, SESSION_COOKIE, SESSION_TTL_SECONDS, type Learner } from '../auth/session.js';
+import type { TierScores } from '../domain/placement.js';
 import { HttpError } from './errors.js';
 
 export function inAcademy<T>(req: FastifyRequest, fn: (db: ScopedDb) => Promise<T>): Promise<T> {
@@ -17,6 +18,20 @@ export async function requireLearner(db: ScopedDb, req: FastifyRequest): Promise
   const learner = await readSession(db, req.cookies[SESSION_COOKIE]);
   if (!learner) throw new HttpError(401, 'unauthenticated', 'Sign in to continue.');
   return learner;
+}
+
+const NOT_YET_PLACED = new Set(['registered', 'onboarded']);
+
+/** The learner's baseline, for routes that only make sense after placement. */
+export async function requirePlacement(db: ScopedDb, learner: Learner): Promise<TierScores> {
+  if (NOT_YET_PLACED.has(learner.lifecycle)) {
+    throw new HttpError(409, 'placement_required', 'Take placement to open your pathway.');
+  }
+  const path = await db.one<{ baseline: TierScores }>(
+    'SELECT baseline FROM app.learning_paths WHERE user_id = $1',
+    [learner.id],
+  );
+  return path.baseline;
 }
 
 // No Domain attribute: the cookie is host-only, so the browser never
