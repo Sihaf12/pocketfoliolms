@@ -16,7 +16,7 @@ Multi-tenant learning platform. Each broker gets a branded academy on one engine
 - A knowledge check passes at 2 of 3. That event is the North Star metric.
 
 ## Commands
-- `npm test` runs 17 tests. Run it before saying anything is done.
+- `npm test` runs 18 tests. Run it before saying anything is done.
 - `psql academy -U app_user -f db/tests/rls_proof.sql` proves isolation (13 PASS).
 - Migrations are forward-only files in db/. Never edit an applied migration.
 
@@ -24,7 +24,3 @@ Multi-tenant learning platform. Each broker gets a branded academy on one engine
 - TypeScript strict. No `any`. Comments explain intent, not mechanics.
 - A new tenant table means: tenant_id column, RLS enabled AND forced, a
   policy, and a test proving another tenant cannot read it.
-
-## Known issues
-- pg deprecation warning: something calls client.query() while that client is
-  mid-query. Harmless now, breaks on pg 9. Find it and fix it.

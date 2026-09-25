@@ -6,6 +6,7 @@
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import type { PoolClient } from 'pg';
 import { withTenant, withControl, requestPool, shutdown, TenantContextMissingError } from '../src/db/unitOfWork.js';
 import { OutboxRelay, type Dispatcher, type DeliveryTarget, type OutboxRow } from '../src/outbox/relay.js';
 import { inspectIngress, inspectEgress, withDisclaimer, DISCLAIMER } from '../src/ai/guardrails.js';
@@ -48,6 +49,51 @@ test('a unit of work scopes every query to its tenant', async () => {
     return Number(rows[0]!.n);
   });
   assert.equal(other, 0, 'sable cannot reach northgate rows even by asking for them');
+});
+
+test('concurrent callers queue on the pinned client rather than overlap', async () => {
+  // Runs before the Promise.all test below: pg emits its deprecation once
+  // per process, so a regression must be caught here or not at all.
+  const warnings: string[] = [];
+  const onWarning = (w: Error) => { warnings.push(`${w.name}: ${w.message}`); };
+  process.on('warning', onWarning);
+
+  let inFlight = 0;
+  let peak = 0;
+  let restore = () => {};
+  requestPool.once('acquire', (client: PoolClient) => {
+    const original = client.query;
+    const counted = async (...args: unknown[]): Promise<unknown> => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      try {
+        return await Reflect.apply(original, client, args);
+      } finally {
+        inFlight -= 1;
+      }
+    };
+    client.query = counted as unknown as typeof client.query;
+    restore = () => { client.query = original; };
+  });
+
+  try {
+    await withTenant({ tenantId: northgate }, async (db) => {
+      await Promise.all([
+        db.query('SELECT pg_sleep(0.02)'),
+        db.query('SELECT 1'),
+        db.enqueue({ type: 'lesson.completed', payload: {}, idempotencyKey: 'test:serial:1' }),
+        db.audit({ action: 'test.serial', entityType: 'test' }),
+      ]);
+    });
+  } finally {
+    restore();
+    // Let any warning scheduled on this tick reach the listener.
+    await new Promise((r) => setImmediate(r));
+    process.off('warning', onWarning);
+  }
+
+  assert.equal(peak, 1, 'never more than one statement in flight on the pinned client');
+  assert.deepEqual(warnings.filter((w) => w.includes('already executing a query')), []);
 });
 
 test('concurrent queries are pinned to one client and share the tenant', async () => {

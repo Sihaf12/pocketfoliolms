@@ -152,8 +152,18 @@ export async function withTenant<T>(
 }
 
 function makeScopedDb(client: PoolClient, tenantId: string, actor: string): ScopedDb {
+  // Callers may fan out with Promise.all, but one client can only run one
+  // statement at a time (pg 9 will reject overlap outright). Each statement
+  // waits for the previous one to settle, whether it succeeded or failed.
+  let tail: Promise<unknown> = Promise.resolve();
+  const serial = <R>(work: () => Promise<R>): Promise<R> => {
+    const next = tail.then(work);
+    tail = next.catch(() => undefined);
+    return next;
+  };
+
   const query = async <T extends QueryResultRow>(text: string, values: unknown[] = []) => {
-    const res = await client.query<T>(text, values);
+    const res = await serial(() => client.query<T>(text, values));
     return res.rows;
   };
 
@@ -175,13 +185,13 @@ function makeScopedDb(client: PoolClient, tenantId: string, actor: string): Scop
       return rows[0] ?? null;
     },
     async enqueue(event: OutboxEvent) {
-      await client.query(
+      await query(
         `SELECT app.outbox_enqueue($1, $2::jsonb, $3, $4)`,
         [event.type, JSON.stringify(event.payload), event.idempotencyKey, event.partitionKey ?? ''],
       );
     },
     async audit(entry: AuditEntry) {
-      await client.query(
+      await query(
         `SELECT app.audit_append($1, $2, $3, $4, $5::jsonb)`,
         [actor, entry.action, entry.entityType, entry.entityId ?? null, JSON.stringify(entry.payload ?? {})],
       );
