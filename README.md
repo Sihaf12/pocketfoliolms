@@ -7,6 +7,7 @@ the backend that enforces it.
 
     db/001_schema.sql      platform and tenant schema
     db/002_rls.sql         RLS policies, audit chaining, outbox functions
+    db/003_platform_rls.sql RLS on platform courses, lessons, questions
     db/tests/seed.sql      two academies and a course, for the proof tests
     db/tests/rls_proof.sql 13 assertions run as the unprivileged app role
 
@@ -22,7 +23,7 @@ the backend that enforces it.
 ## Running it
 
     createdb academy
-    psql academy -f db/001_schema.sql -f db/002_rls.sql
+    psql academy -f db/001_schema.sql -f db/002_rls.sql -f db/003_platform_rls.sql
     psql academy -f db/tests/seed.sql
     psql academy -U app_user -f db/tests/rls_proof.sql   # 13 assertions
 

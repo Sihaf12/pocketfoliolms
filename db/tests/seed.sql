@@ -18,6 +18,21 @@ INSERT INTO app.users (tenant_id,email,display_name)
 SELECT id,'lena@example.com','Lena' FROM app.tenants WHERE slug='sable'
 ON CONFLICT DO NOTHING;
 
+-- A course private to northgate, with one lesson and one question, so the
+-- proof can show sable cannot read any of it.
+INSERT INTO platform.courses (slug,title,tier,summary,est_minutes,review_state,published_at,owner_tenant_id)
+SELECT 'northgate-desk-rules','Northgate desk rules','learn','Private to Northgate',5,'published',now(), id
+  FROM app.tenants WHERE slug='northgate'
+ON CONFLICT (slug) DO NOTHING;
+INSERT INTO platform.lessons (course_id,position,title)
+SELECT id, 1, 'Northgate order handling' FROM platform.courses WHERE slug='northgate-desk-rules'
+ON CONFLICT DO NOTHING;
+INSERT INTO platform.questions (course_id,tier,prompt,options,correct_key)
+SELECT c.id, 'learn', 'Northgate private question', '[{"key":"a","text":"A"}]'::jsonb, 'a'
+  FROM platform.courses c
+ WHERE c.slug='northgate-desk-rules'
+   AND NOT EXISTS (SELECT 1 FROM platform.questions q WHERE q.course_id = c.id);
+
 -- Test helper: lets the unprivileged role resolve tenant ids by slug
 -- without being able to read tenant rows it does not own.
 CREATE OR REPLACE VIEW app.tenants_seed_view AS SELECT id, slug FROM app.tenants;

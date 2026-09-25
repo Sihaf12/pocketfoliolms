@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "migrate": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/001_schema.sql -f db/002_rls.sql",
+    "migrate": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/001_schema.sql -f db/002_rls.sql -f db/003_platform_rls.sql",
     "test:db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/tests/rls_proof.sql",
     "test": "node --test dist/test/*.test.js",
     "worker": "node dist/src/outbox/worker.js"

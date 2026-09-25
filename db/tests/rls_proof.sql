@@ -193,4 +193,37 @@ BEGIN
   PERFORM pg_temp.expect(from_b = 2, 'the quiet tenant still gets both of its events in the same batch');
 END $$;
 
+-- ---------------------------------------------------------------------
+-- 9. A private course, and everything under it, stays with its academy
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE a uuid; b uuid; priv uuid; n_course integer; n_lesson integer; n_question integer;
+BEGIN
+  SELECT id INTO a FROM app.tenants_seed_view WHERE slug='northgate';
+  SELECT id INTO b FROM app.tenants_seed_view WHERE slug='sable';
+
+  -- The owner sees it, so the checks below are not passing vacuously.
+  PERFORM set_config('app.tenant_id', a::text, true);
+  SELECT id INTO priv FROM platform.courses WHERE slug='northgate-desk-rules';
+  SELECT count(*) INTO n_lesson   FROM platform.lessons   WHERE course_id = priv;
+  SELECT count(*) INTO n_question FROM platform.questions WHERE course_id = priv;
+  PERFORM pg_temp.expect(priv IS NOT NULL AND n_lesson = 1 AND n_question = 1,
+    'the owning academy sees its private course, lesson and question');
+
+  PERFORM set_config('app.tenant_id', b::text, true);
+  SELECT count(*) INTO n_course   FROM platform.courses   WHERE id = priv;
+  SELECT count(*) INTO n_lesson   FROM platform.lessons   WHERE course_id = priv;
+  SELECT count(*) INTO n_question FROM platform.questions WHERE course_id = priv;
+  PERFORM pg_temp.expect(n_course = 0, 'tenant B cannot read tenant A''s private course, even by id');
+  PERFORM pg_temp.expect(n_lesson = 0, 'tenant B cannot read the lessons of tenant A''s private course');
+  PERFORM pg_temp.expect(n_question = 0, 'tenant B cannot read the questions of tenant A''s private course');
+
+  SELECT count(*) INTO n_course FROM platform.courses WHERE owner_tenant_id IS NULL;
+  PERFORM pg_temp.expect(n_course >= 1, 'tenant B still sees platform-owned courses');
+
+  PERFORM set_config('app.tenant_id', '', true);
+  SELECT count(*) INTO n_course FROM platform.courses WHERE owner_tenant_id IS NOT NULL;
+  PERFORM pg_temp.expect(n_course = 0, 'with no tenant in scope, no private course is visible');
+END $$;
+
 SELECT 'ALL MODULE 1 TESTS PASSED' AS result;
