@@ -33,6 +33,19 @@ SELECT c.id, 'learn', 'Northgate private question', '[{"key":"a","text":"A"}]'::
  WHERE c.slug='northgate-desk-rules'
    AND NOT EXISTS (SELECT 1 FROM platform.questions q WHERE q.course_id = c.id);
 
+-- The placement bank: two questions per tier on the platform course, each
+-- answered by key 'a', so a test can aim for an exact baseline.
+INSERT INTO platform.questions (course_id,tier,is_placement,prompt,options,correct_key)
+SELECT c.id, v.tier::platform.tier, true, v.prompt,
+       '[{"key":"a","text":"Right"},{"key":"b","text":"Wrong"}]'::jsonb, 'a'
+  FROM platform.courses c,
+       (VALUES ('learn','Placement learn 1'), ('learn','Placement learn 2'),
+               ('safeguard','Placement safeguard 1'), ('safeguard','Placement safeguard 2'),
+               ('apply','Placement apply 1'), ('apply','Placement apply 2'),
+               ('specialise','Placement specialise 1'), ('specialise','Placement specialise 2')) AS v(tier, prompt)
+ WHERE c.slug = 'how-markets-work'
+   AND NOT EXISTS (SELECT 1 FROM platform.questions q WHERE q.prompt = v.prompt);
+
 -- Version snapshots of the private course and everything under it, plus
 -- one of the platform course, so the proof can show which ones sable reads.
 INSERT INTO platform.content_versions (entity_type,entity_id,version,review_state,snapshot)

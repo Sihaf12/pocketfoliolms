@@ -12,6 +12,8 @@ import cookie from '@fastify/cookie';
 import { errorBody, handleError } from './errors.js';
 import { tenantScope } from './tenantScope.js';
 import { authRoutes } from './routes/auth.js';
+import { onboardingRoutes } from './routes/onboarding.js';
+import { placementRoutes } from './routes/placement.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -53,6 +55,8 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
   await app.register(async (scope) => {
     tenantScope(scope);
     await scope.register(authRoutes);
+    await scope.register(onboardingRoutes);
+    await scope.register(placementRoutes);
   }, { prefix: '/api/v1' });
 
   return app;

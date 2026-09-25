@@ -62,6 +62,57 @@ export async function signup(
   return { token: sessionToken(res)!, userId: res.json<{ user: { id: string } }>().user.id, email };
 }
 
+export const SELF_RATING = { learn: 50, safeguard: 0, apply: 100, specialise: 25 };
+
+export async function onboard(app: FastifyInstance, host: string, token: string, selfRating = SELF_RATING) {
+  const res = await app.inject({
+    method: 'PUT', url: '/api/v1/onboarding', headers: { host, ...asLearner(token) }, payload: { selfRating },
+  });
+  if (res.statusCode !== 200) throw new Error(`onboarding failed: ${res.statusCode} ${res.body}`);
+  return res;
+}
+
+export interface Paper {
+  attemptId: string;
+  questions: { id: string; tier?: string; prompt: string; options: { key: string; text: string }[] }[];
+}
+
+export async function drawPlacement(app: FastifyInstance, host: string, token: string): Promise<Paper> {
+  const res = await app.inject({ method: 'POST', url: '/api/v1/placement', headers: { host, ...asLearner(token) } });
+  if (res.statusCode !== 201 && res.statusCode !== 200) throw new Error(`draw failed: ${res.statusCode} ${res.body}`);
+  return res.json<Paper>();
+}
+
+/**
+ * Every seeded placement question is answered by 'a'. `correctPerTier`
+ * says how many to get right in each tier; the rest are skipped.
+ */
+export function placementAnswers(paper: Paper, correctPerTier: Record<string, number>): Record<string, string | null> {
+  const used: Record<string, number> = {};
+  const answers: Record<string, string | null> = {};
+  for (const q of paper.questions) {
+    const tier = q.tier ?? '';
+    used[tier] = (used[tier] ?? 0) + 1;
+    answers[q.id] = used[tier]! <= (correctPerTier[tier] ?? 0) ? 'a' : null;
+  }
+  return answers;
+}
+
+/** A learner through sign-up, onboarding and placement, with Learn and Safeguard fully correct. */
+export async function placedLearner(app: FastifyInstance, host: string) {
+  const learner = await signup(app, host);
+  await onboard(app, host, learner.token);
+  const paper = await drawPlacement(app, host, learner.token);
+  const res = await app.inject({
+    method: 'POST',
+    url: `/api/v1/placement/${paper.attemptId}/submission`,
+    headers: { host, ...asLearner(learner.token) },
+    payload: { answers: placementAnswers(paper, { learn: 2, safeguard: 2 }) },
+  });
+  if (res.statusCode !== 200) throw new Error(`placement failed: ${res.statusCode} ${res.body}`);
+  return learner;
+}
+
 export async function outboxRows(idempotencyKey: string) {
   return withControl(async (c) =>
     (await c.query<{ tenant_id: string; event_type: string; payload: Record<string, unknown> }>(

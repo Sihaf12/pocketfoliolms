@@ -20,6 +20,7 @@ the backend that enforces it.
     src/outbox/relay.ts         fair-share relay, backoff, dead letter queue
     src/ai/guardrails.ts        dual-layer ingress and egress guardrails
     src/domain/placement.ts     60/40 baseline, gates, check grading
+    src/domain/papers.ts        server-drawn placement and check papers
     src/auth/                   scrypt passwords, RLS-backed sessions
     src/http/server.ts          Fastify: a public scope and a tenant scope
     src/http/tenantScope.ts     host -> academy, or 404; never a default
@@ -37,7 +38,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 36 tests
+    npm test                                             # 45 tests
     npm run test:migrate                                 # migrate a fresh database
 
 ### Connections
