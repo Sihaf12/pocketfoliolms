@@ -128,6 +128,46 @@ test('the tenant does not survive into the next borrower of the connection', asy
   }
 });
 
+test('a connection whose rollback failed is destroyed, not returned to the pool', async () => {
+  // Simulate ROLLBACK failing on a live connection. The transaction is
+  // still open with the tenant set, so pooling it would hand that tenant
+  // to the next borrower.
+  let restore = () => {};
+  requestPool.once('acquire', (client: PoolClient) => {
+    const original = client.query;
+    const failingRollback = (...args: unknown[]): unknown =>
+      args[0] === 'ROLLBACK'
+        ? Promise.reject(new Error('simulated rollback failure'))
+        : Reflect.apply(original, client, args);
+    client.query = failingRollback as unknown as typeof client.query;
+    restore = () => { client.query = original; };
+  });
+  let releasedWith: Error | boolean | undefined;
+  requestPool.once('release', (err: Error | boolean | undefined) => { releasedWith = err; });
+
+  try {
+    await assert.rejects(
+      withTenant({ tenantId: northgate }, async (db) => {
+        await db.query('SELECT 1');
+        throw new Error('handler failure');
+      }),
+      /handler failure/,
+    );
+  } finally {
+    restore();
+  }
+
+  assert.ok(releasedWith instanceof Error, 'the connection is released with the error, so the pool destroys it');
+
+  const client = await requestPool.connect();
+  try {
+    const res = await client.query<{ v: string | null }>(`SELECT current_setting('app.tenant_id', true) AS v`);
+    assert.ok(res.rows[0]!.v === null || res.rows[0]!.v === '', 'the next borrower does not inherit the open transaction');
+  } finally {
+    client.release();
+  }
+});
+
 test('opening a unit of work without a tenant is refused outright', async () => {
   await assert.rejects(
     () => withTenant({ tenantId: '' }, async () => 'unreachable'),

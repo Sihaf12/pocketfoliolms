@@ -109,6 +109,10 @@ export async function withTenant<T>(
   const client: PoolClient = await requestPool.connect();
   const started = Date.now();
   let committed = false;
+  // Set once the connection's state can no longer be trusted, for example
+  // a transaction that may still be open. Passing it to release() destroys
+  // the connection instead of handing it to the next borrower.
+  let broken: Error | undefined;
 
   try {
     await client.query(opts.readOnly ? 'BEGIN READ ONLY' : 'BEGIN');
@@ -131,6 +135,7 @@ export async function withTenant<T>(
         await client.query('ROLLBACK');
       } catch (rollbackErr) {
         logger.error({ err: rollbackErr }, 'rollback failed');
+        broken = toError(rollbackErr);
       }
     }
     throw err;
@@ -138,17 +143,23 @@ export async function withTenant<T>(
     // Belt and braces. SET LOCAL has already expired with the
     // transaction; DISCARD ALL also clears prepared statements,
     // temp tables and any session state a library may have left.
-    try {
-      await client.query('DISCARD ALL');
-    } catch {
-      /* the client is being destroyed anyway */
+    if (!broken) {
+      try {
+        await client.query('DISCARD ALL');
+      } catch (discardErr) {
+        broken = toError(discardErr);
+      }
     }
-    client.release();
+    client.release(broken);
     const ms = Date.now() - started;
     if (ms > config.pool.slowTransactionMs) {
       logger.warn({ ms, tenantId: opts.tenantId }, 'slow transaction');
     }
   }
+}
+
+function toError(value: unknown): Error {
+  return value instanceof Error ? value : new Error(String(value));
 }
 
 function makeScopedDb(client: PoolClient, tenantId: string, actor: string): ScopedDb {
