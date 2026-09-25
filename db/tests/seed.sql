@@ -33,6 +33,19 @@ SELECT c.id, 'learn', 'Northgate private question', '[{"key":"a","text":"A"}]'::
  WHERE c.slug='northgate-desk-rules'
    AND NOT EXISTS (SELECT 1 FROM platform.questions q WHERE q.course_id = c.id);
 
+-- Version snapshots of the private course and everything under it, plus
+-- one of the platform course, so the proof can show which ones sable reads.
+INSERT INTO platform.content_versions (entity_type,entity_id,version,review_state,snapshot)
+SELECT 'course', id, 1, 'published'::platform.review_state, jsonb_build_object('title', title) FROM platform.courses
+ WHERE slug IN ('northgate-desk-rules','how-markets-work')
+UNION ALL
+SELECT 'lesson', l.id, 1, 'published'::platform.review_state, jsonb_build_object('title', l.title)
+  FROM platform.lessons l JOIN platform.courses c ON c.id = l.course_id WHERE c.slug='northgate-desk-rules'
+UNION ALL
+SELECT 'question', q.id, 1, 'published'::platform.review_state, jsonb_build_object('prompt', q.prompt)
+  FROM platform.questions q JOIN platform.courses c ON c.id = q.course_id WHERE c.slug='northgate-desk-rules'
+ON CONFLICT (entity_type, entity_id, version) DO NOTHING;
+
 -- TEST HELPER ONLY. MUST NOT BE APPLIED IN PRODUCTION.
 -- Lets the unprivileged role resolve tenant ids by slug without being able
 -- to read tenant rows it does not own. It runs with its owner's rights, so

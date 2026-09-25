@@ -8,8 +8,9 @@ the backend that enforces it.
     db/001_schema.sql      platform and tenant schema
     db/002_rls.sql         RLS policies, audit chaining, outbox functions
     db/003_platform_rls.sql RLS on platform courses, lessons, questions
+    db/004_content_versions_rls.sql RLS on version snapshots, via the owning course
     db/tests/seed.sql      two academies and a course, for the proof tests
-    db/tests/rls_proof.sql 20 assertions run as the unprivileged app role
+    db/tests/rls_proof.sql 24 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
 
     src/config.ts               environment-backed configuration
@@ -26,7 +27,7 @@ the backend that enforces it.
     createdb academy
     npm run migrate                                      # as the database owner
     psql academy -f db/tests/seed.sql
-    psql academy -U app_user -f db/tests/rls_proof.sql   # 20 assertions
+    psql academy -U app_user -f db/tests/rls_proof.sql   # 24 assertions
 
     npm install
     npm run build

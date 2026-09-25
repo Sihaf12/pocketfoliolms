@@ -236,4 +236,45 @@ BEGIN
     'tenants_seed_view is labelled as a test helper that must not reach production');
 END $$;
 
+-- ---------------------------------------------------------------------
+-- 11. Version snapshots of a private course stay with its academy
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE a uuid; b uuid; priv uuid; pub uuid; les uuid; que uuid;
+        n_course integer; n_children integer;
+BEGIN
+  SELECT id INTO a FROM app.tenants_seed_view WHERE slug='northgate';
+  SELECT id INTO b FROM app.tenants_seed_view WHERE slug='sable';
+
+  -- Ids are captured as the owner, who can see them, so B can be asked
+  -- for them directly. The owner sees every snapshot, so the checks
+  -- below are not passing vacuously.
+  PERFORM set_config('app.tenant_id', a::text, true);
+  SELECT id INTO priv FROM platform.courses   WHERE slug='northgate-desk-rules';
+  SELECT id INTO pub  FROM platform.courses   WHERE slug='how-markets-work';
+  SELECT id INTO les  FROM platform.lessons   WHERE course_id = priv;
+  SELECT id INTO que  FROM platform.questions WHERE course_id = priv;
+  SELECT count(*) INTO n_course FROM platform.content_versions
+   WHERE entity_type='course' AND entity_id = priv;
+  SELECT count(*) INTO n_children FROM platform.content_versions
+   WHERE (entity_type='lesson' AND entity_id = les) OR (entity_type='question' AND entity_id = que);
+  PERFORM pg_temp.expect(n_course = 1 AND n_children = 2,
+    'the owning academy sees the snapshots of its private course, lesson and question');
+
+  PERFORM set_config('app.tenant_id', b::text, true);
+  SELECT count(*) INTO n_course FROM platform.content_versions
+   WHERE entity_type='course' AND entity_id = priv;
+  PERFORM pg_temp.expect(n_course = 0,
+    'tenant B cannot read a snapshot of tenant A''s private course, even by id');
+
+  SELECT count(*) INTO n_children FROM platform.content_versions
+   WHERE (entity_type='lesson' AND entity_id = les) OR (entity_type='question' AND entity_id = que);
+  PERFORM pg_temp.expect(n_children = 0,
+    'tenant B cannot read snapshots of tenant A''s private lessons or questions');
+
+  SELECT count(*) INTO n_course FROM platform.content_versions
+   WHERE entity_type='course' AND entity_id = pub;
+  PERFORM pg_temp.expect(n_course = 1, 'tenant B still reads snapshots of platform-owned courses');
+END $$;
+
 SELECT 'ALL MODULE 1 TESTS PASSED' AS result;
