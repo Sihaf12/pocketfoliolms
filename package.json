@@ -1,0 +1,17 @@
+{
+  "name": "trader-academy-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/001_schema.sql -f db/002_rls.sql",
+    "test:db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/tests/rls_proof.sql",
+    "test": "node --test dist/test/*.test.js",
+    "worker": "node dist/src/outbox/worker.js"
+  },
+  "dependencies": { "pg": "^8.13.1" },
+  "devDependencies": { "typescript": "^5.6.3", "@types/node": "^22.9.0", "@types/pg": "^8.11.10" }
+}
