@@ -10,6 +10,7 @@ import { hashPassword, verifyPassword } from '../../auth/password.js';
 import { issueSession, revokeSession, SESSION_COOKIE, type Lifecycle } from '../../auth/session.js';
 import { clearSessionCookie, inAcademy, setSessionCookie } from '../context.js';
 import { HttpError } from '../errors.js';
+import type { RouteLimit } from '../server.js';
 
 interface User {
   id: string;
@@ -55,7 +56,7 @@ interface LoginBody {
 
 const normaliseEmail = (value: string) => value.trim().toLowerCase();
 
-export async function authRoutes(app: FastifyInstance): Promise<void> {
+export async function authRoutes(app: FastifyInstance, opts: { loginLimit: RouteLimit }): Promise<void> {
   app.post<{ Body: SignupBody }>('/auth/signup', {
     schema: {
       body: {
@@ -102,6 +103,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post<{ Body: LoginBody }>('/auth/login', {
+    config: { rateLimit: { max: opts.loginLimit.max, timeWindow: opts.loginLimit.windowMs } },
     schema: {
       body: {
         type: 'object',

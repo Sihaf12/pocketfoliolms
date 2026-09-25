@@ -9,7 +9,8 @@
  */
 import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
-import { errorBody, handleError } from './errors.js';
+import rateLimit from '@fastify/rate-limit';
+import { HttpError, errorBody, handleError } from './errors.js';
 import { tenantScope } from './tenantScope.js';
 import { authRoutes } from './routes/auth.js';
 import { onboardingRoutes } from './routes/onboarding.js';
@@ -17,6 +18,7 @@ import { placementRoutes } from './routes/placement.js';
 import { pathwayRoutes } from './routes/pathway.js';
 import { lessonRoutes } from './routes/lessons.js';
 import { checkRoutes } from './routes/checks.js';
+import { certificateRoutes } from './routes/public/certificates.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -25,10 +27,22 @@ declare module 'fastify' {
   }
 }
 
+export interface RouteLimit {
+  max: number;
+  windowMs: number;
+}
+
 export interface ServerOptions {
   /** Addresses of proxies allowed to set X-Forwarded-*. Nobody else is believed. */
   trustProxy?: string[];
+  /** Per-IP request limits. The client IP is only as good as trustProxy. */
+  limits?: { login?: RouteLimit; certificates?: RouteLimit };
 }
+
+const DEFAULT_LIMITS = {
+  login: { max: 10, windowMs: 60_000 },
+  certificates: { max: 30, windowMs: 60_000 },
+} as const;
 
 export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInstance> {
   const trustProxy = opts.trustProxy && opts.trustProxy.length > 0 ? opts.trustProxy : false;
@@ -50,14 +64,22 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
   app.setErrorHandler(handleError);
   app.setNotFoundHandler((_req, reply) => reply.status(404).send(errorBody('not_found', 'Not found.')));
   await app.register(cookie);
+  // Opt-in per route. Counters live in this process; several instances
+  // behind a balancer each allow the limit, until a shared store is added.
+  await app.register(rateLimit, {
+    global: false,
+    errorResponseBuilder: (_req, ctx) =>
+      new HttpError(429, 'rate_limited', `Too many requests. Try again in ${ctx.after}.`),
+  });
+  const limits = { ...DEFAULT_LIMITS, ...opts.limits };
 
-  await app.register(async (_publicScope) => {
-    // Public certificate verification arrives in stage 4.
+  await app.register(async (publicScope) => {
+    await publicScope.register(certificateRoutes, { limit: limits.certificates });
   }, { prefix: '/api/v1' });
 
   await app.register(async (scope) => {
     tenantScope(scope);
-    await scope.register(authRoutes);
+    await scope.register(authRoutes, { loginLimit: limits.login });
     await scope.register(onboardingRoutes);
     await scope.register(placementRoutes);
     await scope.register(pathwayRoutes);

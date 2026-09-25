@@ -21,10 +21,12 @@ the backend that enforces it.
     src/ai/guardrails.ts        dual-layer ingress and egress guardrails
     src/domain/placement.ts     60/40 baseline, gates, check grading
     src/domain/papers.ts        server-drawn placement and check papers
+    src/domain/serial.ts        random PA-XXXX-XXXX certificate serials
     src/auth/                   scrypt passwords, RLS-backed sessions
     src/http/server.ts          Fastify: a public scope and a tenant scope
     src/http/tenantScope.ts     host -> academy, or 404; never a default
     src/http/routes/            the REST routes, one file per area
+    src/http/routes/public/     certificate verification: no tenant, no session
 
     test/platform.test.ts       integration tests against a real database
     test/http.*.test.ts         the REST routes through app.inject()
@@ -38,7 +40,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 55 tests
+    npm test                                             # 63 tests
     npm run test:migrate                                 # migrate a fresh database
 
 ### Connections
@@ -61,6 +63,11 @@ The HTTP server (`npm start`) reads `HTTP_HOST`, `HTTP_PORT` and
 `TRUST_PROXY` is a comma-separated list of proxy addresses allowed to
 forward the public host in `X-Forwarded-Host`; leave it empty unless
 the server sits behind one, or any client could choose an academy.
+
+Login and certificate verification are rate limited per client IP
+(10 and 30 a minute). The counters live in each process, so several
+instances behind a balancer each allow the full limit, and behind a
+proxy the client IP is only right if `TRUST_PROXY` names that proxy.
 
 ## The three decisions worth knowing
 

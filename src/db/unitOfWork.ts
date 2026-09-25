@@ -220,6 +220,26 @@ export async function resolveTenantByHost(host: string): Promise<string | null> 
   return res.rows[0]?.id ?? null;
 }
 
+export interface VerifiedCertificate {
+  holderName: string;
+  courseTitle: string;
+  issuedAt: Date;
+}
+
+/**
+ * Public certificate verification, with no tenant at all. Goes through a
+ * SECURITY DEFINER function that returns three fields for a valid serial
+ * and nothing for a revoked, expired or unknown one.
+ */
+export async function verifyCertificate(serial: string): Promise<VerifiedCertificate | null> {
+  const res = await requestPool.query<VerifiedCertificate>(
+    `SELECT holder_name AS "holderName", course_title AS "courseTitle", issued_at AS "issuedAt"
+       FROM app.verify_certificate($1)`,
+    [serial],
+  );
+  return res.rows[0] ?? null;
+}
+
 /** Control-plane work. Crosses tenants deliberately, never on request path. */
 export async function withControl<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await controlPool.connect();
