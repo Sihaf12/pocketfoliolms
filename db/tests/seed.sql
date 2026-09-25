@@ -33,8 +33,13 @@ SELECT c.id, 'learn', 'Northgate private question', '[{"key":"a","text":"A"}]'::
  WHERE c.slug='northgate-desk-rules'
    AND NOT EXISTS (SELECT 1 FROM platform.questions q WHERE q.course_id = c.id);
 
--- Test helper: lets the unprivileged role resolve tenant ids by slug
--- without being able to read tenant rows it does not own.
+-- TEST HELPER ONLY. MUST NOT BE APPLIED IN PRODUCTION.
+-- Lets the unprivileged role resolve tenant ids by slug without being able
+-- to read tenant rows it does not own. It runs with its owner's rights, so
+-- it bypasses RLS and lists every tenant's id and slug to app_user. In a
+-- live database that tells any academy who the other academies are.
 CREATE OR REPLACE VIEW app.tenants_seed_view AS SELECT id, slug FROM app.tenants;
+COMMENT ON VIEW app.tenants_seed_view IS
+  'TEST HELPER ONLY. Must not be applied in production: bypasses RLS and lists every tenant to app_user.';
 ALTER VIEW app.tenants_seed_view SET (security_invoker = false);
 GRANT SELECT ON app.tenants_seed_view TO app_user;

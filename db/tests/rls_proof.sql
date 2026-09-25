@@ -226,4 +226,14 @@ BEGIN
   PERFORM pg_temp.expect(n_course = 0, 'with no tenant in scope, no private course is visible');
 END $$;
 
+-- ---------------------------------------------------------------------
+-- 10. The RLS-bypassing seed view carries its production warning
+-- ---------------------------------------------------------------------
+DO $$
+BEGIN
+  PERFORM pg_temp.expect(
+    obj_description('app.tenants_seed_view'::regclass, 'pg_class') LIKE 'TEST HELPER ONLY.%production%',
+    'tenants_seed_view is labelled as a test helper that must not reach production');
+END $$;
+
 SELECT 'ALL MODULE 1 TESTS PASSED' AS result;

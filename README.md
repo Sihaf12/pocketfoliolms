@@ -9,7 +9,7 @@ the backend that enforces it.
     db/002_rls.sql         RLS policies, audit chaining, outbox functions
     db/003_platform_rls.sql RLS on platform courses, lessons, questions
     db/tests/seed.sql      two academies and a course, for the proof tests
-    db/tests/rls_proof.sql 13 assertions run as the unprivileged app role
+    db/tests/rls_proof.sql 20 assertions run as the unprivileged app role
 
     src/config.ts               environment-backed configuration
     src/logger.ts               structured logging
@@ -18,18 +18,18 @@ the backend that enforces it.
     src/ai/guardrails.ts        dual-layer ingress and egress guardrails
     src/domain/placement.ts     60/40 baseline, gates, check grading
 
-    test/platform.test.ts       17 integration tests against a real database
+    test/platform.test.ts       19 integration tests against a real database
 
 ## Running it
 
     createdb academy
     psql academy -f db/001_schema.sql -f db/002_rls.sql -f db/003_platform_rls.sql
     psql academy -f db/tests/seed.sql
-    psql academy -U app_user -f db/tests/rls_proof.sql   # 13 assertions
+    psql academy -U app_user -f db/tests/rls_proof.sql   # 20 assertions
 
     npm install
     npm run build
-    npm test                                             # 17 tests
+    npm test                                             # 19 tests
 
 ## The three decisions worth knowing
 
