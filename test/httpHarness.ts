@@ -14,8 +14,12 @@ export const NORTHGATE = 'learn.northgate.ae';
 export const SABLE = 'training.sablewealth.io';
 export const PASSWORD = 'correct horse battery';
 
+/**
+ * Every suite sends all its requests from 127.0.0.1, so the tenant-wide
+ * limit is lifted here unless a test sets it; the rate-limit tests do.
+ */
 export async function server(opts: ServerOptions = {}): Promise<FastifyInstance> {
-  const app = await buildServer(opts);
+  const app = await buildServer({ ...opts, limits: { tenant: { max: 100_000, windowMs: 60_000 }, ...opts.limits } });
   await app.ready();
   return app;
 }

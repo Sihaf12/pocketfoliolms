@@ -9,10 +9,15 @@
  *
  * An unknown, malformed or suspended host is a 404. There is no default
  * academy to fall back to.
+ *
+ * Every request is counted against a per-IP limit before the host is
+ * resolved, so a spray of made-up hosts is turned away without reaching
+ * the database, and an unknown host is remembered for a few seconds.
  */
 import type { FastifyInstance } from 'fastify';
 import { resolveTenantByHost } from '../db/unitOfWork.js';
 import { HttpError } from './errors.js';
+import type { RouteLimit } from './server.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -39,27 +44,66 @@ export function normaliseHost(raw: string | undefined): string | null {
   return HOSTNAME.test(host) ? host : null;
 }
 
-// Only hits are cached, so a new academy works at once and the map is
-// bounded by the number of academies. Provisioning clears it when a
-// domain moves or an academy is suspended.
-const CACHE_TTL_MS = 30_000;
+// Hits are bounded by the number of academies. Misses are remembered
+// briefly and capped, oldest first, so a flood of made-up hosts can
+// neither reach the database each time nor grow this map without end.
+// The cost: a newly provisioned academy may wait up to MISS_TTL_MS.
+// Provisioning clears both when a domain moves or an academy changes status.
+const HIT_TTL_MS = 30_000;
+const MISS_TTL_MS = 5_000;
+const MISS_CAPACITY = 10_000;
 const resolved = new Map<string, { tenantId: string; until: number }>();
+const unknown = new Map<string, number>();
 
 export function forgetResolvedHosts(): void {
   resolved.clear();
+  unknown.clear();
+}
+
+function rememberMiss(host: string, now: number): void {
+  unknown.delete(host);
+  if (unknown.size >= MISS_CAPACITY) {
+    const oldest = unknown.keys().next().value;
+    if (oldest !== undefined) unknown.delete(oldest);
+  }
+  unknown.set(host, now + MISS_TTL_MS);
 }
 
 async function tenantFor(host: string): Promise<string | null> {
+  const now = Date.now();
   const hit = resolved.get(host);
-  if (hit && hit.until > Date.now()) return hit.tenantId;
+  if (hit && hit.until > now) return hit.tenantId;
+  const missUntil = unknown.get(host);
+  if (missUntil !== undefined && missUntil > now) return null;
+
   const tenantId = await resolveTenantByHost(host);
-  if (tenantId) resolved.set(host, { tenantId, until: Date.now() + CACHE_TTL_MS });
-  else resolved.delete(host);
+  if (tenantId) {
+    resolved.set(host, { tenantId, until: now + HIT_TTL_MS });
+    unknown.delete(host);
+  } else {
+    resolved.delete(host);
+    rememberMiss(host, now);
+  }
   return tenantId;
 }
 
-export function tenantScope(scope: FastifyInstance): void {
+export function tenantScope(scope: FastifyInstance, opts: { limit: RouteLimit }): void {
   scope.decorateRequest('tenantId', '');
+
+  // createRateLimit rather than a rateLimit hook: the plugin lets only one
+  // of its hooks run per request, and a scope-wide hook would silently
+  // switch off the stricter per-route limit on login.
+  const allow = scope.createRateLimit({ max: opts.limit.max, timeWindow: opts.limit.windowMs });
+
+  // Registered first, so it runs before resolution touches the database.
+  scope.addHook('onRequest', async (req, reply) => {
+    // isAllowed means allow-listed; isExceeded is the over-the-limit signal.
+    const verdict = await allow(req);
+    if (!verdict.isAllowed && verdict.isExceeded) {
+      reply.header('retry-after', String(verdict.ttlInSeconds));
+      throw new HttpError(429, 'rate_limited', `Too many requests. Try again in ${verdict.ttlInSeconds} seconds.`);
+    }
+  });
 
   scope.addHook('onRequest', async (req) => {
     const host = normaliseHost(req.host);

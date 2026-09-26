@@ -36,10 +36,11 @@ export interface ServerOptions {
   /** Addresses of proxies allowed to set X-Forwarded-*. Nobody else is believed. */
   trustProxy?: string[];
   /** Per-IP request limits. The client IP is only as good as trustProxy. */
-  limits?: { login?: RouteLimit; certificates?: RouteLimit };
+  limits?: { tenant?: RouteLimit; login?: RouteLimit; certificates?: RouteLimit };
 }
 
 const DEFAULT_LIMITS = {
+  tenant: { max: 300, windowMs: 60_000 },
   login: { max: 10, windowMs: 60_000 },
   certificates: { max: 30, windowMs: 60_000 },
 } as const;
@@ -78,7 +79,7 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
   }, { prefix: '/api/v1' });
 
   await app.register(async (scope) => {
-    tenantScope(scope);
+    tenantScope(scope, { limit: limits.tenant });
     await scope.register(authRoutes, { loginLimit: limits.login });
     await scope.register(onboardingRoutes);
     await scope.register(placementRoutes);

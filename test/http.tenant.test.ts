@@ -6,7 +6,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import type { FastifyInstance } from 'fastify';
-import { shutdown, withControl } from '../src/db/unitOfWork.js';
+import { randomUUID } from 'node:crypto';
+import { requestPool, shutdown, withControl } from '../src/db/unitOfWork.js';
 import { normaliseHost } from '../src/http/tenantScope.js';
 import { NORTHGATE, PASSWORD, SABLE, removeHttpAccounts, server, tenantId, uniqueEmail } from './httpHarness.js';
 
@@ -125,6 +126,61 @@ test('every route except public certificate verification sits behind the tenant 
       assert.equal(res.statusCode, 404, key);
       assert.equal(res.json().error.code, 'unknown_academy', `${key} must resolve an academy first`);
     }
+  }
+});
+
+/** Counts request-pool checkouts: for a host that resolves to nothing, each one is a resolver query. */
+function countLookups() {
+  let count = 0;
+  const onAcquire = () => { count += 1; };
+  requestPool.on('acquire', onAcquire);
+  return { get count() { return count; }, stop: () => { requestPool.off('acquire', onAcquire); } };
+}
+
+const madeUpHost = (label: string) => `${label}-${randomUUID().slice(0, 8)}.example`;
+
+test('a spray of unknown hosts is rate limited before it reaches the database', async () => {
+  const limited = await server({ limits: { tenant: { max: 5, windowMs: 60_000 } } });
+  const lookups = countLookups();
+  try {
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      const res = await limited.inject({
+        method: 'POST', url: '/api/v1/auth/login', remoteAddress: '203.0.113.50',
+        headers: { host: madeUpHost(`spray-${i}`) }, payload: { email: 'x@example.com', password: 'x' },
+      });
+      statuses.push(res.statusCode);
+      if (res.statusCode === 429) {
+        assert.equal(res.json().error.code, 'rate_limited');
+        assert.ok(Number(res.headers['retry-after']) > 0);
+      }
+    }
+    assert.deepEqual(statuses, [404, 404, 404, 404, 404, 429, 429, 429, 429, 429, 429, 429]);
+    assert.equal(lookups.count, 5, 'only the requests inside the limit reached the resolver');
+
+    const neighbour = await limited.inject({
+      method: 'POST', url: '/api/v1/auth/signup', remoteAddress: '198.51.100.60', headers: { host: NORTHGATE },
+      payload: { email: uniqueEmail('neighbour'), password: PASSWORD, displayName: 'Neighbour' },
+    });
+    assert.equal(neighbour.statusCode, 201, 'another IP is unaffected');
+  } finally {
+    lookups.stop();
+    await limited.close();
+  }
+});
+
+test('an unknown host is remembered, so repeating it does not query the database each time', async () => {
+  const host = madeUpHost('repeat');
+  const lookups = countLookups();
+  try {
+    for (let i = 0; i < 10; i++) {
+      const res = await signupAt(host);
+      assert.equal(res.statusCode, 404);
+      assert.equal(res.json().error.code, 'unknown_academy');
+    }
+    assert.equal(lookups.count, 1, 'one lookup, then answered from the negative cache');
+  } finally {
+    lookups.stop();
   }
 });
 

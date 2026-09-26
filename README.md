@@ -41,7 +41,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 70 tests
+    npm test                                             # 72 tests
     npm run test:migrate                                 # migrate a fresh database
 
 ### Connections
@@ -65,8 +65,9 @@ The HTTP server (`npm start`) reads `HTTP_HOST`, `HTTP_PORT` and
 forward the public host in `X-Forwarded-Host`; leave it empty unless
 the server sits behind one, or any client could choose an academy.
 
-Login and certificate verification are rate limited per client IP
-(10 and 30 a minute). The counters live in each process, so several
+Every tenant route is rate limited per client IP (300 a minute),
+counted before the host is resolved, and login and certificate
+verification have their own tighter limits (10 and 30 a minute). The counters live in each process, so several
 instances behind a balancer each allow the full limit, and behind a
 proxy the client IP is only right if `TRUST_PROXY` names that proxy.
 
