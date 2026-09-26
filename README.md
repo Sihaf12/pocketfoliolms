@@ -62,7 +62,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 146 tests
+    npm test                                             # 147 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow
 

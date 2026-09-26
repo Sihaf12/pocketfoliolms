@@ -12,6 +12,12 @@
 import { lessonProblems } from '../../packages/shared/markdown.js';
 import { CHECK_LENGTH, TIERS, type Tier } from '../domain/placement.js';
 
+/**
+ * A lesson's bank is larger than one paper, so a retake draws a different
+ * set: five questions give ten possible papers of three.
+ */
+export const MIN_CHECK_QUESTIONS = 5;
+
 export type EntityKind = 'course' | 'lesson' | 'glossary_term';
 
 export interface QuestionSnapshot {
@@ -164,8 +170,8 @@ export function submissionProblems(kind: EntityKind, snapshot: Snapshot): string
   if (kind === 'lesson') {
     const l = snapshot as LessonSnapshot;
     const problems = lessonProblems(l.bodyMd);
-    if (l.questions.length < CHECK_LENGTH) {
-      problems.push(`A lesson needs at least ${CHECK_LENGTH} check questions, so a knowledge check can be drawn. It has ${l.questions.length}.`);
+    if (l.questions.length < MIN_CHECK_QUESTIONS) {
+      problems.push(`A lesson needs at least ${MIN_CHECK_QUESTIONS} check questions, so each knowledge check is a different draw of ${CHECK_LENGTH}. It has ${l.questions.length}.`);
     }
     l.questions.forEach((q, i) => problems.push(...questionProblems(q, `Question ${i + 1}`)));
     return problems;

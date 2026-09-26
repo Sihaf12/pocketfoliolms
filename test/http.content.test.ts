@@ -60,7 +60,7 @@ const lessonBody = (lessonTitle: string, position = 1, extra: Record<string, unk
   position, title: lessonTitle, minutes: 8, xp: 90,
   bodyMd: '## What it is\nA plain explanation.\n\n## Why it matters\nBecause it does.\n\n> **In practice**\n> Write it down first.',
   transcript: [{ at: '0:00', text: 'An introduction.' }],
-  questions: [question('Q1'), question('Q2'), question('Q3')],
+  questions: [question('Q1'), question('Q2'), question('Q3'), question('Q4'), question('Q5')],
   ...extra,
 });
 
@@ -124,6 +124,17 @@ test('drafts are invisible to learners until course and lesson are both publishe
   assert.deepEqual(await auditOf(lesson.entityId), ['content.created', 'content.submit', 'content.approve', 'content.publish']);
 });
 
+test('four check questions are not enough: a lesson needs five, so each paper is a different draw', async () => {
+  const course = await newCourse();
+  const four = await newLesson(course.entityId, title('four'), 1, { questions: [question('Q1'), question('Q2'), question('Q3'), question('Q4')] });
+  const refused = await studio('POST', `/versions/${four.id}/submit`, team.author);
+  assert.equal(refused.statusCode, 422);
+  assert.deepEqual(refused.json().error.problems,
+    ['A lesson needs at least 5 check questions, so each knowledge check is a different draw of 3. It has 4.']);
+  await studio('PUT', `/lessons/${four.entityId}/draft`, team.author, lessonBody(title('four'), 1));
+  assert.equal((await studio('POST', `/versions/${four.id}/submit`, team.author)).statusCode, 200, 'with five it goes');
+});
+
 test('a draft must be ready before review, and is frozen once sent', async () => {
   const course = await newCourse();
   const lesson = await newLesson(course.entityId, title('lesson'), 1, { questions: [question('Only one')], bodyMd: 'No steps here.' });
@@ -132,7 +143,7 @@ test('a draft must be ready before review, and is frozen once sent', async () =>
   assert.equal(refused.json().error.code, 'not_ready');
   const problems: string[] = refused.json().error.problems;
   assert.ok(problems.some((p) => p.includes('at least one step')));
-  assert.ok(problems.some((p) => p.includes('at least 3 check questions')));
+  assert.ok(problems.some((p) => p === 'A lesson needs at least 5 check questions, so each knowledge check is a different draw of 3. It has 1.'));
 
   const edited = await studio('PUT', `/lessons/${lesson.entityId}/draft`, team.author, lessonBody('http-fixed-lesson'));
   assert.equal(edited.statusCode, 200, edited.body);
@@ -256,11 +267,11 @@ test('a draft cannot claim another lesson\'s question', async () => {
   const second = await newLesson(course.entityId, title('second'), 2);
   const stolenId = first.snapshot.questions[0]!.id;
   const res = await studio('PUT', `/lessons/${second.entityId}/draft`, team.author,
-    lessonBody(title('second'), 2, { questions: [{ id: stolenId, ...question('Mine now') }, question('Q2'), question('Q3')] }));
+    lessonBody(title('second'), 2, { questions: [{ id: stolenId, ...question('Mine now') }, question('Q2'), question('Q3'), question('Q4'), question('Q5')] }));
   assert.equal(res.statusCode, 422);
   assert.equal(res.json().error.code, 'unknown_question_id');
   const own = await studio('PUT', `/lessons/${second.entityId}/draft`, team.author,
-    lessonBody(title('second'), 2, { questions: [{ id: second.snapshot.questions[0]!.id, ...question('Edited') }, question('Q2'), question('Q3')] }));
+    lessonBody(title('second'), 2, { questions: [{ id: second.snapshot.questions[0]!.id, ...question('Edited') }, question('Q2'), question('Q3'), question('Q4'), question('Q5')] }));
   assert.equal(own.statusCode, 200, 'its own questions keep their ids');
 });
 
