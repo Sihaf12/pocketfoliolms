@@ -191,6 +191,16 @@ refuses to start if it is set while `NODE_ENV=production`. Anywhere
 else, put a TLS-terminating proxy in front instead. The API tests are
 unaffected: they use `app.inject()` and send the cookie header directly.
 
+## Backlog: before production
+
+- **TLS provisioning must be tied to domain changes.** Today a verified
+  or overridden domain change switches `primary_domain` at once and
+  leaves `tls_state` as it was, so the new host serves without a
+  certificate until one is issued outside this code. Before production,
+  a domain change has to issue the certificate for the new host (and
+  keep the old host answering until it is live), and record the result
+  in `tls_state` and `tls_expires_at`.
+
 ## Temporary rules
 
 - **Certificate issuance.** A certificate is issued when a course reaches

@@ -123,18 +123,28 @@ test('the catalogue offers published courses only, never another academy\'s, and
 
 test('learners: literal search, keyset pages, a detail view that is audited, and another academy is 404', async () => {
   const a = await academy();
-  // Enough learners for two pages, made directly: sign-up is tested elsewhere.
+  // Enough placed learners for two pages, made directly: sign-up is tested elsewhere.
   await ownerPool.query(
-    `INSERT INTO app.users (tenant_id, email, display_name, created_at)
-     SELECT $1, 'http-bulk-' || $2 || '-' || g || '@example.com', 'Bulk ' || g, now() - (g || ' minutes')::interval
-       FROM generate_series(1, 27) g`, [a.id, process.pid]);
+    `WITH made AS (
+       INSERT INTO app.users (tenant_id, email, display_name, created_at)
+       SELECT $1, 'http-bulk-' || $2 || '-' || g || '@example.com', 'Bulk ' || g, now() - (g || ' minutes')::interval
+         FROM generate_series(1, 27) g RETURNING id)
+     INSERT INTO app.learning_paths (tenant_id, user_id) SELECT $1, id FROM made`, [a.id, process.pid]);
+  const pctId = (await ownerPool.query<{ id: string }>(
+    `INSERT INTO app.users (tenant_id, email, display_name) VALUES ($1, $2, '100% Trader') RETURNING id`,
+    [a.id, `http-pct-${process.pid}@example.com`])).rows[0]!.id;
+  // Enrolled without a placement still counts.
   await ownerPool.query(
-    `INSERT INTO app.users (tenant_id, email, display_name) VALUES ($1, $2, '100% Trader')`, [a.id, `http-pct-${process.pid}@example.com`]);
+    `INSERT INTO app.enrolments (tenant_id, user_id, course_id)
+     SELECT $1, $2, id FROM platform.courses WHERE owner_tenant_id IS NULL AND review_state = 'published' LIMIT 1`, [a.id, pctId]);
+  // Signed up but never started: not a learner yet.
+  await ownerPool.query(
+    `INSERT INTO app.users (tenant_id, email, display_name) VALUES ($1, $2, 'Not Started')`, [a.id, `http-idle-${process.pid}@example.com`]);
 
   const first = (await studio(a, a.admin, 'GET', '/learners')).json();
   assert.equal(first.learners.length, 25);
   assert.ok(first.next);
-  assert.ok(!first.learners.some((l: { id: string }) => l.id === a.adminId), 'studio accounts are not learners');
+  assert.ok(![...first.learners].some((l: { displayName: string }) => l.displayName === 'Not Started'), 'nobody who has not started');
   const second = (await studio(a, a.admin, 'GET', `/learners?cursor=${first.next}`)).json();
   assert.equal(second.learners.length, 3);
   assert.equal(second.next, null);
@@ -155,7 +165,14 @@ test('learners: literal search, keyset pages, a detail view that is audited, and
   const attempts = (await studio(a, a.admin, 'GET', `/learners/${learner.userId}/attempts`)).json().attempts;
   assert.ok(attempts.some((x: { kind: string }) => x.kind === 'placement'));
 
-  assert.equal((await studio(a, a.admin, 'GET', `/learners/${a.adminId}`)).statusCode, 404, 'a studio account is not a learner');
+  assert.equal((await studio(a, a.admin, 'GET', `/learners/${a.adminId}`)).statusCode, 404, 'an admin who has not started learning');
+  assert.equal((await studio(a, a.admin, 'GET', `/learners/${a.adminId}/attempts`)).statusCode, 404);
+
+  // A studio member who has taken a placement is a learner like anyone else.
+  await ownerPool.query('INSERT INTO app.learning_paths (tenant_id, user_id) VALUES ($1, $2)', [a.id, a.adminId]);
+  assert.equal((await studio(a, a.admin, 'GET', `/learners/${a.adminId}`)).statusCode, 200, 'the team\'s own test account');
+  const listed = (await studio(a, a.admin, 'GET', '/learners?q=Studio%20Member')).json().learners;
+  assert.deepEqual(listed.map((l: { id: string }) => l.id), [a.adminId]);
   const northgateAdmin = await studioMember('northgate', ['tenant_admin']);
   const other = (await studioLogin(app, NORTHGATE, northgateAdmin.email)).token!;
   assert.equal((await studio({ domain: NORTHGATE }, other, 'GET', `/learners/${learner.userId}`)).statusCode, 404);

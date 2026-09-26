@@ -6,8 +6,10 @@
  * academy. Opening a learner's record is audited, because it is personal
  * data being looked at, not just listed.
  *
- * A learner is anyone in the academy without a studio role. Studio
- * accounts are managed on the users page.
+ * A learner is anyone with a placement or an enrolment, studio members
+ * included, so the team's own test accounts show up in reports the way
+ * a real learner's would. An account that has never started learning
+ * is not a learner yet.
  */
 import type { FastifyInstance } from 'fastify';
 import type { StudioRole } from '../../../auth/studioSession.js';
@@ -50,6 +52,9 @@ const writeCursor = (r: SummaryRow) => Buffer.from(`${r.joinedAt.toISOString()}|
 /** Matches the text literally: % and _ in a search are characters, not wildcards. */
 const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
+/** Needs `u` for app.users and `lp` for its learning path, left-joined. */
+const IS_LEARNER = `(lp.user_id IS NOT NULL OR EXISTS (SELECT 1 FROM app.enrolments e WHERE e.user_id = u.id))`;
+
 const SUMMARY_COLUMNS = `u.id, u.email, u.display_name AS "displayName", u.lifecycle, lp.level,
                          u.created_at AS "joinedAt", u.last_seen_at AS "lastSeenAt"`;
 
@@ -76,7 +81,7 @@ export async function studioLearnerRoutes(app: FastifyInstance): Promise<void> {
         `SELECT ${SUMMARY_COLUMNS}
            FROM app.users u
            LEFT JOIN app.learning_paths lp ON lp.user_id = u.id
-          WHERE cardinality(u.studio_roles) = 0
+          WHERE ${IS_LEARNER}
             AND ($1 = '' OR u.email ILIKE $2 OR u.display_name ILIKE $2)
             AND ($3::timestamptz IS NULL OR (u.created_at, u.id) < ($3::timestamptz, $4::uuid))
           ORDER BY u.created_at DESC, u.id DESC
@@ -131,7 +136,7 @@ export async function studioLearnerRoutes(app: FastifyInstance): Promise<void> {
       await requireStudio(db, req, ADMIN);
       const learner = await db.maybeOne<SummaryRow>(
         `SELECT ${SUMMARY_COLUMNS} FROM app.users u LEFT JOIN app.learning_paths lp ON lp.user_id = u.id
-          WHERE u.id = $1 AND cardinality(u.studio_roles) = 0`, [req.params.id]);
+          WHERE u.id = $1 AND ${IS_LEARNER}`, [req.params.id]);
       if (!learner) throw new HttpError(404, 'not_found', 'No learner with that id.');
 
       const placement = await db.maybeOne<{ level: string; baseline: Record<string, number>; selfRating: Record<string, number>; placedAt: Date }>(
@@ -186,7 +191,9 @@ export async function studioLearnerRoutes(app: FastifyInstance): Promise<void> {
   }, async (req) =>
     inStudio(req, async (db) => {
       await requireStudio(db, req, ADMIN);
-      const exists = await db.maybeOne('SELECT 1 FROM app.users WHERE id = $1 AND cardinality(studio_roles) = 0', [req.params.id]);
+      const exists = await db.maybeOne(
+        `SELECT 1 FROM app.users u LEFT JOIN app.learning_paths lp ON lp.user_id = u.id WHERE u.id = $1 AND ${IS_LEARNER}`,
+        [req.params.id]);
       if (!exists) throw new HttpError(404, 'not_found', 'No learner with that id.');
       const attempts = await db.query<{
         id: string; kind: string; courseTitle: string | null; lessonTitle: string | null;
