@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en" data-brand="gtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pocketfolio Academy: design prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#1A6DC2; --brand-d:#12508F; --brand-ink:#fff; --brand-t:#E8F1FB;
+  --accent:#F5C400; --accent-ink:#1F1A00;
+  --surface:#F4F7FB; --raised:#fff; --line:#DCE4EE; --ink:#14203A; --ink-soft:#5D6D85; --faint:#93A3B8;
+  --ok:#1E8E4E; --ok-t:#E3F5EB; --caution:#B4790E; --caution-t:#FCF3DC;
+  --learn:#2F7DD1; --safeguard:#0F8A7E; --apply:#B4790E; --specialise:#7B3F98;
+  --r:16px; --rb:11px; --rc:999px; --rm:22px;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --danger:#C2412D; --danger-t:#FBE7E3;
+}
+html[data-brand="pocketfolio"]{--brand:#1C3F3A;--brand-d:#112925;--brand-t:#E2EEEB;--accent:#00E5A3;--accent-ink:#04261D;--surface:#F3F7F6;--line:#DCE7E5;--ink:#152624;--ink-soft:#5C6F6C;--r:20px;--rb:14px;--rm:26px}
+html[data-brand="meridian"]{--brand:#C9A227;--brand-d:#A8851B;--brand-ink:#121E2F;--brand-t:#1E2744;--accent:#C9A227;--accent-ink:#121E2F;--surface:#0F172A;--raised:#161F38;--line:#28324F;--ink:#EEF3FA;--ink-soft:#A3B3CA;--faint:#7B8DA8;--ok-t:#16311F;--caution-t:#332913;--r:10px;--rb:7px;--rm:14px}
+html[data-brand="meridian"] body{background:radial-gradient(900px 520px at 88% -8%,rgba(99,102,241,.16),transparent 62%),radial-gradient(760px 480px at -8% 108%,rgba(139,92,246,.11),transparent 60%),var(--surface);background-attachment:fixed}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-padding-top:72px}
+body{font-family:'Nunito Sans',system-ui,sans-serif;background:var(--surface);color:var(--ink);line-height:1.55;font-size:15px;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+h1,h2,h3,h4,.ff{font-family:Poppins,system-ui,sans-serif;letter-spacing:-.02em;line-height:1.15}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:var(--brand);text-decoration:none}
+:focus-visible{outline:3px solid var(--brand);outline-offset:3px;border-radius:6px}
+@media (max-width:640px){body{font-size:16px}}
+
+/* ---- shell ---- */
+.screen{display:none;min-height:100vh;min-height:100svh}
+.screen.on{display:flex;flex-direction:column;animation:screen .32s var(--ease)}
+@keyframes screen{from{opacity:0}to{opacity:1}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.screen.on .stag>*{animation:rise .55s var(--ease) both}
+.screen.on .stag>*:nth-child(2){animation-delay:.06s}.screen.on .stag>*:nth-child(3){animation-delay:.12s}.screen.on .stag>*:nth-child(4){animation-delay:.18s}.screen.on .stag>*:nth-child(n+5){animation-delay:.24s}
+.wrap{width:100%;max-width:1120px;margin:0 auto;padding:0 24px}
+@media (max-width:640px){.wrap{padding:0 16px}}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--brand);color:var(--brand-ink);border-radius:var(--rb);padding:14px 22px;font-family:Poppins,sans-serif;font-weight:600;font-size:15px;transition:transform .15s var(--ease),filter .15s;min-height:44px}
+.btn:hover{filter:brightness(1.06)}
+.btn:active{transform:scale(.98)}
+.btn.sec{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.sm{padding:10px 16px;font-size:14px}
+
+/* ---- nav ---- */
+.nav{position:sticky;top:0;z-index:20;height:64px;background:var(--raised);border-bottom:1px solid var(--line);display:flex;align-items:center}
+.nav .wrap{display:flex;align-items:center;gap:24px}
+.mark{display:flex;align-items:center;gap:10px;font-family:Poppins;font-weight:700;font-size:16px;color:var(--ink)}
+.mark i{width:32px;height:32px;border-radius:9px;background:var(--brand);display:grid;place-items:center}
+.mark svg{width:18px;height:18px;fill:none;stroke:var(--brand-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.nav .links{display:flex;gap:24px;margin-left:auto;font-weight:600;font-size:14px}
+.nav .links a{color:var(--ink-soft)}
+.nav .links a:hover{color:var(--ink)}
+@media (max-width:820px){.nav .links{display:none}}
+
+/* ---- landing ---- */
+.hero{padding:72px 0 56px}
+.hero .wrap{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr;gap:32px}.hero{padding:40px 0 32px}}
+.hero h1{font-size:clamp(32px,4.6vw,48px);font-weight:700;max-width:16ch}
+.hero p{color:var(--ink-soft);font-size:17px;margin-top:20px;max-width:46ch}
+.hero .cta{display:flex;align-items:center;gap:16px;margin-top:28px;flex-wrap:wrap}
+.hero .cta span{font-size:14px;color:var(--ink-soft)}
+.pathcard{background:var(--raised);border:1px solid var(--line);border-radius:var(--rm);padding:24px;box-shadow:0 24px 56px -28px rgba(20,32,58,.35)}
+.pathcard .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:13px;color:var(--ink-soft)}
+.pathcard .hd b{font-family:Poppins;font-size:15px;color:var(--ink)}
+.tiers{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tier{padding:4px 11px;border-radius:var(--rc);font-size:12px;font-weight:700}
+.tier.learn{background:color-mix(in srgb,var(--learn) 14%,transparent);color:var(--learn)}
+.tier.safeguard{background:color-mix(in srgb,var(--safeguard) 14%,transparent);color:var(--safeguard)}
+.tier.apply{background:color-mix(in srgb,var(--apply) 16%,transparent);color:var(--apply)}
+.tier.specialise{background:color-mix(in srgb,var(--specialise) 15%,transparent);color:var(--specialise)}
+
+div.sec{padding:56px 0}
+.sec h2{font-size:clamp(24px,3.2vw,30px);font-weight:700;margin-bottom:28px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+@media (max-width:820px){.steps{grid-template-columns:1fr}}
+.step{padding-right:24px;border-right:1px solid var(--line)}
+.step:last-child{border-right:0}
+@media (max-width:820px){.step{border-right:0;padding:0 0 20px;border-bottom:1px solid var(--line)}.step:last-child{border-bottom:0}}
+.step .n{font-family:Poppins;font-weight:700;font-size:36px;color:var(--brand);line-height:1}
+.step h3{font-size:19px;margin:10px 0 6px}
+.step p{color:var(--ink-soft);font-size:15px}
+.courses{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media (max-width:900px){.courses{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.courses{grid-template-columns:1fr}}
+.course{background:var(--raised);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:8px;border-top:4px solid var(--c)}
+.course.locked{opacity:.72}
+.course .t{font-size:13px;font-weight:700;color:var(--c)}
+.course h3{font-size:18px}
+.course p{color:var(--ink-soft);font-size:14px}
+.course small{margin-top:auto;font-size:13px;color:var(--ink-soft)}
+.certstrip{background:var(--raised);border:1px solid var(--line);border-radius:var(--rm);padding:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+@media (max-width:900px){.certstrip{grid-template-columns:1fr;padding:24px}}
+.certstrip h2{margin-bottom:12px}
+.certstrip p{color:var(--ink-soft);max-width:46ch}
+.cert{background:linear-gradient(150deg,var(--brand),var(--brand-d));border-radius:var(--r);padding:28px;color:var(--brand-ink);position:relative}
+.cert::after{content:"";position:absolute;inset:10px;border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);border-radius:calc(var(--r) - 5px);pointer-events:none}
+.cert .cap{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--accent)}
+.cert h3{font-size:26px;margin-top:12px}
+.cert .serial{font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:16px;letter-spacing:.05em}
+footer{margin-top:auto;padding:24px 0;border-top:1px solid var(--line);font-size:13px;color:var(--ink-soft)}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+/* ---- path svg: the drawing animation ---- */
+.pathsvg{display:block;width:100%;height:auto}
+.pathsvg .edge{stroke-dasharray:1000;stroke-dashoffset:1000}
+.pathsvg .edge.dashed{stroke-dasharray:6 6;stroke-dashoffset:0;opacity:0}
+.pathsvg .node{opacity:0;transform-box:fill-box;transform-origin:center;transform:scale(.6)}
+.pathsvg .label{opacity:0}
+.pathsvg .ring{transform-box:fill-box;transform-origin:center}
+.drawn .pathsvg .edge{animation:draw .55s var(--ease) forwards}
+.drawn .pathsvg .edge.dashed{animation:appear .3s ease-out forwards}
+.drawn .pathsvg .node{animation:popin .32s var(--ease) forwards}
+.drawn .pathsvg .label{animation:appear .3s ease-out forwards}
+.drawn .pathsvg .ring{animation:pulse 2.6s ease-in-out infinite}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes appear{to{opacity:1}}
+@keyframes popin{to{opacity:1;transform:scale(1)}}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.25);opacity:0}}
+.pathsvg .node.done{cursor:default}
+.pathsvg .node.open{cursor:pointer}
+.pathsvg .node.locked{cursor:pointer}
+
+/* ---- path screen ---- */
+.topbar{position:sticky;top:0;z-index:20;height:60px;background:var(--raised);border-bottom:1px solid var(--line);display:flex;align-items:center}
+.topbar .wrap{display:flex;align-items:center;gap:10px}
+.chip{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--rc);background:var(--surface);border:1px solid var(--line);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.chip svg{width:13px;height:13px;fill:none;stroke:var(--brand);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.pathpage{padding:20px 0 100px;flex:1}
+.pathpage .wrap{max-width:820px}
+.pathpage .sub{font-size:13px;color:var(--ink-soft)}
+.pathpage h1{font-size:26px;margin:2px 0 16px}
+.cont{display:flex;align-items:center;gap:14px;background:var(--raised);border:1.5px solid var(--brand);border-radius:var(--r);padding:14px 16px;margin-bottom:16px;color:var(--ink);transition:transform .15s var(--ease)}
+.cont:hover{transform:translateY(-1px)}
+.cont i{width:44px;height:44px;border-radius:13px;background:var(--safeguard);display:grid;place-items:center;flex:none}
+.cont i svg{width:20px;height:20px;fill:#fff}
+.cont .t{flex:1;min-width:0}
+.cont .t small{display:block;font-size:12px;color:var(--ink-soft)}
+.cont .t b{font-family:Poppins;font-size:15px;font-weight:600}
+.mapcard{background:var(--raised);border:1px solid var(--line);border-radius:var(--r);padding:16px;position:relative;overflow:hidden}
+.mapscroll{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mapscroll::-webkit-scrollbar{display:none}
+@media (max-width:767px){.mapscroll #pathMap{width:120%;max-width:none}}
+.sheetveil{position:fixed;inset:0;z-index:60;background:rgba(10,18,32,.4);animation:appear .2s both}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;min-height:35vh;background:var(--raised);border-radius:var(--rm) var(--rm) 0 0;padding:10px 20px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;box-shadow:0 -20px 48px -24px rgba(10,18,32,.45);animation:sheetup .38s var(--ease) both}
+.sheet .grab{width:40px;height:5px;border-radius:5px;background:var(--line);margin:0 auto 10px}
+.sheet .t{font-size:13px;font-weight:700}
+.sheet b{font-family:Poppins;font-size:19px;font-weight:600;line-height:1.25}
+.sheet small{font-size:14px;color:var(--ink-soft)}
+.sheet .lock{background:var(--caution-t);border-radius:12px;padding:12px 14px;font-size:14px;margin-top:4px}
+.sheet .btn{width:100%;margin-top:auto;min-height:52px}
+@keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
+.pop{position:absolute;width:236px;background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 24px 48px -20px rgba(20,32,58,.4);display:flex;flex-direction:column;gap:8px;z-index:5;transform-origin:top left;animation:pop .28s var(--ease)}
+@keyframes pop{from{opacity:0;transform:scale(.9) translateY(-6px)}to{opacity:1;transform:none}}
+.pop .t{font-size:12px;font-weight:700}
+.pop b{font-family:Poppins;font-size:15px;font-weight:600}
+.pop small{font-size:12px;color:var(--ink-soft)}
+.pop .lock{background:var(--caution-t);border-radius:10px;padding:9px 11px;font-size:12.5px;color:var(--ink)}
+.tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(72px + env(safe-area-inset-bottom,0px));padding:8px 8px calc(12px + env(safe-area-inset-bottom,0px));background:var(--raised);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);gap:4px;z-index:20}
+.tabbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:12px;color:var(--faint);font-size:11px;font-weight:700;transition:background .15s,color .15s}
+.tabbar a.on{background:var(--brand-t);color:var(--brand)}
+.tabbar svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@media (min-width:821px){.tabbar{display:none}.pathpage{padding-bottom:40px}}
+
+/* ---- lesson ---- */
+.lesson{padding:20px 0 100px;flex:1}
+.lesson .wrap{max-width:720px}
+.back{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--ink-soft);margin-bottom:14px;min-height:44px}
+.lesson h1{font-size:clamp(24px,3.4vw,30px);margin:6px 0 6px}
+.meta{font-size:13px;color:var(--ink-soft);margin-bottom:20px}
+.tabs{display:inline-flex;gap:4px;background:var(--raised);border:1px solid var(--line);border-radius:var(--rc);padding:4px;margin-bottom:20px}
+.tabs button{padding:9px 16px;border-radius:var(--rc);font-size:14px;font-weight:700;color:var(--ink-soft);transition:background .15s,color .15s;min-height:40px}
+.tabs button.on{background:var(--brand);color:var(--brand-ink)}
+.rd{font-size:16.5px;line-height:1.65;max-width:62ch}
+.rd h3{font-size:19px;margin:22px 0 8px}
+.rd p{margin-bottom:12px;color:var(--ink)}
+.callout{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--raised);border-radius:var(--rb);padding:14px 16px;margin:18px 0;font-size:15px}
+.callout b{display:block;font-family:Poppins;font-size:13px;margin-bottom:4px;color:var(--caution)}
+.sim{background:var(--raised);border:1px solid var(--line);border-radius:var(--r);padding:20px;transition:background .2s ease,border-color .2s ease}
+.sim[data-state="critical"]{background:color-mix(in srgb,var(--caution) 10%,var(--raised));border-color:color-mix(in srgb,var(--caution) 45%,var(--line))}
+.sim[data-state="dead"]{background:color-mix(in srgb,var(--danger) 12%,var(--raised));border-color:color-mix(in srgb,var(--danger) 50%,var(--line))}
+.sim[data-state="dead"] .simout div{background:color-mix(in srgb,var(--danger) 6%,var(--surface))}
+.sim .row{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 6px;font-size:14px}
+.sim .row b{font-family:Poppins;font-size:18px}
+.slider{width:100%;appearance:none;height:8px;border-radius:8px;background:var(--line);outline:none}
+.slider::-webkit-slider-thumb{appearance:none;width:28px;height:28px;border-radius:50%;background:var(--brand);border:3px solid var(--raised);box-shadow:0 4px 12px rgba(20,32,58,.25);cursor:pointer}
+.simout{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+.simout div{background:var(--surface);border:1px solid var(--line);border-radius:var(--rb);padding:12px;text-align:center}
+.simout b{display:block;font-family:Poppins;font-size:22px;transition:color .2s}
+.simout span{font-size:11px;color:var(--faint);font-weight:700}
+.verdict{margin-top:12px;border-radius:var(--rb);padding:12px 14px;font-size:14px;font-weight:600;transition:background .3s}
+.lesson .foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:24px}
+.lesson .foot small{font-size:13px;color:var(--ink-soft)}
+
+/* ---- check ---- */
+.check{padding:20px 0 100px;flex:1}
+.check .wrap{max-width:640px}
+.q{font-size:clamp(19px,2.6vw,22px);font-family:Poppins;font-weight:600;line-height:1.35;margin:8px 0 18px}
+.opt{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;border:1.5px solid var(--line);background:var(--raised);border-radius:var(--rb);padding:14px 16px;margin-bottom:10px;transition:border-color .15s,background .15s,transform .15s var(--ease);font-size:15px;line-height:1.45;min-height:44px}
+.opt:hover{border-color:var(--brand);transform:translateX(2px)}
+.opt .k{width:26px;height:26px;border-radius:8px;background:var(--surface);display:grid;place-items:center;font-weight:800;font-size:12px;flex:none;color:var(--ink-soft)}
+.opt.sel{border-color:var(--brand);background:var(--brand-t)}
+.opt.right{border-color:var(--ok);background:var(--ok-t)}
+.opt.wrong{border-color:var(--caution);background:var(--caution-t)}
+.ratwrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s var(--ease)}
+.ratwrap.open{grid-template-rows:1fr}
+.ratwrap>div{overflow:hidden}
+.rat{border-radius:var(--rb);padding:12px 14px;margin:2px 0 14px;font-size:14px;line-height:1.5}
+.rat.right{background:var(--ok-t);border-left:3px solid var(--ok)}
+.rat.wrong{background:var(--caution-t);border-left:3px solid var(--caution)}
+.rat b{display:block;font-family:Poppins;font-size:13px;margin-bottom:3px}
+.rat.right b{color:var(--ok)}.rat.wrong b{color:var(--caution)}
+
+/* ---- verified moment ---- */
+.veil{position:fixed;inset:0;background:rgba(10,18,32,.55);backdrop-filter:blur(4px);z-index:60;display:grid;place-items:center;padding:20px;animation:appear .25s}
+.won{background:var(--raised);border-radius:var(--rm);padding:32px 28px;width:min(440px,100%);text-align:center;animation:pop .4s cubic-bezier(.2,1.3,.4,1)}
+.won .ring{width:96px;height:96px;margin:0 auto 18px;position:relative}
+.burst{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none}
+.burst i{position:absolute;width:7px;height:7px;border-radius:2px;left:-3.5px;top:-3.5px;opacity:0;animation:fly .75s cubic-bezier(.16,1,.3,1) .9s forwards}
+@keyframes fly{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}}
+.won .ring svg{width:96px;height:96px;transform:rotate(-90deg)}
+.won .ring circle{fill:none;stroke-width:8;stroke-linecap:round}
+.won .ring .bg{stroke:var(--line)}
+.won .ring .fg{stroke:var(--safeguard);stroke-dasharray:264;stroke-dashoffset:264;animation:draw .9s var(--ease) .15s forwards}
+.won .ring .tick{position:absolute;inset:0;display:grid;place-items:center;opacity:0;animation:popin .3s var(--ease) .95s forwards;transform:scale(.6)}
+.won .ring .tick svg{width:36px;height:36px;transform:none;fill:none;stroke:var(--safeguard);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.won h2{font-size:24px}
+.won p{color:var(--ink-soft);margin:6px 0 18px}
+.won .xp{font-family:Poppins;font-size:34px;font-weight:700;color:var(--brand);font-variant-numeric:tabular-nums}
+.won .xp small{font-size:14px;color:var(--ink-soft);font-weight:600;margin-left:6px}
+
+
+/* ---- auth ---- */
+.auth{flex:1;display:grid;place-items:center;padding:32px 0 60px}
+.auth .box{width:min(440px,100%);background:var(--raised);border:1px solid var(--line);border-radius:var(--rm);padding:28px}
+.auth h1{font-size:26px;margin-bottom:6px}
+.auth .lead{color:var(--ink-soft);font-size:15px;margin-bottom:32px}
+.auth .chk{margin:18px 0 20px}
+.box.from-l{animation:fromL .18s var(--ease) both}.box.from-r{animation:fromR .18s var(--ease) both}
+@keyframes fromL{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+@keyframes fromR{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+.screen.on.noanim{animation:none}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:6px}
+.field input{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:var(--rb);padding:13px 14px;font:inherit;color:var(--ink);min-height:48px;transition:border-color .15s,background .15s}
+.field input:focus{outline:none;border-color:var(--brand);background:var(--raised)}
+.auth .btn{width:100%;margin-top:6px}
+.auth .alt{text-align:center;font-size:14px;color:var(--ink-soft);margin-top:16px}
+.promise{display:inline-flex;align-items:center;gap:8px;background:var(--brand-t);color:var(--brand);border-radius:var(--rc);padding:7px 13px;font-size:12.5px;font-weight:700;margin-bottom:24px}
+.promise svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--ink-soft);margin:4px 0 12px}
+.chk input{width:18px;height:18px;margin-top:2px;accent-color:var(--brand)}
+
+/* ---- onboarding / placement ---- */
+.flow{flex:1;padding:24px 0 80px}
+.flow .wrap{max-width:640px}
+.crumb{font-size:13px;color:var(--ink-soft)}
+.flow h1{font-size:clamp(24px,3.4vw,30px);margin:4px 0 6px}
+.flow .lead{color:var(--ink-soft);font-size:15.5px;margin-bottom:20px}
+.card{background:var(--raised);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+.card+.card{margin-top:14px}
+.card h3{font-size:16px;margin-bottom:10px}
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:32px}
+.pills:last-child{margin-bottom:0}
+.pill{border:1.5px solid var(--line);background:var(--raised);border-radius:var(--rc);padding:10px 16px;font-size:14px;font-weight:600;min-height:44px;transition:border-color .15s,background .15s,color .15s,transform .15s var(--ease)}
+.pill:hover{border-color:var(--brand)}
+.pill.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.pill:active{transform:scale(.96)}
+.pill.punch{animation:punch .12s var(--ease)}
+@keyframes punch{from{transform:scale(.96)}to{transform:scale(1)}}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.seg button{min-height:46px;border:1.5px solid var(--line);background:var(--raised);border-radius:var(--rb);font-family:Poppins,sans-serif;font-weight:600;font-size:15px;color:var(--ink-soft);transition:background .12s,border-color .12s,color .12s}
+.seg button:hover{border-color:var(--brand)}
+.seg button.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.substep.fwd{animation:fromR .28s var(--ease) both}.substep.bwd{animation:fromL .28s var(--ease) both}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.conf{margin-bottom:32px}
+.conf:last-child{margin-bottom:0}
+.conf .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
+.conf .row b{font-family:Poppins;font-variant-numeric:tabular-nums}
+.conf .hint{display:flex;justify-content:space-between;font-size:11.5px;color:var(--faint);margin-top:4px}
+.qdots{display:flex;gap:5px}
+.qdots i{width:22px;height:5px;border-radius:5px;background:var(--line);display:block;transition:background .2s}
+.qdots i.done{background:var(--brand)}.qdots i.now{background:var(--accent)}
+.qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap}
+.qhead .skip{white-space:nowrap;margin-right:-4px}
+.qhead .qdots{flex-basis:100%}
+.qdots i{flex:1;max-width:44px}
+.opt.press{animation:press .2s var(--ease)}
+@keyframes press{0%{transform:scale(1)}40%{transform:scale(.98)}100%{transform:scale(1)}}
+.slidein{animation:slidein .22s var(--ease) both}
+@keyframes slidein{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+.skip{font-size:14px;font-weight:700;color:var(--brand);min-height:44px;display:inline-flex;align-items:center;padding:0 4px}
+html[data-brand="meridian"] .skip{color:var(--ink)}
+.flow .foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}
+.flow .foot small{font-size:13px;color:var(--ink-soft)}
+
+/* ---- baseline ---- */
+.tierbar{margin-bottom:18px}
+.tierbar .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
+.tierbar .row b{font-family:Poppins;font-size:16px;font-variant-numeric:tabular-nums}
+.bar{height:9px;border-radius:9px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:9px;width:0;transition:width .4s var(--ease)}
+.tierbar small{display:block;font-size:13px;color:var(--ink-soft);margin-top:6px}
+.tierbar small b{color:var(--ink);font-weight:700}
+.lvl{display:flex;flex-direction:column;align-items:center;text-align:center;padding:12px 0 28px}
+.lvl .em{width:88px;height:88px;border-radius:28px;background:var(--brand);display:grid;place-items:center;box-shadow:0 18px 40px -18px color-mix(in srgb,var(--brand) 70%,transparent);animation:popin .5s var(--ease) both;transform:scale(.7);opacity:0}
+.lvl .em svg{width:44px;height:44px;fill:none;stroke:var(--brand-ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.lvl .nm{font-family:Poppins;font-weight:700;font-size:clamp(36px,7vw,48px);letter-spacing:-.03em;margin-top:16px;line-height:1}
+.lvl p{color:var(--ink-soft);font-size:15px;margin-top:10px;max-width:36ch}
+.unlock{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+@media (max-width:560px){.unlock{grid-template-columns:1fr}}
+.unlock div{background:var(--surface);border-radius:var(--rb);padding:14px}
+.unlock b{display:block;font-family:Poppins;font-size:14px;margin-bottom:4px}
+.unlock p{font-size:13.5px;color:var(--ink-soft)}
+
+/* ---- progress / me ---- */
+.phero{background:var(--raised);border:1px solid var(--line);border-radius:var(--rm);padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
+@media (max-width:560px){.phero{grid-template-columns:1fr;gap:20px}}
+.phero .lv{display:flex;align-items:center;gap:14px}
+.phero .lv i{width:56px;height:56px;border-radius:18px;background:var(--brand);display:grid;place-items:center;flex:none}
+.phero .lv i svg{width:28px;height:28px;fill:none;stroke:var(--brand-ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.phero .big{font-family:Poppins;font-weight:700;font-size:26px;line-height:1.1}
+.phero small{display:block;font-size:13px;color:var(--ink-soft);margin-top:2px}
+.week{display:flex;gap:6px;margin-top:10px}
+.week span{flex:1;max-width:30px;height:30px;border-radius:9px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--faint)}
+.week span.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.pgroup{margin-bottom:24px}
+.pgroup>h2{font-size:17px;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.stat{background:var(--raised);border:1px solid var(--line);border-radius:var(--r);padding:18px 14px;text-align:center}
+.stat b{display:block;font-family:Poppins;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--ink-soft)}
+.recent{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);font-size:14px}
+.recent:last-child{border-bottom:0}
+.recent i{width:30px;height:30px;border-radius:9px;background:var(--ok-t);display:grid;place-items:center;flex:none}
+.recent i svg{width:14px;height:14px;fill:none;stroke:var(--ok);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.recent small{display:block;color:var(--ink-soft);font-size:12px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:10px 14px;font-size:14px}
+.kv b{color:var(--ink-soft);font-weight:700;font-size:12.5px}
+@media (max-width:560px){.kv{grid-template-columns:1fr}.kv b{margin-bottom:-6px}}
+
+/* ---- certificate modal + verify page ---- */
+.cmodal{background:var(--raised);border-radius:var(--rm);width:min(560px,100%);max-height:90vh;overflow-y:auto;padding:22px;animation:pop .35s cubic-bezier(.2,1.3,.4,1)}
+.cmodal .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.cmodal .hd h2{font-size:20px}
+.xbtn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center}
+.xbtn svg{width:16px;height:16px;fill:none;stroke:var(--ink);stroke-width:2.2;stroke-linecap:round}
+.vurl{font-family:ui-monospace,Menlo,monospace;font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:var(--rb);padding:12px 14px;word-break:break-all;margin-top:14px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.verify{flex:1;display:grid;place-items:center;padding:40px 0}
+.verify .box{width:min(520px,100%);text-align:center}
+.verify .ok{display:inline-flex;align-items:center;gap:8px;background:var(--ok-t);color:var(--ok);border-radius:var(--rc);padding:8px 16px;font-weight:700;font-size:14px;margin-bottom:18px}
+.verify .ok svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.verify .box .cert{text-align:left}
+.verify p.note{font-size:13.5px;color:var(--ink-soft);margin-top:16px}
+.vhead{padding:28px 0 0}
+.vhead .wrap{max-width:568px;margin:0 auto;font-size:13px;color:var(--ink-soft);display:flex;align-items:center;gap:10px}
+.vhead i{width:26px;height:26px;border-radius:8px;background:var(--brand);display:grid;place-items:center}
+.vhead i svg{width:14px;height:14px;fill:none;stroke:var(--brand-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.vmark{display:flex;align-items:center;gap:14px;text-align:left;margin-bottom:20px}
+.vmark .seal{width:52px;height:52px;border-radius:50%;background:var(--ok);display:grid;place-items:center;flex:none;box-shadow:0 0 0 6px var(--ok-t)}
+.vmark .seal svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}
+.vmark b{font-family:Poppins;font-size:20px;display:block;line-height:1.2}
+.vmark small{font-size:13.5px;color:var(--ink-soft)}
+.vrec{margin-top:16px;text-align:left;background:var(--raised);border:1px solid var(--line);border-radius:var(--r);padding:6px 18px}
+.vrec div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.vrec div:last-child{border-bottom:0}
+.vrec span{color:var(--ink-soft)}
+.vrec code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;word-break:break-all;text-align:right}
+.vcheck{margin-top:16px;text-align:left;display:flex;gap:8px;flex-wrap:wrap}
+.vcheck label{width:100%;font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:-2px}
+.vcheck input{flex:1;min-width:0;border:1.5px solid var(--line);background:var(--raised);border-radius:var(--rb);padding:12px 14px;font:inherit;color:var(--ink);min-height:48px;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em}
+.vcheck input:focus{outline:none;border-color:var(--brand)}
+#vMsg{font-size:13.5px;margin-top:10px;text-align:left;min-height:20px}
+
+/* ---- game layer: textured backdrop, two-column stage, illustrated asides ---- */
+body{background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--ink) 9%,transparent) 1px,transparent 1.4px),radial-gradient(1100px 520px at 70% -12%,color-mix(in srgb,var(--brand) 12%,transparent),transparent 65%);background-size:24px 24px,auto;background-attachment:fixed}
+html[data-brand="meridian"] body{background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.05) 1px,transparent 1.4px),radial-gradient(900px 520px at 88% -8%,rgba(99,102,241,.16),transparent 62%),radial-gradient(760px 480px at -8% 108%,rgba(139,92,246,.11),transparent 60%);background-size:24px 24px,auto,auto}
+.aside{display:none}
+@media (min-width:1024px){
+  .stage{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:56px;align-items:start}
+  .stage.split{grid-template-columns:440px minmax(0,1fr);align-items:center}
+  .flow .wrap.stage,.check .wrap.stage{max-width:1120px}
+  .aside{display:block;position:sticky;top:88px}
+  .stage.split .aside{position:static}
+  .verify .wrap.stage{max-width:1040px}
+  .verify .wrap.stage .box{width:100%}
+  .vhead .wrap{max-width:1040px}
+}
+.scene{position:relative;border-radius:var(--rm);background:linear-gradient(160deg,var(--brand),var(--brand-d));color:var(--brand-ink);overflow:hidden;box-shadow:0 30px 60px -34px color-mix(in srgb,var(--brand) 80%,#000)}
+html[data-brand="meridian"] .scene{background:linear-gradient(160deg,#1E2A4A,#131A30);color:var(--ink);border:1px solid var(--line)}
+.scene .art svg{display:block;width:100%;height:auto}
+.scene .scopy{padding:0 28px 28px}
+.scene h2{font-size:clamp(22px,2.2vw,28px);font-weight:700;line-height:1.15}
+.scene p{margin-top:8px;font-size:15px;opacity:.88;max-width:40ch}
+.stage.split .scene .scopy{padding:0 40px 40px}
+.stage.split .scene h2{font-size:clamp(28px,2.8vw,36px)}
+.fchip{position:absolute;display:flex;align-items:center;gap:9px;background:var(--raised);color:var(--ink);border-radius:14px;padding:9px 13px 9px 9px;font-size:13px;font-weight:700;line-height:1.2;box-shadow:0 14px 30px -14px rgba(10,18,32,.55);animation:float 6s ease-in-out infinite}
+.fchip small{display:block;font-weight:600;color:var(--ink-soft);font-size:11.5px}
+.fchip i{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;flex:none}
+.fchip i svg{width:17px;height:17px}
+.fchip:nth-of-type(2){animation-delay:-3s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.ic-flame{background:#FFEDD5}.ic-flame svg{fill:#F97316}
+.ic-xp{background:color-mix(in srgb,var(--accent) 22%,var(--raised))}.ic-xp svg{fill:none;stroke:var(--accent-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+html[data-brand="meridian"] .ic-xp svg{stroke:var(--accent)}
+.ic-ok{background:var(--ok-t)}.ic-ok svg{fill:none;stroke:var(--ok);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.acard{background:var(--raised);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-top:16px}
+.acard h3{font-size:15px;margin-bottom:12px}
+.acard .kvr{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:9px 0;border-top:1px solid var(--line)}
+.acard .kvr:first-of-type{border-top:0}
+.acard .kvr span{color:var(--ink-soft)}
+.acard .big{font-family:Poppins;font-weight:700;font-size:20px;line-height:1.25}
+.acard .note{font-size:13px;color:var(--ink-soft);margin-top:10px}
+.lvbar{height:10px;border-radius:10px;background:var(--line);overflow:hidden;margin:10px 0 6px}
+.lvbar i{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,var(--brand),color-mix(in srgb,var(--brand) 55%,var(--accent)))}
+.srow{display:flex;gap:12px;align-items:flex-start;padding:10px 0}
+.srow i{width:34px;height:34px;border-radius:11px;background:var(--brand-t);display:grid;place-items:center;flex:none;font-family:Poppins;font-weight:700;font-style:normal;color:var(--brand);font-size:14px}
+.srow b{display:block;font-size:14px}.srow span{font-size:13px;color:var(--ink-soft)}
+.stars{display:flex;gap:10px;margin:4px 0 12px}
+.stars svg{width:44px;height:44px;stroke-width:1.6;stroke-linejoin:round;transition:transform .3s var(--ease)}
+.stars .e{fill:var(--surface);stroke:var(--line)}
+.mstars{margin:0 0 12px}.mstars svg{width:28px;height:28px}
+@media (min-width:1024px){.mstars{display:none}}
+.stars .w{fill:color-mix(in srgb,var(--caution) 18%,var(--surface));stroke:var(--caution)}
+.stars .g{fill:#FBBF24;stroke:#D97706;animation:starpop .45s var(--ease)}
+@keyframes starpop{0%{transform:scale(.4) rotate(-30deg)}60%{transform:scale(1.18)}100%{transform:none}}
+.stones{display:grid;gap:10px}
+.stones .tr{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stones .dots{display:flex;gap:8px}
+.stones .dots b{width:26px;height:26px;border-radius:50%;border:2px dashed var(--line);display:block}
+.stones .dots b.a{border:0;background:var(--c)}
+.stones .dots b.s{border:2px solid var(--c);background:transparent}
+.stones .dots b.now{border:2px solid var(--c);box-shadow:0 0 0 5px color-mix(in srgb,var(--c) 22%,transparent)}
+.keys{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-soft);margin-top:12px}
+.keys kbd{font-family:Poppins;font-size:11.5px;font-weight:700;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:2px 7px;background:var(--surface);color:var(--ink)}
+.rosette{display:block;margin:0 auto 14px;width:112px;height:112px}
+.chip.streak{margin-left:auto}.chip.streak+.chip{margin-left:0}
+.chip.streak svg{fill:#F97316;stroke:none}
+.opt.right{animation:press .3s var(--ease)}
+@media (prefers-reduced-motion:reduce){.fchip{animation:none}}
+
+/* ---- brand preview control (design review only) ---- */
+.brandctl{position:fixed;top:76px;right:12px;z-index:90;display:flex;gap:6px;background:var(--raised);border:1px solid var(--line);border-radius:var(--rc);padding:4px;box-shadow:0 8px 24px -8px rgba(20,32,58,.3)}
+.brandctl button{width:28px;height:28px;border-radius:50%;border:2px solid transparent}
+.brandctl button.on{border-color:var(--ink)}
+@media (max-width:640px){.brandctl{top:auto;bottom:calc(84px + env(safe-area-inset-bottom,0px));padding:3px}.brandctl:not(.open) button:not(.on){display:none}.brandctl button{width:24px;height:24px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.pathsvg .edge,.pathsvg .node,.pathsvg .label,.pathsvg .edge.dashed{opacity:1;stroke-dashoffset:0;transform:none}}
+</style>
+</head>
+<body>
+
+<div class="brandctl" aria-label="Preview a tenant brand (design review only)">
+  <button data-b="gtl" class="on" style="background:linear-gradient(135deg,#1A6DC2 55%,#F5C400 55%)" aria-label="GTL brand"></button>
+  <button data-b="pocketfolio" style="background:linear-gradient(135deg,#1C3F3A 55%,#00E5A3 55%)" aria-label="Pocketfolio brand"></button>
+  <button data-b="meridian" style="background:linear-gradient(135deg,#0F172A 55%,#C9A227 55%)" aria-label="Institutional brand"></button>
+</div>
+
+<!-- ================= LANDING ================= -->
+<section class="screen on" id="s-landing">
+  <nav class="nav"><div class="wrap">
+    <a class="mark" href="#" data-go="landing"><i><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a>
+    <div class="links"><a href="#how">How it works</a><a href="#courses">Courses</a><a href="#" data-go="verify">Verify a certificate</a><a href="#" data-go="signin" style="color:var(--ink)">Sign in</a></div>
+    <button class="btn sm" data-go="signup" style="margin-left:12px">Start your placement</button>
+  </div></nav>
+
+  <div class="hero"><div class="wrap">
+    <div>
+      <h1>Learn to trade the way you'd want your money managed. Carefully.</h1>
+      <p>We find out what you already know, teach only what you need next, and give you a certificate anyone can check. Progress here is earned. Nothing is unlocked by depositing.</p>
+      <div class="cta"><button class="btn" data-go="signup">Start your placement</button><span>Eight questions. About three minutes. Skip any.</span></div>
+    </div>
+    <div class="pathcard" id="heroCard">
+      <div class="hd"><b>Your path</b><span>Amara, Learner</span></div>
+      <svg class="pathsvg" viewBox="0 0 520 330" aria-hidden="true">
+        <g fill="none" stroke-width="3" stroke-linecap="round">
+          <path class="edge" style="animation-delay:.05s" d="M70 176 C 110 176, 110 90, 150 90" stroke="var(--learn)"/>
+          <path class="edge" style="animation-delay:.05s" d="M70 176 C 110 176, 110 262, 150 262" stroke="var(--learn)"/>
+          <path class="edge" style="animation-delay:.45s" d="M150 90 C 190 90, 190 60, 230 60" stroke="var(--safeguard)"/>
+          <path class="edge dashed" style="animation-delay:.9s" d="M230 60 C 265 60, 265 176, 300 176" stroke="var(--safeguard)" stroke-opacity=".8" stroke-width="2"/>
+          <path class="edge dashed" style="animation-delay:.9s" d="M150 262 C 200 262, 250 262, 300 262" stroke="var(--apply)" stroke-opacity=".8" stroke-width="2"/>
+          <path class="edge dashed" style="animation-delay:1s" d="M300 262 C 340 262, 340 176, 380 176" stroke="var(--faint)" stroke-width="2"/>
+          <path class="edge dashed" style="animation-delay:1s" d="M300 262 C 360 262, 380 300, 440 300" stroke="var(--faint)" stroke-width="2"/>
+          <path class="edge dashed" style="animation-delay:1s" d="M380 176 C 420 176, 420 100, 460 100" stroke="var(--faint)" stroke-width="2"/>
+        </g>
+        <g class="node done" style="animation-delay:.1s"><circle cx="70" cy="176" r="24" fill="var(--learn)"/><path d="M60 176l7 7 13-13" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+        <text class="label" style="animation-delay:.3s" x="70" y="220" text-anchor="middle" font-family="Poppins" font-size="12" font-weight="600" fill="var(--ink)">How markets work</text>
+        <g class="node done" style="animation-delay:.35s"><circle cx="150" cy="90" r="24" fill="var(--learn)"/><path d="M140 90l7 7 13-13" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+        <text class="label" style="animation-delay:.5s" x="150" y="46" text-anchor="middle" font-family="Poppins" font-size="12" font-weight="600" fill="var(--ink)">Assets and instruments</text>
+        <g class="node done" style="animation-delay:.35s"><circle cx="150" cy="262" r="24" fill="var(--learn)"/><path d="M140 262l7 7 13-13" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+        <text class="label" style="animation-delay:.5s" x="150" y="306" text-anchor="middle" font-family="Poppins" font-size="12" font-weight="600" fill="var(--ink)">Orders and execution</text>
+        <g class="node locked" style="animation-delay:.95s" opacity=".55"><circle cx="300" cy="176" r="24" fill="var(--surface)" stroke="var(--safeguard)" stroke-width="2" stroke-dasharray="5 5"/><rect x="292" y="174" width="16" height="12" rx="2.5" fill="none" stroke="var(--safeguard)" stroke-width="2"/><path d="M295 174v-3a5 5 0 0110 0v3" fill="none" stroke="var(--safeguard)" stroke-width="2"/></g>
+        <text class="label" style="animation-delay:1.05s" x="300" y="218" text-anchor="middle" font-family="Poppins" font-size="12" font-weight="600" fill="var(--ink)" opacity=".6">Leverage and margin</text>
+        <g class="node locked" style="animation-delay:.95s" opacity=".55"><circle cx="300" cy="262" r="24" fill="var(--surface)" stroke="var(--apply)" stroke-width="2" stroke-dasharray="5 5"/><rect x="292" y="260" width="16" height="12" rx="2.5" fill="none" stroke="var(--apply)" stroke-width="2"/><path d="M295 260v-3a5 5 0 0110 0v3" fill="none" stroke="var(--apply)" stroke-width="2"/></g>
+        <text class="label" style="animation-delay:1.05s" x="300" y="306" text-anchor="middle" font-family="Poppins" font-size="12" font-weight="600" fill="var(--ink)" opacity=".6">Reading a chart</text>
+        <g class="node locked" style="animation-delay:1.05s" opacity=".4"><circle cx="380" cy="176" r="24" fill="var(--surface)" stroke="var(--apply)" stroke-width="2" stroke-dasharray="5 5"/><circle cx="440" cy="300" r="24" fill="var(--surface)" stroke="var(--apply)" stroke-width="2" stroke-dasharray="5 5"/><circle cx="460" cy="100" r="24" fill="var(--surface)" stroke="var(--specialise)" stroke-width="2" stroke-dasharray="5 5"/></g>
+        <!-- the next lesson settles last -->
+        <g class="node open" style="animation-delay:1.2s"><circle class="ring" cx="230" cy="60" r="24" fill="none" stroke="var(--safeguard)" stroke-width="2"/><circle cx="230" cy="60" r="24" fill="var(--raised)" stroke="var(--safeguard)" stroke-width="3.5"/><path d="M226 52l11 8-11 8z" fill="var(--safeguard)"/></g>
+        <text class="label" style="animation-delay:1.4s" x="262" y="56" font-family="Poppins" font-size="12" font-weight="700" fill="var(--ink)">Risk, plainly</text>
+        <text class="label" style="animation-delay:1.4s" x="262" y="72" font-family="Nunito Sans" font-size="11" fill="var(--ink-soft)">Next, 8 minutes</text>
+      </svg>
+      <div class="tiers"><span class="tier learn">Learn</span><span class="tier safeguard">Safeguard</span><span class="tier apply">Apply</span><span class="tier specialise">Specialise</span></div>
+    </div>
+  </div></div>
+
+  <div class="sec" id="how"><div class="wrap">
+    <h2>Three steps, and none of them is a sales call</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Placement</h3><p>Eight scenarios. Skip any. It decides what you get to skip, not whether you pass.</p></div>
+      <div class="step"><div class="n">2</div><h3>Your path</h3><p>Lessons of six to twelve minutes, in an order that says why each one is next. Locked steps tell you exactly what opens them.</p></div>
+      <div class="step"><div class="n">3</div><h3>Verified</h3><p>Two of three on a check and the lesson counts. Finish a course and a certificate is issued, with a code anyone can verify.</p></div>
+    </div>
+  </div></div>
+
+  <div class="sec" id="courses" style="padding-top:0"><div class="wrap">
+    <h2>Four courses, in the order you'll need them</h2>
+    <div class="courses">
+      <div class="course" style="--c:var(--learn)"><span class="t">Learn</span><h3>Foundations of Digital Assets</h3><p>How markets, assets and orders actually work.</p><small>3 lessons, 30 minutes</small></div>
+      <div class="course" style="--c:var(--safeguard)"><span class="t">Safeguard</span><h3>Risk and Protection</h3><p>Leverage, margin, and the scams that find beginners.</p><small>3 lessons, 29 minutes</small></div>
+      <div class="course locked" style="--c:var(--apply)"><span class="t">Apply</span><h3>Practical Execution</h3><p>Charts, sizing, and writing a plan you'll follow.</p><small>Unlocks at Learn 50</small></div>
+      <div class="course locked" style="--c:var(--specialise)"><span class="t">Specialise</span><h3>Advanced Markets</h3><p>Derivatives and building a portfolio.</p><small>Unlocks at Learn 70 and Safeguard 50</small></div>
+    </div>
+  </div></div>
+
+  <div class="sec" id="verify" style="padding-top:0"><div class="wrap">
+    <div class="certstrip">
+      <div><h2>A certificate that means something because anyone can check it</h2><p>Every certificate has a code and a public page. An employer, a partner or a regulator can confirm it in one click, without an account.</p><a href="#" data-go="verify" style="font-weight:700;display:inline-block;margin-top:12px">Verify a certificate</a></div>
+      <div class="cert"><div class="cap">CERTIFICATE OF ACHIEVEMENT</div><h3>Amara Osei</h3><div style="font-size:14px;opacity:.9">has completed and verified</div><div class="ff" style="font-size:17px;font-weight:600;margin-top:6px">Foundations of Digital Assets</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:22px;gap:12px;flex-wrap:wrap"><div><div style="font-size:11px;opacity:.8">VERIFICATION CODE</div><div class="serial">PA-7K3M-9QXD</div></div><div style="font-size:12px;opacity:.85">verify.gtl.academy/PA-7K3M-9QXD</div></div></div>
+    </div>
+  </div></div>
+
+  <footer><div class="wrap"><span><span class="bname">GTL Academy</span> is operated for you by your broker. Your learning record belongs to this academy and is never shared with another.</span><span style="display:flex;gap:20px"><a href="#" style="color:var(--ink-soft)">Terms</a><a href="#" style="color:var(--ink-soft)">Privacy</a></span></div></footer>
+</section>
+
+<!-- ================= PATH ================= -->
+<section class="screen" id="s-path">
+  <div class="topbar"><div class="wrap"><a class="mark" href="#" data-go="landing" style="font-size:15px"><i style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a><span class="chip"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span id="xp">400</span> XP</span></div></div>
+  <div class="pathpage"><div class="wrap stag">
+    <div class="sub">Learner, <span id="doneCount">3</span> of 11 verified</div>
+    <h1>Your path</h1>
+    <a class="cont" href="#" data-go="lesson"><i><svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></svg></i><span class="t"><small>Continue</small><b id="contTitle">Risk, plainly</b><small id="contMeta">Safeguard, 8 minutes</small></span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--ink-soft)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></a>
+    <div class="mapcard" id="mapCard">
+      <div class="mapscroll" id="mapScroll"><svg class="pathsvg" viewBox="0 0 520 348" id="pathMap"></svg></div>
+      <div class="tiers"><span class="tier learn">Learn</span><span class="tier safeguard">Safeguard</span><span class="tier apply">Apply</span><span class="tier specialise">Specialise</span></div>
+    </div>
+    <p style="font-size:13px;color:var(--ink-soft);margin-top:12px">Tap any lesson. Locked ones say exactly what opens them.</p>
+  </div></div>
+  <nav class="tabbar">
+    <a href="#" class="on"><svg viewBox="0 0 24 24"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>Path</a>
+    <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>Explore</a>
+    <a href="#" data-go="progress"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Progress</a>
+    <a href="#" data-go="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>Me</a>
+  </nav>
+</section>
+
+<!-- ================= LESSON ================= -->
+<section class="screen" id="s-lesson">
+  <div class="topbar"><div class="wrap"><a class="mark" href="#" data-go="path" style="font-size:15px"><i style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a><span class="chip"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span class="xpm">400</span> XP</span></div></div>
+  <div class="lesson"><div class="wrap stag">
+    <a class="back" href="#" data-go="path">← Your path</a>
+    <span class="tier safeguard">Safeguard</span>
+    <h1>Leverage and margin</h1>
+    <div class="meta">Lesson 2 of 3 in Risk and Protection. 12 minutes. Two of three to verify.</div>
+    <div class="tabs"><button class="on" data-tab="read">Read</button><button data-tab="do">Try it</button></div>
+    <div id="tab-read" class="rd">
+      <h3>Leverage is borrowed size</h3>
+      <p>You put up part of the position value as margin, and the venue lends the rest. Ten times leverage means you control ten dollars of exposure for every dollar you have posted.</p>
+      <h3>It multiplies both directions</h3>
+      <p>A 10% favourable move at 10x roughly doubles your margin. A 10% adverse move at 10x roughly erases it. The mechanism has no preference for which way it works.</p>
+      <h3>The margin call is not a warning</h3>
+      <p>When your equity falls below the level the venue requires, the position is closed for you, at whatever price the market offers. You do not get to wait for the recovery.</p>
+      <div class="callout"><b>In practice</b>Before opening any leveraged position, work out the percentage move that would take you to zero. If that number is smaller than a normal day for the asset, the size is wrong, not the market.</div>
+    </div>
+    <div id="tab-do" class="sim" style="display:none">
+      <div class="ff" style="font-size:18px;font-weight:600">What a move does to you</div>
+      <p style="color:var(--ink-soft);font-size:14px;margin-top:4px">Move the sliders. This is the arithmetic the lesson describes, live.</p>
+      <div class="row"><span>Leverage</span><b id="lvOut">5x</b></div><input class="slider" type="range" id="lv" min="1" max="25" value="5">
+      <div class="row"><span>Adverse move</span><b id="mvOut">5%</b></div><input class="slider" type="range" id="mv" min="1" max="30" value="5">
+      <div class="simout"><div><b id="o1">25%</b><span>OF MARGIN LOST</span></div><div><b id="o2">20%</b><span>MOVE TO ZERO</span></div><div><b id="o3">Survivable</b><span>VERDICT</span></div></div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+    <div class="foot"><small>Read both tabs, then check your understanding.</small><button class="btn" data-go="check">Check my understanding</button></div>
+  </div></div>
+</section>
+
+<!-- ================= CHECK ================= -->
+<section class="screen" id="s-check">
+  <div class="topbar"><div class="wrap"><a class="back" href="#" data-go="lesson" style="margin:0">← Back to lesson</a><span class="chip" id="qcount">1 of 3</span></div></div>
+  <div class="check"><div class="wrap stage"><div class="main">
+    <div class="stars mstars" id="mStars" aria-label="Stars earned"></div>
+    <span class="tier safeguard">Safeguard</span>
+    <div class="q" id="qText"></div>
+    <div id="opts"></div>
+    <div id="feed"></div>
+  </div><aside class="aside" data-aside="check"></aside></div></div>
+</section>
+
+
+<!-- ================= SIGN UP ================= -->
+<section class="screen" id="s-signup">
+  <div class="topbar"><div class="wrap"><a class="mark" href="#" data-go="landing" style="font-size:15px"><i style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a></div></div>
+  <div class="auth"><div class="wrap stage split"><div class="box">
+    <span class="promise"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg>No deposit. No trading. Ever.</span>
+    <h1>Create your account</h1>
+    <p class="lead">Three minutes to your starting point. Your record belongs to this academy only.</p>
+    <div class="field"><label for="su-name">Name</label><input id="su-name" value="Amara Osei" autocomplete="name"></div>
+    <div class="field"><label for="su-email">Email</label><input id="su-email" type="email" value="amara@example.com" autocomplete="email"></div>
+    <div class="field"><label for="su-pass">Password</label><input id="su-pass" type="password" value="••••••••••••" autocomplete="new-password"></div>
+    <label class="chk"><input type="checkbox" checked> I agree to the terms and privacy policy.</label>
+    <button class="btn" data-go="onboarding">Create account</button>
+    <p class="alt">Already have an account? <a href="#" data-go="signin" style="font-weight:700">Sign in</a></p>
+  </div><aside class="aside" data-aside="signup"></aside></div></div>
+</section>
+
+<!-- ================= SIGN IN ================= -->
+<section class="screen" id="s-signin">
+  <div class="topbar"><div class="wrap"><a class="mark" href="#" data-go="landing" style="font-size:15px"><i style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a></div></div>
+  <div class="auth"><div class="wrap stage split"><div class="box">
+    <h1>Welcome back</h1>
+    <p class="lead">Pick up exactly where you stopped.</p>
+    <div class="field"><label for="si-email">Email</label><input id="si-email" type="email" value="amara@example.com" autocomplete="email"></div>
+    <div class="field"><label for="si-pass">Password</label><input id="si-pass" type="password" value="••••••••••••" autocomplete="current-password"></div>
+    <button class="btn" data-go="path">Sign in</button>
+    <p class="alt"><a href="#" style="font-weight:700">Forgot your password?</a></p>
+    <p class="alt">New here? <a href="#" data-go="signup" style="font-weight:700">Create an account</a></p>
+  </div><aside class="aside" data-aside="signin"></aside></div></div>
+</section>
+
+<!-- ================= ONBOARDING ================= -->
+<section class="screen" id="s-onboarding">
+  <div class="topbar"><div class="wrap"><a class="mark" href="#" data-go="landing" style="font-size:15px"><i style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a><span class="chip"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span class="xpm">400</span> XP</span></div></div>
+  <div class="flow"><div class="wrap stage"><div class="main">
+    <div class="substep" id="ob1">
+      <div class="crumb">About you, 1 of 2</div>
+      <h1>What are you here for?</h1>
+      <p class="lead">Two quick questions. We only ask what changes your path.</p>
+      <div class="card">
+        <h3>What do you want from this?</h3>
+        <div class="pills" id="goals"></div>
+        <h3>How much time on a typical day?</h3>
+        <div class="pills" id="mins"></div>
+      </div>
+      <div class="foot"><small>Then how confident you feel, then eight questions.</small><button class="btn" id="goConf" disabled>Next</button></div>
+    </div>
+    <div class="substep" id="ob2" hidden>
+      <div class="crumb">About you, 2 of 2</div>
+      <h1>How confident do you feel?</h1>
+      <p class="lead">Your own read, 1 to 5. Guessing low is fine. The check that follows does most of the work.</p>
+      <div class="card" id="confs"></div>
+      <div class="foot"><button class="skip" id="backGoals" style="color:var(--ink-soft)">Back</button><button class="btn" data-go="placement">Start the placement check</button></div>
+    </div>
+  </div><aside class="aside" data-aside="onboarding"></aside></div></div>
+</section>
+
+<!-- ================= PLACEMENT ================= -->
+<section class="screen" id="s-placement">
+  <div class="topbar"><div class="wrap"><a class="mark" href="#" data-go="landing" style="font-size:15px"><i style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a><span class="chip"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span class="xpm">400</span> XP</span></div></div>
+  <div class="flow"><div class="wrap stage"><div class="main">
+    <div class="qhead"><div><span class="tier" id="pTier">Learn</span> <span class="crumb" style="margin-left:8px" id="pCount">1 of 8</span></div><button class="skip" id="pSkip">Not covered yet</button><div class="qdots" id="pDots"></div></div>
+    <div class="card" id="pCard">
+      <div class="q" id="pText"></div>
+            <div id="pOpts"></div>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:14px">Skipped questions become lessons in your path. Nothing is marked wrong.</p>
+    </div>
+  </div><aside class="aside" data-aside="placement"></aside></div></div>
+</section>
+
+<!-- ================= BASELINE ================= -->
+<section class="screen" id="s-baseline">
+  <div class="topbar"><div class="wrap"><a class="mark" href="#" data-go="landing" style="font-size:15px"><i style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a><span class="chip"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span class="xpm">400</span> XP</span></div></div>
+  <div class="flow"><div class="wrap">
+    <div class="lvl"><div class="em"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></div><div class="crumb" style="margin-top:18px">You are starting as</div><div class="nm" id="blTitle">Learner</div><p id="blSub">Nothing here is a pass or a fail. It decides where your path begins.</p></div>
+    <div class="card" id="blCard"></div>
+    <div class="foot"><small id="blOpen"></small><button class="btn" data-go="path">See my path</button></div>
+  </div></div>
+</section>
+
+<!-- ================= PROGRESS ================= -->
+<section class="screen" id="s-progress">
+  <div class="topbar"><div class="wrap"><a class="mark" href="#" data-go="path" style="font-size:15px"><i style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a><span class="chip"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span class="xpm">400</span> XP</span></div></div>
+  <div class="pathpage"><div class="wrap stag">
+    <h1>Your progress</h1>
+    <div class="phero">
+      <div class="lv"><i><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><div><div class="big" id="prLevel">Learner</div><small><span id="prDone">4</span> verified lessons, <span class="xpm">400</span> XP</small></div></div>
+      <div><div class="big">4 days</div><small>Learning streak this week</small><div class="week" aria-label="Days learned this week"><span class="on">M</span><span class="on">T</span><span class="on">W</span><span class="on">T</span><span>F</span><span>S</span><span>S</span></div></div>
+    </div>
+    <div class="pgroup"><h2>What opens next</h2><div class="card" id="prTiers"></div></div>
+    <div class="pgroup"><h2>Certificates</h2><div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap" id="prCert"></div></div>
+    <div class="pgroup"><h2>Recently verified</h2><div class="card" style="padding-top:6px;padding-bottom:6px"><div id="prRecent"></div></div></div>
+  </div></div>
+  <nav class="tabbar">
+    <a href="#" data-go="path"><svg viewBox="0 0 24 24"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>Path</a>
+    <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>Explore</a>
+    <a href="#" class="on"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Progress</a>
+    <a href="#" data-go="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>Me</a>
+  </nav>
+</section>
+
+<!-- ================= ME ================= -->
+<section class="screen" id="s-me">
+  <div class="topbar"><div class="wrap"><a class="mark" href="#" data-go="path" style="font-size:15px"><i style="width:30px;height:30px"><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span class="bname">GTL Academy</span></a><span class="chip"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg><span class="xpm">400</span> XP</span></div></div>
+  <div class="pathpage"><div class="wrap stag">
+    <div class="sub">Profile</div>
+    <h1>Amara Osei</h1>
+    <div class="card"><div class="kv"><b>Starting point</b><span>Learner</span><b>Goal</b><span id="meGoal">I am completely new</span><b>Time per day</b><span id="meMin">20 minutes</span><b>Academy</b><span><span class="bname">GTL Academy</span></span><b>Email</b><span>amara@example.com</span></div>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:16px">Your learning record belongs to this academy only. Certificates are verifiable publicly and carry your name, the course and the date, nothing else.</p></div>
+    <div class="card" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><b class="ff" style="font-size:15px">Sign out</b><p style="font-size:13px;color:var(--ink-soft)">Your progress is saved.</p></div><button class="btn sec sm" data-go="landing">Sign out</button></div>
+  </div></div>
+  <nav class="tabbar">
+    <a href="#" data-go="path"><svg viewBox="0 0 24 24"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>Path</a>
+    <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>Explore</a>
+    <a href="#" data-go="progress"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Progress</a>
+    <a href="#" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>Me</a>
+  </nav>
+</section>
+
+<!-- ================= PUBLIC VERIFY ================= -->
+<section class="screen" id="s-verify">
+  <div class="vhead"><div class="wrap"><i><svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg></i><span>Certificate record, issued by <span class="bname">GTL Academy</span></span></div></div>
+  <div class="verify"><div class="wrap stage"><div class="box stag">
+    <div class="vmark"><span class="seal"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg></span><div><b>Valid certificate</b><small>Issued and recorded. Not revoked.</small></div></div>
+    <div class="cert"><div class="cap">CERTIFICATE OF ACHIEVEMENT</div><h3>Amara Osei</h3><div style="font-size:14px;opacity:.9">has completed and verified</div><div class="ff" style="font-size:17px;font-weight:600;margin-top:6px">Foundations of Digital Assets</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:22px;gap:12px;flex-wrap:wrap"><div><div style="font-size:11px;opacity:.8">VERIFICATION CODE</div><div class="serial">PA-7K3M-9QXD</div></div><div style="font-size:12px;opacity:.85">Issued 26 September 2026</div></div></div>
+    <div class="vrec">
+      <div><span>Serial</span><code>PA-7K3M-9QXD</code></div>
+      <div><span>Issued</span><b style="font-weight:600">26 September 2026</b></div>
+      <div><span>Record hash</span><code>9f2c41e8a07d5b36&hellip;c4e1b7d0</code></div>
+      <div><span>Audit log</span><b style="font-weight:600">Entry 1,284, chain intact</b></div>
+    </div>
+    <p class="note" style="text-align:left">This page needs no account. It shows the holder's name, the course and the date, and nothing else. A revoked certificate shows as revoked.</p>
+    <form class="vcheck" id="vForm"><label for="vCode">Check another code</label><input id="vCode" placeholder="PA-XXXX-XXXX" autocomplete="off" spellcheck="false"><button class="btn" type="submit">Check</button></form>
+    <div id="vMsg" role="status"></div>
+  </div><aside class="aside" data-aside="verify"></aside></div></div>
+</section>
+
+<div id="modalHost"></div>
+
+<script>
+/* ---------- brand preview (review only) ---------- */
+const BRAND={gtl:'GTL Academy',pocketfolio:'Pocketfolio Academy',meridian:'Meridian Institute'};
+document.querySelectorAll('.brandctl button').forEach(b=>b.onclick=()=>{
+  const ctl=b.parentNode; if(innerWidth<=640&&!ctl.classList.contains('open')){ctl.classList.add('open');return;} ctl.classList.remove('open');
+  document.documentElement.dataset.brand=b.dataset.b;
+  document.querySelectorAll('.brandctl button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.bname').forEach(x=>x.textContent=BRAND[b.dataset.b]);
+  if(typeof renderAside==='function') renderAside(cur);
+});
+
+/* ---------- navigation ---------- */
+let cur='landing';
+const RM=matchMedia('(prefers-reduced-motion: reduce)');
+const buzz=p=>{ if(!RM.matches&&navigator.vibrate) try{navigator.vibrate(p)}catch(e){} };
+const show=id=>{
+  document.querySelectorAll('.sheetveil,.sheet').forEach(x=>x.remove());
+  const auth=['signin','signup'], swap=auth.includes(cur)&&auth.includes(id)&&cur!==id;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on','noanim'));
+  const el=document.getElementById('s-'+id); el.classList.add('on'); window.scrollTo(0,0);
+  if(swap){ el.classList.add('noanim'); const bx=el.querySelector('.box'); bx.classList.remove('from-l','from-r'); void bx.offsetWidth; bx.classList.add(id==='signin'?'from-l':'from-r'); }
+  cur=id; renderAside(id);
+  if(id==='verify'){ vMsg.textContent=''; vCode.value=''; }
+  if(id==='landing') replay('#heroCard');
+  if(id==='path'){ renderMap(); replay('#mapCard'); }
+  if(id==='check') startCheck();
+  if(id==='onboarding') renderOnboarding();
+  if(id==='placement') startPlacement();
+  if(id==='baseline') renderBaseline();
+  if(id==='progress') renderProgress();
+  if(id==='me'){ meGoal.textContent=O.goal||'Not set'; meMin.textContent=O.min||'Not set'; }
+};
+function replay(sel){ const el=document.querySelector(sel); el.classList.remove('drawn'); void el.offsetWidth; requestAnimationFrame(()=>el.classList.add('drawn')); }
+document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g){ e.preventDefault(); show(g.dataset.go);} });
+replay('#heroCard');
+
+/* ---------- the path map (state-driven) ---------- */
+const NODES=[
+ {id:'L1',t:'How markets work',tier:'learn',x:70,y:176,pre:[],min:9,xp:120,lx:62},
+ {id:'L2',t:'Assets and instruments',tier:'learn',x:150,y:90,pre:['L1'],min:11,xp:140,ly:46},
+ {id:'L3',t:'Orders and execution',tier:'learn',x:150,y:262,pre:['L1'],min:10,xp:140,ly:306},
+ {id:'S1',t:'Risk, plainly',tier:'safeguard',x:230,y:60,pre:['L2'],min:8,xp:160,ly:24},
+ {id:'S2',t:'Leverage and margin',tier:'safeguard',x:300,y:176,pre:['S1'],min:12,xp:200,ly:220},
+ {id:'A1',t:'Reading a chart',tier:'apply',x:300,y:262,pre:['L3'],min:11,xp:180,ly:306},
+ {id:'A2',t:'Position sizing',tier:'apply',x:380,y:176,pre:['A1','S2'],min:12,xp:220,ly:140},
+ {id:'A3',t:'Writing a plan',tier:'apply',x:440,y:300,pre:['A2'],min:10,xp:220,ly:334},
+ {id:'X1',t:'Derivatives basics',tier:'specialise',x:460,y:100,pre:['A3'],min:13,xp:260,ly:64}
+];
+const S={done:['L1','L2','L3','S1'],xp:400,baseline:{learn:74,safeguard:40,apply:44,specialise:46},level:'Learner'};
+const stateOf=n=>S.done.includes(n.id)?'done':(n.tier==='apply'&&S.baseline.learn<50)||(n.tier==='specialise'&&(S.baseline.learn<70||S.baseline.safeguard<50))?'locked':n.pre.every(p=>S.done.includes(p))?'open':'locked';
+const reason=n=>{ if(n.tier==='apply'&&S.baseline.learn<50) return 'Unlocks at Learn 50 or above. You are at '+S.baseline.learn+'.';
+  if(n.tier==='specialise'&&(S.baseline.learn<70||S.baseline.safeguard<50)) return 'Unlocks at Learn 70 and Safeguard 50. You are at '+S.baseline.learn+' and '+S.baseline.safeguard+'.';
+  const m=n.pre.filter(p=>!S.done.includes(p)).map(p=>NODES.find(x=>x.id===p).t); return m.length?'Requires '+m.join(' and '):''; };
+function renderMap(){
+  const svg=document.getElementById('pathMap'); const c=t=>`var(--${t})`;
+  const edges=NODES.flatMap(n=>n.pre.map(p=>[NODES.find(x=>x.id===p),n]));
+  let i=0;
+  const eH=edges.map(([a,b])=>{ const mx=(a.x+b.x)/2; const lit=S.done.includes(a.id)&&stateOf(b)!=='locked';
+    return `<path class="edge ${lit?'':'dashed'}" style="animation-delay:${lit?.05+i*.18:.9}s" d="M${a.x} ${a.y} C ${mx} ${a.y}, ${mx} ${b.y}, ${b.x} ${b.y}" fill="none" stroke="${lit?c(b.tier):'var(--faint)'}" stroke-opacity="${lit?1:.85}" stroke-width="${lit?3:2}" stroke-linecap="round"/>`;}).join('');
+  const nH=NODES.map((n,k)=>{ const st=stateOf(n); const d=st==='open'?1.2:.1+k*.12;
+    const body= st==='done'?`<circle cx="${n.x}" cy="${n.y}" r="24" fill="${c(n.tier)}"/><path d="M${n.x-10} ${n.y}l7 7 13-13" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`
+      : st==='open'?`<circle class="ring" cx="${n.x}" cy="${n.y}" r="24" fill="none" stroke="${c(n.tier)}" stroke-width="2"/><circle cx="${n.x}" cy="${n.y}" r="24" fill="var(--raised)" stroke="${c(n.tier)}" stroke-width="3.5"/><path d="M${n.x-4} ${n.y-8}l11 8-11 8z" fill="${c(n.tier)}"/>`
+      : `<circle cx="${n.x}" cy="${n.y}" r="24" fill="var(--surface)" stroke="${c(n.tier)}" stroke-width="2" stroke-dasharray="5 5"/><rect x="${n.x-8}" y="${n.y-2}" width="16" height="12" rx="2.5" fill="none" stroke="${c(n.tier)}" stroke-width="2"/><path d="M${n.x-5} ${n.y-2}v-3a5 5 0 0110 0v3" fill="none" stroke="${c(n.tier)}" stroke-width="2"/>`;
+    const label=`<text class="label" style="animation-delay:${d+.2}s" x="${n.lx||n.x}" y="${n.ly||n.y+44}" text-anchor="middle" font-family="Poppins" font-size="11.5" font-weight="600" fill="var(--ink)" opacity="${st==='locked'?.55:1}">${n.t}</text>`;
+    return `<g class="node ${st}" data-id="${n.id}" style="animation-delay:${d}s" opacity="${st==='locked'?.55:1}">${body}</g>${label}`;}).join('');
+  svg.innerHTML=eH+nH;
+  svg.querySelectorAll('.node').forEach(g=>g.onclick=e=>{e.stopPropagation();popover(g.dataset.id);});
+  document.getElementById('mapCard').onclick=()=>closePop();
+  const nx=NODES.find(n=>stateOf(n)==='open'); if(nx){document.getElementById('contTitle').textContent=nx.t;document.getElementById('contMeta').textContent=nx.tier[0].toUpperCase()+nx.tier.slice(1)+', '+nx.min+' minutes';}
+  document.getElementById('doneCount').textContent=S.done.length;
+  const sc=document.getElementById('mapScroll');
+  if(nx&&innerWidth<768) requestAnimationFrame(()=>{ const w=svg.getBoundingClientRect().width; sc.scrollLeft=Math.max(0,nx.x*(w/520)-sc.clientWidth/2); });
+}
+function closePop(){const p=document.getElementById('pop');if(p)p.remove();}
+function sheet(n,st){
+  const tierName=n.tier[0].toUpperCase()+n.tier.slice(1);
+  const v=document.createElement('div'); v.className='sheetveil';
+  const d=document.createElement('div'); d.className='sheet'; d.setAttribute('role','dialog'); d.setAttribute('aria-label',n.t);
+  d.innerHTML=`<div class="grab"></div><span class="t" style="color:var(--${n.tier})">${tierName}</span><b>${n.t}</b><small>${n.min} minutes. Two of three to verify. ${n.xp} XP.</small>`+
+    (st==='locked'?`<div class="lock">${reason(n)}</div><button class="btn sec" data-close>Close</button>`
+     :st==='done'?`<div class="lock" style="background:var(--ok-t)">Verified. Retake anytime; it will not count twice.</div><button class="btn sec" data-close>Close</button>`
+     :`<button class="btn" data-go="lesson">Start lesson</button>`);
+  const close=()=>{v.remove();d.remove();};
+  v.onclick=close; modalHost.append(v,d); const x=d.querySelector('[data-close]'); if(x) x.onclick=close;
+}
+function popover(id){
+  closePop(); const n=NODES.find(x=>x.id===id), st=stateOf(n), card=document.getElementById('mapCard'), svg=document.getElementById('pathMap');
+  if(innerWidth<768){ sheet(n,st); return; }
+  const r=svg.getBoundingClientRect(), sc=r.width/520; const cr=card.getBoundingClientRect();
+  const px=Math.max(8,Math.min(cr.width-244,(r.left-cr.left)+n.x*sc-118)), py=(r.top-cr.top)+n.y*sc+32;
+  const d=document.createElement('div'); d.className='pop'; d.id='pop'; d.style.left=px+'px'; d.style.top=py+'px';
+  const tierName=n.tier[0].toUpperCase()+n.tier.slice(1);
+  d.innerHTML=`<span class="t" style="color:var(--${n.tier})">${tierName}</span><b>${n.t}</b><small>${n.min} minutes. Two of three to verify. ${n.xp} XP.</small>`+
+    (st==='locked'?`<div class="lock">${reason(n)}</div><button class="btn sec sm" id="popX">Close</button>`
+     :st==='done'?`<div class="lock" style="background:var(--ok-t)">Verified. Retake anytime; it will not count twice.</div><button class="btn sec sm" id="popX">Close</button>`
+     :`<button class="btn sm" data-go="lesson">Start lesson</button>`);
+  card.appendChild(d); const x=document.getElementById('popX'); if(x) x.onclick=closePop;
+}
+
+
+/* ---------- onboarding ---------- */
+const O={goal:null,min:null,conf:{learn:25,safeguard:25,apply:25,specialise:25}};
+const TIERS=[['learn','Learn','Fundamentals'],['safeguard','Safeguard','Risk and protection'],['apply','Apply','Practical execution'],['specialise','Specialise','Advanced markets']];
+const LVL=[0,25,50,75,100];
+function obStep(n,dir){
+  const a=document.getElementById('ob1'), b=document.getElementById('ob2'), on=n===1?a:b;
+  a.hidden=n!==1; b.hidden=n!==2; on.classList.remove('fwd','bwd');
+  if(dir){ void on.offsetWidth; on.classList.add(dir); } window.scrollTo(0,0);
+}
+function renderOnboarding(){
+  const goals=['I am completely new','I have traded a little','I want to stop losing money','I want to go deeper'], mins=['10 minutes','20 minutes','30 minutes or more'];
+  document.getElementById('goals').innerHTML=goals.map(g=>`<button class="pill ${O.goal===g?'on':''}" data-goal="${g}">${g}</button>`).join('');
+  document.getElementById('mins').innerHTML=mins.map(m=>`<button class="pill ${O.min===m?'on':''}" data-min="${m}">${m}</button>`).join('');
+  document.getElementById('confs').innerHTML=TIERS.map(([k,n,b])=>{const cur=LVL.indexOf(O.conf[k]);return `<div class="conf"><div class="row"><span><span class="tier ${k}">${n}</span> <span style="font-size:12.5px;color:var(--ink-soft);margin-left:6px">${b}</span></span></div><div class="seg" role="radiogroup" aria-label="${n} confidence">${[1,2,3,4,5].map(v=>`<button role="radio" aria-checked="${cur===v-1}" class="${cur===v-1?'on':''}" data-c="${k}" data-v="${v}">${v}</button>`).join('')}</div><div class="hint"><span>New to this</span><span>Very confident</span></div></div>`}).join('');
+  const goConf=document.getElementById('goConf'), ready=()=>{goConf.disabled=!(O.goal&&O.min);};
+  const pick=(sel,attr,key)=>document.querySelectorAll(sel).forEach(btn=>btn.onclick=()=>{
+    O[key]=btn.dataset[attr];
+    document.querySelectorAll(sel).forEach(x=>x.classList.toggle('on',x===btn));
+    btn.classList.remove('punch'); void btn.offsetWidth; btn.classList.add('punch'); buzz(8); ready(); renderAside('onboarding');
+  });
+  pick('[data-goal]','goal','goal'); pick('[data-min]','min','min');
+  document.querySelectorAll('.seg button').forEach(btn=>btn.onclick=()=>{
+    const k=btn.dataset.c; O.conf[k]=LVL[btn.dataset.v-1];
+    btn.parentNode.querySelectorAll('button').forEach(x=>{const on=x===btn;x.classList.toggle('on',on);x.setAttribute('aria-checked',on);});
+    buzz(6);
+  });
+  goConf.onclick=()=>obStep(2,'fwd');
+  document.getElementById('backGoals').onclick=()=>obStep(1,'bwd');
+  ready(); obStep(1);
+}
+
+/* ---------- placement ---------- */
+const PQ=[
+ {tier:'learn',q:'A friend says a token "went up 8% today". Eight per cent of what exactly?',o:['Of its price at the start of the period being measured','Of the total money invested in it worldwide','Of the exchange\u2019s daily trading limit'],a:0},
+ {tier:'learn',q:'What is actually being exchanged when you "buy" on an exchange?',o:['A promise from the exchange to pay you later','Your money for an asset at a price someone else agreed to sell at','A share of the exchange\u2019s reserves'],a:1},
+ {tier:'safeguard',q:'You open a position with 10x leverage. The asset falls 10%. What has happened to your capital?',o:['You have lost about 10% of it','You have lost roughly all of it','Nothing until you close the position'],a:1},
+ {tier:'safeguard',q:'Someone offers guaranteed 5% monthly returns with no risk. The most useful response is:',o:['Ask which regulator authorises them and check the register yourself','Start small to test whether it pays','Ask for testimonials from existing members'],a:0},
+ {tier:'apply',q:'You have a 2% risk limit per trade and a stop 5% below entry. Roughly what position size fits?',o:['About 40% of your account','About 10% of your account','The full account, since the stop protects you'],a:0},
+ {tier:'apply',q:'Your plan says exit at a 6% loss. You are down 7% and convinced it will recover. The disciplined action is:',o:['Hold, since you have new information','Exit as planned and review the rule afterwards','Add more to lower your average price'],a:1},
+ {tier:'specialise',q:'What does a perpetual futures funding rate actually do?',o:['Pays the exchange for holding a position overnight','Transfers payments between long and short holders to keep price near spot','Sets the maximum leverage available that day'],a:1},
+ {tier:'specialise',q:'Two assets both returned 20% last year. What would most change how you weight them?',o:['Which had the larger single-day gain','How they moved relative to each other and to the rest of the portfolio','Which is more widely discussed'],a:1}
+];
+let pi=0, pans=[];
+function startPlacement(){pi=0;pans=[];paintP();}
+function paintP(){
+  const q=PQ[pi]; const t=TIERS.find(x=>x[0]===q.tier);
+  pTier.className='tier '+q.tier; pTier.textContent=t[1]; pCount.textContent=(pi+1)+' of 8';
+  pDots.innerHTML=PQ.map((_,i)=>`<i class="${i<pi?'done':i===pi?'now':''}"></i>`).join('');
+  pText.textContent=q.q;
+  pOpts.innerHTML=q.o.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${'ABC'[k]}</span><span>${o}</span></button>`).join('');
+  let locked=false;
+  pOpts.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{ if(locked) return; locked=true; b.classList.add('sel','press'); buzz(10); pans[pi]=+b.dataset.k; setTimeout(nextP,200); });
+  pSkip.onclick=()=>{ if(locked) return; locked=true; pans[pi]=null; nextP(); };
+  renderAside('placement');
+}
+function nextP(){ if(pi<PQ.length-1){pi++;paintP();const c=document.getElementById('pCard');c.classList.remove('slidein');void c.offsetWidth;c.classList.add('slidein');return;} computeBaseline(); show('baseline'); }
+function computeBaseline(){
+  const b={};
+  for(const [k] of TIERS){ const qs=PQ.map((q,i)=>({q,i})).filter(x=>x.q.tier===k); const c=qs.filter(x=>pans[x.i]===x.q.a).length;
+    b[k]=Math.round((c/qs.length)*100*0.6+O.conf[k]*0.4); }
+  S.baseline=b; const avg=(b.learn+b.safeguard+b.apply+b.specialise)/4;
+  S.level= avg<35?'Explorer':avg<55?'Learner':avg<75?'Practitioner':'Specialist';
+}
+const unlocked=k=>k==='learn'||k==='safeguard'||(k==='apply'&&S.baseline.learn>=50)||(k==='specialise'&&S.baseline.learn>=70&&S.baseline.safeguard>=50);
+const gateText=k=>k==='apply'?`Unlocks at Learn 50 or above. You are at ${S.baseline.learn}.`:`Unlocks at Learn 70 and Safeguard 50. You are at ${S.baseline.learn} and ${S.baseline.safeguard}.`;
+const toGo=(n,need)=>`${need-n} point${need-n===1?'':'s'} to go`;
+function nextFor(k,b=S.baseline){
+  const op=t=>t==='apply'?b.learn>=50:b.learn>=70&&b.safeguard>=50;
+  if(k==='learn') return b.learn<50?`Apply opens at 50. <b>${toGo(b.learn,50)}</b>`:b.learn<70?`Specialise opens at 70. <b>${toGo(b.learn,70)}</b>`:'Enough for every tier';
+  if(k==='safeguard') return b.safeguard<50?`Specialise also needs 50 here. <b>${toGo(b.safeguard,50)}</b>`:'Enough for every tier';
+  if(k==='apply') return op('apply')?'Open now':`Opens when Learn reaches 50. <b>${toGo(b.learn,50)}</b>`;
+  if(op('specialise')) return 'Open now';
+  return 'Opens when Learn reaches 70 and Safeguard reaches 50';
+}
+function renderBaseline(){
+  if(!S.baseline.apply) S.baseline={learn:74,safeguard:40,apply:44,specialise:46}; if(!S.level) S.level='Learner';
+  blTitle.textContent=S.level;
+  const open=TIERS.filter(([k])=>unlocked(k));
+  const nm=open.map(x=>x[1]); blOpen.textContent=(nm.length>1?nm.slice(0,-1).join(', ')+' and '+nm.at(-1):nm[0])+' open today.';
+  blCard.innerHTML=TIERS.map(([k,n,b])=>`<div class="tierbar"><div class="row"><span><span class="tier ${k}">${n}</span> <span style="font-size:12.5px;color:var(--ink-soft);margin-left:6px">${b}</span></span><b data-n="${S.baseline[k]}">0</b></div><div class="bar"><i data-w="${S.baseline[k]}" style="background:var(--${k})"></i></div><small>${nextFor(k)}</small></div>`).join('');
+  const bars=[...blCard.querySelectorAll('.tierbar')], step=RM.matches?0:400, start=RM.matches?0:450;
+  bars.forEach((t,i)=>setTimeout(()=>{ const bi=t.querySelector('.bar i'), num=t.querySelector('[data-n]');
+    bi.style.width=bi.dataset.w+'%'; roll(num,+num.dataset.n,step||1); },start+i*step));
+}
+function roll(el,to,ms){const t0=performance.now();(function f(t){const p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);el.textContent=Math.round(to*e);if(p<1)requestAnimationFrame(f);})(t0);}
+
+/* ---------- progress ---------- */
+function renderProgress(){
+  const NAMES={L1:'How markets work',L2:'Assets and instruments',L3:'Orders and execution',S1:'Risk, plainly',S2:'Leverage and margin',A1:'Reading a chart',A2:'Position sizing',A3:'Writing a plan',X1:'Derivatives basics'};
+  prDone.textContent=S.done.length; prLevel.textContent=S.level||'Learner'; document.querySelectorAll('.xpm').forEach(x=>x.textContent=S.xp);
+  const by=k=>NODES.filter(n=>n.tier===k), dn=k=>by(k).filter(n=>S.done.includes(n.id)).length;
+  const cv={}; TIERS.forEach(([k])=>cv[k]=Math.min(100,(S.baseline[k]||0)+dn(k)*12));
+  prTiers.innerHTML=TIERS.map(([k,n])=>{const v=cv[k];return `<div class="tierbar"><div class="row"><span class="tier ${k}">${n}</span><span style="font-size:12.5px;color:var(--ink-soft)">${dn(k)} of ${by(k).length} lessons</span></div><div class="bar"><i data-w="${v}" style="background:var(--${k})"></i></div><small>${nextFor(k,cv)}</small></div>`}).join('');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>prTiers.querySelectorAll('.bar i').forEach(i=>i.style.width=i.dataset.w+'%')));
+  prRecent.innerHTML=S.done.slice().reverse().slice(0,4).map(id=>{const n=NODES.find(x=>x.id===id);return `<div class="recent"><i><svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg></i><div style="flex:1"><b>${NAMES[id]}</b><small>${n.tier[0].toUpperCase()+n.tier.slice(1)}, verified</small></div><span style="font-size:12.5px;color:var(--ink-soft)">+${n.xp} XP</span></div>`}).join('');
+  const foundationsDone=['L1','L2','L3'].every(x=>S.done.includes(x));
+  prCert.innerHTML=foundationsDone?`<div><b class="ff" style="font-size:15px">Foundations of Digital Assets</b><p style="font-size:13px;color:var(--ink-soft)">Certificate issued. Anyone can verify it.</p></div><button class="btn sm" id="openCert">View certificate</button>`
+    :`<div><b class="ff" style="font-size:15px">Your first certificate</b><p style="font-size:13px;color:var(--ink-soft)">Finish the three Foundations lessons to earn it.</p></div>`;
+  const oc=document.getElementById('openCert'); if(oc) oc.onclick=openCert;
+}
+function openCert(){
+  const host=document.createElement('div'); host.className='veil';
+  host.innerHTML=`<div class="cmodal"><div class="hd"><h2>Your certificate</h2><button class="xbtn" id="cX" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="cert"><div class="cap">CERTIFICATE OF ACHIEVEMENT</div><h3>Amara Osei</h3><div style="font-size:14px;opacity:.9">has completed and verified</div><div class="ff" style="font-size:17px;font-weight:600;margin-top:6px">Foundations of Digital Assets</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:22px;gap:12px;flex-wrap:wrap"><div><div style="font-size:11px;opacity:.8">VERIFICATION CODE</div><div class="serial">PA-7K3M-9QXD</div></div><div style="font-size:12px;opacity:.85">Issued 26 September 2026</div></div></div>
+    <div class="vurl">verify.gtl.academy/PA-7K3M-9QXD</div>
+    <p style="font-size:13px;color:var(--ink-soft);margin-top:8px">Anyone can open that address without an account. It shows your name, the course and the date, nothing else.</p>
+    <div class="actions"><button class="btn sec sm" id="cCopy">Copy link</button><button class="btn sec sm" data-go="verify">Open verification page</button><button class="btn sec sm">Add to LinkedIn</button></div></div>`;
+  modalHost.appendChild(host);
+  host.querySelector('#cX').onclick=()=>host.remove();
+  host.querySelector('[data-go="verify"]').addEventListener('click',()=>host.remove());
+  host.querySelector('#cCopy').onclick=()=>{host.querySelector('#cCopy').textContent='Copied';};
+}
+
+/* ---------- lesson tabs + simulator ---------- */
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));document.getElementById('tab-read').style.display=b.dataset.tab==='read'?'':'none';document.getElementById('tab-do').style.display=b.dataset.tab==='do'?'':'none';});
+const lv=document.getElementById('lv'),mv=document.getElementById('mv');
+function sim(){const L=+lv.value,M=+mv.value,lost=Math.min(100,L*M),z=100/L;
+  lvOut.textContent=L+'x';mvOut.textContent=M+'%';o1.textContent=Math.round(lost)+'%';o2.textContent=z.toFixed(1)+'%';
+  const ok=lost<50,dead=lost>=100; o3.textContent=dead?'Liquidated':ok?'Survivable':'Critical'; o3.style.color=dead?'var(--caution)':ok?'var(--ok)':'var(--caution)';
+  o3.style.color=dead?'var(--danger)':ok?'var(--ok)':'var(--caution)';
+  document.getElementById('tab-do').dataset.state=dead?'dead':ok?'ok':'critical';
+  verdict.style.background=dead?'var(--danger-t)':!ok?'var(--caution-t)':'var(--ok-t)';
+  verdict.textContent=dead?`At ${L}x, a ${M}% move erases your margin entirely. The position is closed for you.`:ok?`At ${L}x you lose ${Math.round(lost)}% of your margin on a ${M}% move. A ${z.toFixed(1)}% move takes you to zero.`:`At ${L}x you are down ${Math.round(lost)}% of margin. Most venues would be issuing a margin call before this point.`;}
+lv.oninput=sim;mv.oninput=sim;sim();
+
+/* ---------- check ---------- */
+const QS=[
+ {q:'You open a position at 10x. The asset moves 9% against you. What is the most accurate description of your position?',o:['Down about 9%','Down about 90% and close to being closed for you','Unchanged until you sell'],a:1,
+  w:['That would be true without leverage. At 10x the move is multiplied by ten.','Correct. Roughly 90% of your margin is gone, and most venues would be at or near a margin call.','Unrealised losses are still losses when leverage is involved, because the venue acts on them.']},
+ {q:'What does a margin call actually mean on most venues?',o:['A request to add funds within 24 hours','Your position is closed automatically at market','A temporary pause on the position'],a:1,
+  w:['Some traditional brokers work that way. Most retail venues do not wait.','Correct. Liquidation is automatic and happens at whatever price is available.','Nothing is paused. The position is closed and the loss is realised.']},
+ {q:'Which question is the useful one before choosing leverage?',o:['What is the maximum this venue offers?','What move would take me to zero, and is that a normal day for this asset?','What are other traders using?'],a:1,
+  w:['Maximum available leverage tells you about the venue\u2019s risk appetite, not yours.','Correct. If the distance to zero is smaller than the asset\u2019s ordinary daily range, the size is wrong.','Other people\u2019s size tells you nothing about your own capital or plan.']}
+];
+let qi=0,correct=0,answered=false;
+function startCheck(){qi=0;correct=0;CR=[];paintQ();renderAside('check');}
+function paintQ(){
+  const q=QS[qi]; answered=false; qcount.textContent=(qi+1)+' of 3'; qText.textContent=q.q; feed.innerHTML='';
+  opts.innerHTML=q.o.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${'ABC'[k]}</span><span>${o}</span></button>`).join('');
+  opts.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{ if(answered) return; answered=true; const k=+b.dataset.k, right=k===q.a; if(right) correct++; CR[qi]=right; renderAside('check');
+    opts.querySelectorAll('.opt').forEach(x=>{const kk=+x.dataset.k; if(kk===q.a) x.classList.add('right'); else if(kk===k) x.classList.add('wrong');});
+    feed.innerHTML=`<div class="ratwrap"><div><div class="rat ${right?'right':'wrong'}"><b>${right?'Correct':'Not quite'}</b>${q.w[k].replace(/^Correct\.\s*/,'')}</div><button class="btn" id="nx">${qi<2?'Next question':'See result'}</button></div></div>`;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>feed.firstChild.classList.add('open')));
+    document.getElementById('nx').onclick=()=>{qi++; if(qi<3) paintQ(); else finish();};});
+}
+function finish(){
+  const passed=correct>=2, n=NODES.find(x=>x.id==='S2');
+  const host=document.createElement('div'); host.className='veil';
+  host.innerHTML=`<div class="won">
+    <div class="ring"><svg viewBox="0 0 96 96"><circle class="bg" cx="48" cy="48" r="42"/><circle class="fg" cx="48" cy="48" r="42" style="${passed?'':'stroke:var(--caution)'}"/></svg><div class="tick"><svg viewBox="0 0 24 24">${passed?'<path d="M5 12l5 5L19 7"/>':'<path d="M12 8v5M12 16h.01"/>'}</svg></div></div>
+    <h2>${passed?'Verified':'Not this time'}</h2>
+    <p>${correct} of 3 correct. ${passed?'Leverage and margin now counts towards your certificate.':'Two of three are needed. The lesson is open, and the questions change each time.'}</p>
+    ${passed?`<div class="xp"><span id="xpCount">0</span><small>XP</small></div>`:''}
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:18px">${passed?`<button class="btn" id="wonGo">See my path</button>`:`<button class="btn" id="wonRetry">Try again</button><button class="btn sec" id="wonBack">Back to lesson</button>`}</div></div>`;
+  modalHost.appendChild(host);
+  if(passed&&!RM.matches){ const bs=document.createElement('div'); bs.className='burst'; const cols=['var(--safeguard)','var(--accent)','var(--brand)','var(--learn)'];
+    bs.innerHTML=Array.from({length:18},(_,i)=>{const ang=i/18*Math.PI*2+(i%2?.2:0), d=58+(i%3)*16;return `<i style="background:${cols[i%4]};--dx:${Math.cos(ang)*d}px;--dy:${Math.sin(ang)*d}px;--r:${(i*47)%360}deg"></i>`}).join('');
+    host.querySelector('.ring').appendChild(bs); setTimeout(()=>{buzz([15,50,20]);},900); setTimeout(()=>bs.remove(),1800); }
+  if(passed){ if(!S.done.includes('S2')){S.done.push('S2'); S.xp+=n.xp;} count('xpCount',0,n.xp,900,'+');
+    document.getElementById('wonGo').onclick=()=>{host.remove(); document.querySelectorAll('#xp,.xpm').forEach(x=>x.textContent=S.xp); show('path');}; }
+  else { document.getElementById('wonRetry').onclick=()=>{host.remove(); startCheck();}; document.getElementById('wonBack').onclick=()=>{host.remove(); show('lesson');}; }
+}
+vForm.onsubmit=e=>{ e.preventDefault(); const v=vCode.value.trim().toUpperCase();
+  if(!v){ vMsg.style.color='var(--ink-soft)'; vMsg.textContent='Enter the code printed on the certificate.'; return; }
+  if(v==='PA-7K3M-9QXD'){ vMsg.style.color='var(--ok)'; vMsg.textContent='That is the certificate shown above. It is valid.'; return; }
+  vMsg.style.color='var(--danger)'; vMsg.textContent='No certificate matches '+v+'. Check the code on the certificate and try again.'; };
+
+/* ---------- game layer: art + side panels ---------- */
+const FLAME='<svg viewBox="0 0 24 24"><path d="M12 2c.9 3.6 5.5 5.9 5.5 11.2A5.5 5.5 0 016.5 13.4c0-2.3 1.2-4 2.4-5 .2 2.2 1.2 3.3 2.5 3.8C10.8 8.6 11 5.3 12 2z"/></svg>';
+const BOLT='<svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>';
+const TICK='<svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg>';
+const STAR='<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3L2.9 9.5l6.3-.9z"/>';
+/* one illustration: the climb. Four tier checkpoints on a path to the summit flag. */
+const ART=`<svg viewBox="0 0 440 250" aria-hidden="true">
+  <circle cx="338" cy="68" r="92" fill="var(--accent)" opacity=".13"/><circle cx="338" cy="68" r="46" fill="var(--accent)" opacity=".9"/>
+  <g fill="#fff" opacity=".55"><circle cx="60" cy="40" r="1.6"/><circle cx="120" cy="22" r="1.2"/><circle cx="182" cy="52" r="1.4"/><circle cx="410" cy="150" r="1.3"/><circle cx="26" cy="118" r="1.1"/><circle cx="262" cy="18" r="1.2"/></g>
+  <path d="M0 196 L78 128 L128 160 L234 56 L306 128 L362 100 L440 146 V250 H0Z" fill="#fff" opacity=".09"/>
+  <path d="M234 56 L256 78 L244 80 L230 70 L214 82 L220 74Z" fill="#fff" opacity=".35"/>
+  <path d="M0 226 C70 196 140 222 214 196 C290 170 356 196 440 178 V250 H0Z" fill="#fff" opacity=".12"/>
+  <path d="M34 238 C90 232 96 214 132 206 C170 198 176 170 190 156 C204 142 214 124 224 104 C230 90 232 76 234 60" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 9"/>
+  <g stroke="#fff" stroke-width="3"><circle cx="72" cy="228" r="11" fill="var(--learn)"/><circle cx="136" cy="204" r="11" fill="var(--safeguard)"/><circle cx="192" cy="154" r="11" fill="var(--apply)"/><circle cx="224" cy="104" r="11" fill="var(--specialise)"/></g>
+  <path d="M234 60 V22" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M236 23 L266 31 L236 40Z" fill="var(--accent)"/>
+</svg>`;
+function scene(h,p,chips){ return `<div class="scene"><div class="art">${ART}</div>${chips||''}<div class="scopy"><h2>${h}</h2><p>${p}</p></div></div>`; }
+const fchip=(pos,ic,icon,t,sub)=>`<div class="fchip" style="${pos}"><i class="${ic}">${icon}</i><span>${t}${sub?`<small>${sub}</small>`:''}</span></div>`;
+const NEXT_LVL={Explorer:300,Learner:600,Practitioner:1000,Specialist:1500};
+const NEXT_NAME={Explorer:'Learner',Learner:'Practitioner',Practitioner:'Specialist',Specialist:'Specialist'};
+let CR=[];
+function renderAside(id){
+  const el=document.querySelector(`[data-aside="${id}"]`); if(!el) return;
+  const lvl=S.level||'Learner', cap=NEXT_LVL[lvl], pct=Math.min(100,Math.round(S.xp/cap*100));
+  if(id==='signin') el.innerHTML=scene('Your path is right where you left it.','Your next lesson is twelve minutes. Finish it today and your streak keeps going.',
+      fchip('top:20px;left:20px','ic-flame',FLAME,'4-day streak','Keep it alive today')+fchip('top:92px;right:22px','ic-xp',BOLT,'+200 XP','Next lesson'))+
+    `<div class="acard"><div class="kvr" style="border:0;padding:0"><span>${lvl}</span><b>${S.xp} of ${cap} XP</b></div><div class="lvbar"><i style="width:${pct}%"></i></div><div class="note">${cap-S.xp} XP to ${NEXT_NAME[lvl]}.</div></div>`;
+  if(id==='signup') el.innerHTML=scene('Eight questions. Then a path built around you.','Skip what you already know, learn what you need next, and earn a certificate anyone can check.',
+      fchip('top:20px;left:20px','ic-ok',TICK,'Skip what you know','Placement, 3 minutes')+fchip('top:96px;right:22px','ic-xp',BOLT,'Earn XP','Every verified lesson'))+
+    `<div class="acard"><div class="srow"><i>1</i><div><b>Placement</b><span>Eight scenarios. Skip any.</span></div></div><div class="srow"><i>2</i><div><b>Your path</b><span>Lessons of six to twelve minutes.</span></div></div><div class="srow"><i>3</i><div><b>Certificate</b><span>A public code anyone can verify.</span></div></div></div>`;
+  if(id==='onboarding'){
+    const m=O.min?parseInt(O.min):0, days=m?Math.ceil(30/m):0;
+    el.innerHTML=scene('Your path is taking shape.','Your answers here decide the order of your lessons and how long each day takes.',
+      fchip('top:20px;left:20px','ic-flame',FLAME,'Daily streaks','Any lesson counts'))+
+    `<div class="acard"><h3>Your plan so far</h3><div class="kvr"><span>Goal</span><b>${O.goal||'Pick one'}</b></div><div class="kvr"><span>Each day</span><b>${O.min||'Pick one'}</b></div>
+      <div class="note" style="margin-top:12px">${days?`<b style="color:var(--ink)">First certificate in about ${days} day${days>1?'s':''}.</b> Foundations is three lessons, thirty minutes in total.`:'Pick a goal and a daily time to see how soon your first certificate is.'}</div></div>`;
+  }
+  if(id==='placement'){
+    const row=([k,n])=>{const idx=PQ.map((q,i)=>q.tier===k?i:-1).filter(i=>i>=0);
+      return `<div class="tr"><span class="tier ${k}">${n}</span><span class="dots" style="--c:var(--${k})">${idx.map(i=>`<b class="${i<pi?(pans[i]===null?'s':'a'):i===pi?'now':''}" title="${i<pi?(pans[i]===null?'Skipped':'Answered'):''}"></b>`).join('')}</span></div>`;};
+    const done=pans.filter((x,i)=>i<pi&&x!==null).length, sk=pans.filter((x,i)=>i<pi&&x===null).length;
+    el.innerHTML=scene('No wrong answers here.','Every question you already know is a lesson you get to skip. Not sure? Skip it and it becomes part of your path.')+
+      `<div class="acard"><h3>Your placement</h3><div class="stones">${TIERS.map(row).join('')}</div><div class="note">${done} answered, ${sk} skipped, ${8-pi} to go.</div><div class="keys">Press <kbd>A</kbd><kbd>B</kbd><kbd>C</kbd> to answer</div></div>`;
+  }
+  if(id==='check'){
+    const st=[0,1,2].map(i=>`<svg viewBox="0 0 24 24" class="${CR[i]===true?'g':CR[i]===false?'w':'e'}">${STAR}</svg>`).join('');
+    const got=CR.filter(x=>x).length, left=3-CR.length, need=Math.max(0,2-got);
+    document.getElementById('mStars').innerHTML=st;
+    const msg=got>=2?'Verified. The last question is a bonus.':need>left?'Not enough left to verify this time. Finish anyway, then try again.':`${need} more correct to verify.`;
+    el.innerHTML=scene('Leverage and margin','Two of three verifies the lesson and moves you up your path.',
+      fchip('top:20px;left:20px','ic-flame',FLAME,'4-day streak','This keeps it going')+fchip('top:90px;right:22px','ic-xp',BOLT,'+200 XP','When verified'))+
+      `<div class="acard"><h3>Stars</h3><div class="stars">${st}</div><div style="font-size:14px;font-weight:600">${msg}</div>
+      <div class="kvr" style="margin-top:14px;border-top:1px solid var(--line)"><span>Counts towards</span><b>Risk and Protection</b></div><div class="lvbar"><i style="width:${Math.round((S.done.filter(x=>x[0]==='S').length+(got>=2&&!S.done.includes('S2')?1:0))/3*100)}%;background:var(--safeguard)"></i></div>
+      <div class="keys">Press <kbd>A</kbd><kbd>B</kbd><kbd>C</kbd> to answer</div></div>`;
+  }
+  if(id==='verify') el.innerHTML=`<div class="acard" style="margin-top:0;text-align:center;padding:28px 24px">
+      <svg class="rosette" viewBox="0 0 120 120" aria-hidden="true"><g fill="var(--brand)">${Array.from({length:16},(_,i)=>`<circle cx="${60+46*Math.cos(i/16*Math.PI*2)}" cy="${60+46*Math.sin(i/16*Math.PI*2)}" r="11"/>`).join('')}<circle cx="60" cy="60" r="46"/></g><circle cx="60" cy="60" r="38" fill="none" stroke="var(--accent)" stroke-width="2"/><g transform="translate(40 40) scale(1.67)" fill="none" stroke="var(--brand-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></g></svg>
+      <div class="big">Foundations of Digital Assets</div><div class="note" style="margin-top:4px">Issued by <span class="bname">${BRAND[document.documentElement.dataset.brand]}</span></div></div>
+    <div class="acard"><h3>What the holder completed</h3>
+      <div class="srow"><i style="background:var(--ok-t);color:var(--ok)">${'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg>'}</i><div><b>How markets work</b><span>Knowledge check passed</span></div></div>
+      <div class="srow"><i style="background:var(--ok-t);color:var(--ok)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg></i><div><b>Assets and instruments</b><span>Knowledge check passed</span></div></div>
+      <div class="srow"><i style="background:var(--ok-t);color:var(--ok)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg></i><div><b>Orders and execution</b><span>Knowledge check passed</span></div></div>
+      <div class="note">Each check needs two of three correct.</div></div>
+    <div class="acard"><h3>How to know it is real</h3><div class="note" style="margin:0">The serial must match the one on the certificate. The record hash ties it to the academy's audit log, which cannot be edited after the fact.</div></div>`;
+}
+/* streak next to XP in every app header */
+document.querySelectorAll('.topbar .chip').forEach(c=>{ if(/XP/.test(c.textContent)) c.insertAdjacentHTML('beforebegin',`<span class="chip streak" title="Learning streak">${FLAME}4</span>`); });
+/* A, B, C to answer */
+document.addEventListener('keydown',e=>{ const k='abc'.indexOf(e.key.toLowerCase()); if(k<0||e.metaKey||e.ctrlKey||e.target.closest('input')) return;
+  const box=cur==='check'?opts:cur==='placement'?pOpts:null; if(!box) return; const b=box.querySelectorAll('.opt')[k]; if(b) b.click(); });
+
+function count(id,a,b,ms,prefix){const el=document.getElementById(id),t0=performance.now();(function f(t){const p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);el.textContent=prefix+Math.round(a+(b-a)*e);if(p<1)requestAnimationFrame(f);})(t0);}
+</script>
+</body>
+</html>
