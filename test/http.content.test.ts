@@ -392,3 +392,12 @@ test('the course list counts each course\'s lessons by where they stand', async 
   assert.equal(row.liveState, 'draft', 'the course itself is still a draft');
   assert.deepEqual(row.lessonCounts, { published: 1, inReview: 1, draft: 1, sentBack: 1 });
 });
+
+test('a course says whether this academy offers it, so a publish can say what happens next', async () => {
+  const course = await newCourse();
+  await throughReview(course.id);
+  const offered = async () => (await studio('GET', `/courses/${course.entityId}`, team.author)).json().course.offered;
+  assert.equal(await offered(), false, 'a newly published course is switched off');
+  await enableForNorthgate(course.entityId);
+  assert.equal(await offered(), true);
+});

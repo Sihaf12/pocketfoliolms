@@ -9,10 +9,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { call } from '@/lib/api';
 import type { CourseDetail, CourseSnapshot, Version, VersionView as View } from '@/lib/content';
-import { TIER_NAME, TIERS, moment, type ReviewState, type Tier } from '@/lib/format';
+import { TIER_NAME, TIERS, moment, type Action, type ReviewState, type Tier } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading, StateChip, TierChip } from '../bits';
 import { ErrorScope, Field } from '../Form';
+import { AfterPublish } from '../AfterPublish';
 import { Icon } from '../Icon';
 import { QuestionsEditor } from '../QuestionsEditor';
 import { VersionActions } from '../VersionActions';
@@ -111,7 +112,8 @@ export function CoursePage({ courseId }: { courseId: string }) {
   const history = useLoad<{ versions: Version<CourseSnapshot>[] }>(ws.content(`/entities/course/${courseId}/versions`));
   const latest = history.data?.versions[0];
   const view = useLoad<View<CourseSnapshot>>(latest ? ws.content(`/versions/${latest.id}`) : null);
-  const reload = () => { detail.reload(); history.reload(); view.reload(); };
+  const [done, setDone] = useState<Action | null>(null);
+  const reload = (action?: Action) => { setDone(action ?? null); detail.reload(); history.reload(); view.reload(); };
 
   if (!detail.data || !history.data || (latest && (!view.data || view.data.version.id !== latest.id))) {
     return <><Head title="Course" /><Loading error={detail.error ?? history.error ?? view.error} /></>;
@@ -125,22 +127,25 @@ export function CoursePage({ courseId }: { courseId: string }) {
         lead={<span className="row tight"><TierChip tier={d.course.tier} />{d.course.readOnly ? <span className="chip plain">Platform course, read-only</span> : null}</span>} />
       {editable && latest && view.data
         ? <CourseEditor key={latest.id} version={latest} liveState={d.course.liveState} actions={view.data.actions} onChanged={reload} />
-        : <CourseSummary detail={d} view={view.data ?? null} onChanged={reload} />}
+        : <CourseSummary detail={d} view={view.data ?? null} done={done} onChanged={reload} />}
       <Lessons detail={d} canWrite={ws.has('author')} />
     </>
   );
 }
 
-function CourseSummary({ detail, view, onChanged }: { detail: CourseDetail; view: View<CourseSnapshot> | null; onChanged(): void }) {
+function CourseSummary({ detail, view, done, onChanged }: {
+  detail: CourseDetail; view: View<CourseSnapshot> | null; done: Action | null; onChanged(action?: Action): void;
+}) {
   const ws = useWorkspace();
   const s = view?.version.snapshot;
   return (
     <>
     <CourseStatus state={view?.version.state ?? detail.course.liveState} liveState={detail.course.liveState} readOnly={detail.course.readOnly}>
+      {done === 'publish' && detail.course.liveState === 'published' ? <AfterPublish kind="course" course={detail} /> : null}
       {view && view.actions.length ? (
         <VersionActions versionId={view.version.id} entityId={view.version.entityId} entityType="course" actions={view.actions}
           status={<>Version {view.version.number}. <Link href={ws.href(`/versions/${view.version.id}`)}>Read it as a reviewer</Link></>}
-          onDone={() => onChanged()} />
+          onDone={(_, action) => onChanged(action)} />
       ) : null}
     </CourseStatus>
     <section className="stack" aria-labelledby="about">

@@ -85,7 +85,11 @@ export async function contentRoutes(app: FastifyInstance, opts: { run: ContentRu
     run(req, async ({ db, scope }) => {
       const course = await db.maybeOne(
         `SELECT id, slug, title, tier, summary, est_minutes AS "estMinutes", review_state AS "liveState",
-                (owner_tenant_id IS NULL AND $2::uuid IS NOT NULL) AS "readOnly"
+                (owner_tenant_id IS NULL AND $2::uuid IS NOT NULL) AS "readOnly",
+                -- In an academy: whether its catalogue offers the course. The console has no catalogue.
+                CASE WHEN $2::uuid IS NULL THEN NULL
+                     ELSE COALESCE((SELECT tc.enabled FROM app.tenant_catalogues tc WHERE tc.course_id = platform.courses.id), false)
+                END AS offered
            FROM platform.courses
           WHERE id = $1 AND (owner_tenant_id IS NOT DISTINCT FROM $2::uuid
                              OR ($2::uuid IS NOT NULL AND owner_tenant_id IS NULL AND review_state = 'published'))`,

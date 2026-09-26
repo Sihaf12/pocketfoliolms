@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { call } from '@/lib/api';
 import type { GlossarySnapshot, Version, VersionView as View } from '@/lib/content';
-import { moment, type ReviewState } from '@/lib/format';
+import { moment, type Action, type ReviewState } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading, StateChip } from '../bits';
 import { ErrorScope, Field } from '../Form';
@@ -110,11 +110,12 @@ export function TermPage({ termId }: { termId: string }) {
   const history = useLoad<{ versions: Version<GlossarySnapshot>[] }>(ws.content(`/entities/glossary_term/${termId}/versions`));
   const latest = history.data?.versions[0];
   const view = useLoad<View<GlossarySnapshot>>(latest ? ws.content(`/versions/${latest.id}`) : null);
-  const reload = () => { history.reload(); view.reload(); };
+  const [done, setDone] = useState<Action | null>(null);
+  const reload = (action?: Action) => { setDone(action ?? null); history.reload(); view.reload(); };
   if (history.data && !latest) return <><Head title="Term" /><p>No such term.</p></>;
   if (!latest || !view.data || view.data.version.id !== latest.id) return <><Head title="Term" /><Loading error={history.error ?? view.error} /></>;
   if (latest.state === 'draft' && ws.has('author')) return <TermEditor key={latest.id} version={latest} actions={view.data.actions} onChanged={reload} />;
-  return <VersionScreen view={view.data} onChanged={reload} />;
+  return <VersionScreen view={view.data} done={done} onChanged={reload} />;
 }
 
 function TermEditor({ version, actions, onChanged }: { version: Version<GlossarySnapshot>; actions: View['actions']; onChanged(): void }) {

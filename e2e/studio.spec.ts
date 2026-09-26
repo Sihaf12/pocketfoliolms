@@ -352,3 +352,42 @@ test('the course list gives the course\'s state and its lessons\' separately', a
   await expect(row).toContainText('Draft');
   await expect(row).toContainText('1 lesson published, 1 in draft');
 });
+
+/** A course through expert review: made with the API as the author, then the reviewer. */
+async function courseAwaitingCompliance(page: Page) {
+  await signInStudio(page, GTL, 'author');
+  const course = (await api<{ version: { id: string; entityId: string } }>(page, '/api/studio/courses', {
+    method: 'POST', data: { title: unique('Next course'), summary: 'What happens next.', tier: 'learn', estMinutes: 10 },
+  })).body.version;
+  expect((await api(page, `/api/studio/versions/${course.id}/submit`, { method: 'POST' })).status).toBe(200);
+  await signInStudio(page, GTL, 'reviewer');
+  expect((await api(page, `/api/studio/versions/${course.id}/approve`, { method: 'POST' })).status).toBe(200);
+  return course.entityId;
+}
+
+test('after a course is published, the page says it is off in the catalogue, and links there for an admin', async ({ page }) => {
+  const courseId = await courseAwaitingCompliance(page);
+  await signInStudio(page, GTL, 'compliance');
+  await page.goto(at(GTL, `/studio/courses/${courseId}`));
+  await page.getByRole('button', { name: 'Publish to learners' }).click();
+  const notice = page.locator('.notice[role=status]');
+  await expect(notice).toContainText('Switched off in the catalogue until an admin turns it on.');
+  await expect(notice.getByRole('link', { name: 'Turn it on in the catalogue' })).toHaveCount(0);
+
+  // Someone who holds both roles is taken to the switch.
+  await signInStudio(page, GTL, 'admin');
+  const users = (await api<{ users: { id: string; email: string; roles: string[] }[] }>(page, '/api/studio/users')).body.users;
+  const compliance = users.find((u) => u.email === `compliance@${GTL}`)!;
+  await api(page, `/api/studio/users/${compliance.id}`, { method: 'PATCH', data: { roles: ['compliance', 'tenant_admin'] } });
+  try {
+    const second = await courseAwaitingCompliance(page);
+    await signInStudio(page, GTL, 'compliance');
+    await page.goto(at(GTL, `/studio/courses/${second}`));
+    await page.getByRole('button', { name: 'Publish to learners' }).click();
+    await page.locator('.notice[role=status]').getByRole('link', { name: 'Turn it on in the catalogue' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Catalogue' })).toBeVisible();
+  } finally {
+    await signInStudio(page, GTL, 'admin');
+    await api(page, `/api/studio/users/${compliance.id}`, { method: 'PATCH', data: { roles: ['compliance'] } });
+  }
+});

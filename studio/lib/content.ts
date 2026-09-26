@@ -65,7 +65,11 @@ export interface VersionView<S = LessonSnapshot | CourseSnapshot | GlossarySnaps
 }
 
 export interface CourseDetail {
-  course: { id: string; title: string; tier: Tier; summary: string; estMinutes: number; liveState: ReviewState; readOnly: boolean };
+  course: {
+    id: string; title: string; tier: Tier; summary: string; estMinutes: number; liveState: ReviewState; readOnly: boolean;
+    /** In an academy: whether its catalogue offers the course. Null on the console. */
+    offered: boolean | null;
+  };
   lessons: { id: string; title: string; position: number; live: boolean; versionId: string | null; versionState: ReviewState | null }[];
 }
 
