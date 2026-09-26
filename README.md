@@ -43,7 +43,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 79 tests
+    npm test                                             # 82 tests
     npm run test:migrate                                 # migrate a fresh database
 
 ### Connections
@@ -115,6 +115,14 @@ trusted certificate (for example from `mkcert`) in front of `npm start`,
 or add an explicit, development-only switch that drops `Secure`; it must
 never be reachable in production. The API tests are unaffected: they
 use `app.inject()` and send the cookie header directly.
+
+## Temporary rules
+
+- **Certificate issuance.** A certificate is issued when a course reaches
+  100%: every lesson in it has a passed knowledge check. It is written in
+  the same transaction as the check that completed the course, with
+  `certificate.issued` keyed `cert:{userId}:{courseId}`. E14-F02 course
+  assessments will replace this trigger.
 
 ## The three decisions worth knowing
 

@@ -6,10 +6,16 @@
  *
  * The first pass also activates a placed learner. Every pass updates
  * course progress: the share of the course's lessons with a passed check.
+ * A course reaching 100% issues its certificate in the same transaction.
+ *
+ * A second failed check on the same lesson flags the learner as at risk:
+ * churn_risk.flagged, once per learner per lesson, is the signal a broker
+ * acts on.
  */
 import type { FastifyInstance } from 'fastify';
 import type { ScopedDb } from '../../db/unitOfWork.js';
 import { gradeCheck } from '../../domain/placement.js';
+import { newCertificateSerial } from '../../domain/serial.js';
 import { inAcademy, requireLearner } from '../context.js';
 import { HttpError } from '../errors.js';
 import { answersBody, attemptParams, inPaperOrder } from '../schemas.js';
@@ -26,11 +32,13 @@ interface CheckResult {
   passed: boolean;
   stars: number;
   feedback: { questionId: string; chosenKey: string | null; correctKey: string; rationale: string }[];
+  /** Issued by this submission, if it completed a course. */
+  certificate: { serial: string; courseTitle: string } | null;
 }
 
 const resultSchema = {
   type: 'object',
-  required: ['correct', 'total', 'passed', 'stars', 'feedback'],
+  required: ['correct', 'total', 'passed', 'stars', 'feedback', 'certificate'],
   properties: {
     correct: { type: 'integer' },
     total: { type: 'integer' },
@@ -49,11 +57,16 @@ const resultSchema = {
         },
       },
     },
+    certificate: {
+      type: ['object', 'null'],
+      required: ['serial', 'courseTitle'],
+      properties: { serial: { type: 'string' }, courseTitle: { type: 'string' } },
+    },
   },
 } as const;
 
 /** Grades a fresh submission. A replay does not come through here; it reads the stored grade. */
-function grade(keys: KeyRow[], answers: Record<string, string>): CheckResult {
+function grade(keys: KeyRow[], answers: Record<string, string>): Omit<CheckResult, 'certificate'> {
   const feedback = keys.map((q) => {
     const chosenKey = answers[q.id] ?? null;
     const rationale = (chosenKey ? q.rationales[chosenKey] : undefined) ?? q.rationales[q.correctKey] ?? '';
@@ -68,8 +81,8 @@ function grade(keys: KeyRow[], answers: Record<string, string>): CheckResult {
  * counted from the lesson each attempt recorded at draw. Lessons since
  * removed from the course no longer count.
  */
-async function recordProgress(db: ScopedDb, userId: string, courseId: string): Promise<void> {
-  await db.query(
+async function recordProgress(db: ScopedDb, userId: string, courseId: string): Promise<number | null> {
+  const row = await db.maybeOne<{ pct: number }>(
     `UPDATE app.enrolments e
         SET progress_pct = p.pct,
             state        = CASE WHEN p.pct >= 100 THEN 'completed' ELSE 'in_progress' END,
@@ -79,9 +92,83 @@ async function recordProgress(db: ScopedDb, userId: string, courseId: string): P
                FROM app.quiz_attempts a
                JOIN platform.lessons l ON l.id = a.lesson_id AND l.course_id = $2
               WHERE a.user_id = $1 AND a.kind = 'knowledge_check' AND a.passed) p
-      WHERE e.user_id = $1 AND e.course_id = $2 AND p.pct IS NOT NULL`,
+      WHERE e.user_id = $1 AND e.course_id = $2 AND p.pct IS NOT NULL
+      RETURNING e.progress_pct::int AS pct`,
     [userId, courseId],
   );
+  return row?.pct ?? null;
+}
+
+const SERIAL_ATTEMPTS = 5;
+
+/**
+ * The certificate for a completed course, issued once.
+ *
+ * E14-F02 course assessments will replace this trigger: for now, passing
+ * a knowledge check on every lesson of a course is what earns it. The
+ * holder name and course title are copied at issue, so the certificate
+ * says what was true on the day. A serial collision (40 random bits)
+ * retries with a fresh serial; an existing certificate for the course
+ * means there is nothing to issue.
+ */
+async function issueCertificate(
+  db: ScopedDb, userId: string, courseId: string,
+): Promise<{ serial: string; courseTitle: string } | null> {
+  for (let i = 0; i < SERIAL_ATTEMPTS; i++) {
+    const issued = await db.maybeOne<{ serial: string; courseTitle: string }>(
+      `INSERT INTO app.certificates (tenant_id, user_id, course_id, serial, holder_name, course_title)
+       SELECT app.current_tenant(), u.id, c.id, $3, u.display_name, c.title
+         FROM app.users u, platform.courses c
+        WHERE u.id = $1 AND c.id = $2
+       ON CONFLICT DO NOTHING
+       RETURNING serial, course_title AS "courseTitle"`,
+      [userId, courseId, newCertificateSerial()],
+    );
+    if (issued) {
+      await db.enqueue({
+        type: 'certificate.issued',
+        payload: { user_id: userId, course_id: courseId, serial: issued.serial, course_title: issued.courseTitle },
+        idempotencyKey: `cert:${userId}:${courseId}`,
+        partitionKey: userId,
+      });
+      await db.query(
+        `UPDATE app.users SET lifecycle = 'certified'
+          WHERE id = $1 AND lifecycle IN ('placed', 'activated', 'active')`,
+        [userId],
+      );
+      return issued;
+    }
+    const held = await db.maybeOne(
+      'SELECT 1 FROM app.certificates WHERE user_id = $1 AND course_id = $2',
+      [userId, courseId],
+    );
+    if (held) return null;
+  }
+  throw new Error('could not find an unused certificate serial');
+}
+
+const FAILURES_BEFORE_FLAG = 2;
+
+/** On the second failed check of a lesson, flag the learner once for that lesson. */
+async function flagChurnRisk(
+  db: ScopedDb, userId: string, lessonId: string, courseId: string, attemptId: string,
+): Promise<void> {
+  const counts = await db.one<{ failed: number; attempts: number }>(
+    `SELECT count(*) FILTER (WHERE NOT passed)::int AS failed, count(*)::int AS attempts
+       FROM app.quiz_attempts
+      WHERE user_id = $1 AND lesson_id = $2 AND kind = 'knowledge_check' AND submitted_at IS NOT NULL`,
+    [userId, lessonId],
+  );
+  if (counts.failed !== FAILURES_BEFORE_FLAG) return;
+  await db.enqueue({
+    type: 'churn_risk.flagged',
+    payload: {
+      user_id: userId, lesson_id: lessonId, course_id: courseId, attempt_id: attemptId,
+      failed_attempts: counts.failed, attempts: counts.attempts, reason: 'failed_check_twice',
+    },
+    idempotencyKey: `churn:${userId}:${lessonId}`,
+    partitionKey: userId,
+  });
 }
 
 export async function checkRoutes(app: FastifyInstance): Promise<void> {
@@ -122,6 +209,7 @@ export async function checkRoutes(app: FastifyInstance): Promise<void> {
             passed: attempt.passed,
             stars: attempt.stars,
             feedback: grade(keys, attempt.stored).feedback,
+            certificate: null,
           };
         }
 
@@ -138,7 +226,10 @@ export async function checkRoutes(app: FastifyInstance): Promise<void> {
             WHERE id = $1`,
           [attemptId, JSON.stringify(answers), result.correct, result.total, result.passed, result.stars],
         );
-        if (!result.passed) return result;
+        if (!result.passed) {
+          await flagChurnRisk(db, learner.id, attempt.lessonId, attempt.courseId, attemptId);
+          return { ...result, certificate: null };
+        }
 
         // Checked here rather than left to the idempotency key alone, so the
         // rule holds even once delivered outbox rows are pruned. Only one
@@ -174,8 +265,11 @@ export async function checkRoutes(app: FastifyInstance): Promise<void> {
           });
         }
 
-        await recordProgress(db, learner.id, attempt.courseId);
-        return result;
+        const pct = await recordProgress(db, learner.id, attempt.courseId);
+        const certificate = pct !== null && pct >= 100
+          ? await issueCertificate(db, learner.id, attempt.courseId)
+          : null;
+        return { ...result, certificate };
       });
     });
 }

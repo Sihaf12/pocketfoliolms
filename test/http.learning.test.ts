@@ -190,7 +190,7 @@ test('two of three passes, emits the North Star once and activates the learner o
 
   const lifecycle = await withControl(async (c) =>
     (await c.query<{ lifecycle: string }>('SELECT lifecycle FROM app.users WHERE id = $1', [userId])).rows[0]!.lifecycle);
-  assert.equal(lifecycle, 'activated');
+  assert.equal(lifecycle, 'certified', 'activated on the first pass, certified when the course completed');
 
   const path = (await get(NORTHGATE, token, '/api/v1/pathway')).json<PathwayBody>();
   const markets = path.tiers.find((t) => t.tier === 'learn')!.courses.find((c) => c.slug === 'how-markets-work')!;
