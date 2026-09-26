@@ -3,17 +3,19 @@
  *
  * The Next.js front end forwards browser requests here with the public
  * host in X-Forwarded-Host, the browser's address in X-Forwarded-For,
- * and a shared secret in X-Academy-Proxy-Secret. Forwarded headers are
- * believed only when that secret is present and correct. A request that
- * carries any X-Forwarded-* header without it is refused outright,
- * rather than having the headers quietly ignored, so a misconfigured
- * proxy fails loudly instead of routing every learner to one academy.
+ * and a shared secret in X-Academy-Proxy-Secret.
  *
- * Without forwarding, the Host header is the public host and the socket
- * address is the client.
+ *   the right secret     forwarded headers are believed
+ *   a wrong secret       the request is refused: something is presenting
+ *                        itself as the front end and is not
+ *   no secret at all     forwarded headers are ignored, as a load balancer
+ *                        in front may add them; the Host header and the
+ *                        socket address decide, and a warning is logged
+ *                        once per process so the setup can be put right
  */
 import { timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { logger } from '../logger.js';
 import { HttpError } from './errors.js';
 
 declare module 'fastify' {
@@ -22,6 +24,8 @@ declare module 'fastify' {
     publicHost: string;
     /** The browser's address, for rate limits. */
     clientIp: string;
+    /** The scheme the browser used, for links the server writes. */
+    publicProto: 'http' | 'https';
   }
 }
 
@@ -33,6 +37,13 @@ const first = (value: string | string[] | undefined): string | undefined => {
   return v?.split(',')[0]?.trim() || undefined;
 };
 
+let warnedUnsigned = false;
+
+/** For tests: the next unsigned forwarded request logs its warning again. */
+export function forgetForwardingWarning(): void {
+  warnedUnsigned = false;
+}
+
 function secretMatches(presented: string, secret: string): boolean {
   const a = Buffer.from(presented);
   const b = Buffer.from(secret);
@@ -42,15 +53,22 @@ function secretMatches(presented: string, secret: string): boolean {
 export function forwarding(app: FastifyInstance, secret: string): void {
   app.decorateRequest('publicHost', '');
   app.decorateRequest('clientIp', '');
+  app.decorateRequest('publicProto', 'http');
 
   app.addHook('onRequest', async (req: FastifyRequest) => {
     const presented = req.headers[SECRET_HEADER];
     const forwarded = FORWARDED.some((h) => req.headers[h] !== undefined);
     const socketIp = req.socket.remoteAddress ?? '';
 
-    if (presented === undefined && !forwarded) {
+    if (presented === undefined) {
+      if (forwarded && !warnedUnsigned) {
+        warnedUnsigned = true;
+        logger.warn({ headers: FORWARDED.filter((h) => req.headers[h] !== undefined) },
+          'forwarded headers arrived without the front end\'s secret and were ignored; the Host header and socket address decide');
+      }
       req.publicHost = req.headers.host ?? '';
       req.clientIp = socketIp;
+      req.publicProto = req.protocol === 'https' ? 'https' : 'http';
       return;
     }
     if (!secret || typeof presented !== 'string' || !secretMatches(presented, secret)) {
@@ -58,5 +76,6 @@ export function forwarding(app: FastifyInstance, secret: string): void {
     }
     req.publicHost = first(req.headers['x-forwarded-host']) ?? req.headers.host ?? '';
     req.clientIp = first(req.headers['x-forwarded-for']) ?? socketIp;
+    req.publicProto = first(req.headers['x-forwarded-proto']) === 'https' ? 'https' : 'http';
   });
 }

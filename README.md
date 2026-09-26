@@ -60,7 +60,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 132 tests
+    npm test                                             # 134 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow
 
@@ -88,10 +88,10 @@ The HTTP server (`npm start`) reads `HTTP_HOST`, `HTTP_PORT`,
 - **The host decides the academy.** Forwarded headers (`X-Forwarded-Host`,
   `-For`, `-Proto`, `Forwarded`) are believed only when the request also
   carries `X-Academy-Proxy-Secret` equal to `PROXY_SECRET`, which the
-  Next.js front end sends. Any forwarded header without it is refused
-  with a 400, so a load balancer in front must strip them, or the front
-  end must be the only way in. With no `PROXY_SECRET`, every forwarded
-  header is refused and the `Host` header decides.
+  Next.js front end sends. A wrong secret is refused with a 400. Forwarded
+  headers with no secret are ignored: the `Host` header and the socket
+  address decide, and a warning is logged once per process so the setup
+  can be put right.
 - **The console answers on `CONSOLE_HOST` only**, at `/api/console`. Empty
   disables it. The server refuses to start if that host is an academy's
   primary domain. `CONSOLE_TOTP_KEY` (32 bytes, base64) encrypts staff

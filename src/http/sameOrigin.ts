@@ -26,9 +26,7 @@ export function sameOrigin(scope: FastifyInstance): void {
   });
 }
 
-/** The scheme the browser used: forwarded by the front end, or this socket's. */
-export function publicOrigin(req: { headers: Record<string, string | string[] | undefined>; protocol: string; publicHost: string }): string {
-  const forwarded = req.headers['x-forwarded-proto'];
-  const proto = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim() || req.protocol;
-  return `${proto === 'https' ? 'https' : 'http'}://${req.publicHost}`;
+/** The origin the browser used, as forwarding.ts decided it, for links the server writes. */
+export function publicOrigin(req: { publicProto: 'http' | 'https'; publicHost: string }): string {
+  return `${req.publicProto}://${req.publicHost}`;
 }

@@ -10,9 +10,11 @@ import { randomUUID } from 'node:crypto';
 import { requestPool, shutdown, withControl } from '../src/db/unitOfWork.js';
 import { normaliseHost } from '../src/http/tenantScope.js';
 import {
-  CONSOLE, NORTHGATE, PASSWORD, SABLE, TEST_TOTP_KEY, removeHttpAccounts, server, tenantId, uniqueEmail,
+  CONSOLE, NORTHGATE, PASSWORD, SABLE, TEST_TOTP_KEY, removeHttpAccounts, server, studioLogin, studioMember, tenantId,
+  uniqueEmail,
 } from './httpHarness.js';
 import { ConsoleHostIsAnAcademyError } from '../src/http/server.js';
+import { forgetForwardingWarning } from '../src/http/forwarding.js';
 
 let app: FastifyInstance;
 let northgate = '';
@@ -80,16 +82,54 @@ test('case, port and trailing-dot variants reach the same academy', async () => 
   }
 });
 
-test('forwarded headers are refused unless they come with the front end\'s secret', async () => {
-  const smuggled = await signupAt('learn.unknown.example', { 'x-forwarded-host': NORTHGATE });
-  assert.equal(smuggled.statusCode, 400, 'no secret: refused outright, not quietly ignored');
-  assert.equal(smuggled.json().error.code, 'forwarding_refused');
+test('forwarded headers without a secret are ignored, and warned about once per process', async () => {
+  const lines: string[] = [];
+  const original = console.error;
+  console.error = (line: unknown) => { lines.push(String(line)); };
+  forgetForwardingWarning();
+  try {
+    const smuggled = await signupAt('learn.unknown.example', { 'x-forwarded-host': NORTHGATE });
+    assert.equal(smuggled.statusCode, 404, 'the forwarded host is ignored: the Host header decides, and it is no academy');
+    assert.equal(smuggled.json().error.code, 'unknown_academy');
 
-  const sideways = await signupAt(NORTHGATE, { 'x-forwarded-host': SABLE });
-  assert.equal(sideways.statusCode, 400, 'even on a real academy host');
-  assert.equal((await signupAt(NORTHGATE, { 'x-forwarded-for': '203.0.113.1' })).statusCode, 400,
-    'any forwarded header counts, not just the host');
+    const sideways = await signupAt(NORTHGATE, { 'x-forwarded-host': SABLE, 'x-forwarded-for': '203.0.113.1' });
+    assert.equal(sideways.statusCode, 201);
+    assert.equal(await tenantOfUser(sideways.json().user.id), northgate, 'the Host header still decides');
 
+    // An unsigned X-Forwarded-Proto cannot change the links the server writes.
+    const admin = await studioMember('northgate', ['tenant_admin'], 'proto');
+    const { token } = await studioLogin(app, NORTHGATE, admin.email);
+    const invite = await app.inject({
+      method: 'POST', url: '/api/studio/users', headers: { host: NORTHGATE, cookie: `studio_session=${token}`, 'x-forwarded-proto': 'https' },
+      payload: { email: uniqueEmail('proto'), roles: ['author'] },
+    });
+    assert.match(invite.json().link, /^http:\/\/learn\.northgate\.ae\//);
+  } finally {
+    console.error = original;
+  }
+  const warnings = lines.filter((l) => l.includes('without the front end'));
+  assert.equal(warnings.length, 1, 'one warning, however many requests');
+  assert.equal(JSON.parse(warnings[0]!).level, 'warn');
+});
+
+test('the socket address, not an unsigned X-Forwarded-For, is what rate limits count', async () => {
+  const limited = await server({ limits: { tenant: { max: 2, windowMs: 60_000 } } });
+  try {
+    const statuses: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const res = await limited.inject({
+        method: 'GET', url: '/api/v1/me', remoteAddress: '198.51.100.77',
+        headers: { host: NORTHGATE, 'x-forwarded-for': `203.0.113.${i}` },
+      });
+      statuses.push(res.statusCode);
+    }
+    assert.deepEqual(statuses, [401, 401, 429], 'a new X-Forwarded-For on every request does not buy a fresh allowance');
+  } finally {
+    await limited.close();
+  }
+});
+
+test('forwarded headers with a wrong secret are refused; with the right one they decide', async () => {
   const secret = 'a-shared-secret-long-enough-to-matter-1234';
   const fronted = await server({ proxySecret: secret });
   try {
@@ -97,16 +137,18 @@ test('forwarded headers are refused unless they come with the front end\'s secre
     assert.equal(res.statusCode, 201, 'with the secret, the forwarded host decides the academy');
     assert.equal(await tenantOfUser(res.json().user.id), northgate);
 
-    const wrong = await signupAt('internal.backend', { 'x-forwarded-host': NORTHGATE, 'x-academy-proxy-secret': secret + 'x' }, fronted);
-    assert.equal(wrong.statusCode, 400, 'a wrong secret is no secret');
-    const truncated = await signupAt('internal.backend', { 'x-forwarded-host': NORTHGATE, 'x-academy-proxy-secret': secret.slice(0, 10) }, fronted);
-    assert.equal(truncated.statusCode, 400);
-
+    for (const wrong of [secret + 'x', secret.slice(0, 10), '']) {
+      const refused = await signupAt('internal.backend', { 'x-forwarded-host': NORTHGATE, 'x-academy-proxy-secret': wrong }, fronted);
+      assert.equal(refused.statusCode, 400, `secret ${JSON.stringify(wrong)}`);
+      assert.equal(refused.json().error.code, 'forwarding_refused');
+    }
     const direct = await signupAt(NORTHGATE, {}, fronted);
     assert.equal(direct.statusCode, 201, 'a request with no forwarded headers still uses its Host');
   } finally {
     await fronted.close();
   }
+  const unconfigured = await signupAt(NORTHGATE, { 'x-academy-proxy-secret': secret });
+  assert.equal(unconfigured.statusCode, 400, 'a server with no secret refuses anyone claiming one');
 });
 
 test('a tenant id in the body is rejected, not used', async () => {
