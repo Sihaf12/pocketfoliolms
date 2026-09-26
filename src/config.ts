@@ -14,6 +14,9 @@ export const config = {
     // Comma-separated proxy addresses allowed to set X-Forwarded-Host.
     // Empty means the Host header alone decides the academy.
     trustProxy: (process.env.TRUST_PROXY ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+    webRoot: process.env.WEB_ROOT ?? 'web',
+    // Development only. The server refuses to start with it in production.
+    insecureDevCookie: process.env.DEV_INSECURE_COOKIE === '1',
   },
   outbox: {
     pollMs: Number(process.env.OUTBOX_POLL_MS ?? 1_000),

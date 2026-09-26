@@ -30,6 +30,11 @@ the backend that enforces it.
     src/http/tenantScope.ts     host -> academy, or 404; never a default
     src/http/routes/            the REST routes, one file per area
     src/http/routes/public/     certificate verification: no tenant, no session
+    src/http/routes/pages.ts    GET / (branded client) and GET /verify/:serial
+    src/http/brand.ts           brand tokens: allowlisted, validated, escaped
+
+    web/index.html              the academy client, served per host at /
+    web/verify.html             the public, unbranded verification page
 
     test/platform.test.ts       integration tests against a real database
     test/http.*.test.ts         the REST routes through app.inject()
@@ -43,7 +48,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 82 tests
+    npm test                                             # 89 tests
     npm run test:migrate                                 # migrate a fresh database
 
 ### Connections
@@ -61,8 +66,8 @@ Migrations create schemas, extensions and the two application roles, so
 they must run as the owner. `app_user` does not exist until
 `002_rls.sql` creates it, and could not create a schema if it did.
 
-The HTTP server (`npm start`) reads `HTTP_HOST`, `HTTP_PORT` and
-`TRUST_PROXY`. The request host alone decides the academy.
+The HTTP server (`npm start`) reads `HTTP_HOST`, `HTTP_PORT`,
+`TRUST_PROXY`, `WEB_ROOT` (default `web`) and `DEV_INSECURE_COOKIE`. The request host alone decides the academy.
 `TRUST_PROXY` is a comma-separated list of proxy addresses allowed to
 forward the public host in `X-Forwarded-Host`; leave it empty unless
 the server sits behind one, or any client could choose an academy.
@@ -109,12 +114,12 @@ Nothing is shared between instances:
 Academies are served on real domain names (the resolver rejects
 `localhost` and bare IPs), so trying one locally over plain HTTP, say
 `learn.northgate.ae` mapped in `/etc/hosts`, will sign in and then lose
-the session on the next request. There is no development override in
-the code today. Either put a TLS-terminating proxy with a locally
-trusted certificate (for example from `mkcert`) in front of `npm start`,
-or add an explicit, development-only switch that drops `Secure`; it must
-never be reachable in production. The API tests are unaffected: they
-use `app.inject()` and send the cookie header directly.
+the session on the next request. For local use,
+`DEV_INSECURE_COOKIE=1` drops `Secure` (the cookie stays `HttpOnly`,
+`SameSite=Lax` and host-only) and logs a warning at start. The server
+refuses to start if it is set while `NODE_ENV=production`. Anywhere
+else, put a TLS-terminating proxy in front instead. The API tests are
+unaffected: they use `app.inject()` and send the cookie header directly.
 
 ## Temporary rules
 

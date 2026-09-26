@@ -108,7 +108,10 @@ test('a tenant id in the body is rejected, not used', async () => {
 });
 
 test('every route except public certificate verification sits behind the tenant scope', async () => {
-  const PUBLIC = new Set(['GET /api/v1/certificates/:serial', 'HEAD /api/v1/certificates/:serial']);
+  const PUBLIC = new Set([
+    'GET /api/v1/certificates/:serial', 'HEAD /api/v1/certificates/:serial',
+    'GET /verify/:serial', 'HEAD /verify/:serial',
+  ]);
   assert.ok(app.routeList.length > 0);
   for (const { method, url } of app.routeList) {
     const key = `${method} ${url}`;
@@ -121,7 +124,8 @@ test('every route except public certificate verification sits behind the tenant 
       // No body to read; the matching GET checks the error code.
       if (!PUBLIC.has(key)) assert.equal(res.statusCode, 404, key);
     } else if (PUBLIC.has(key)) {
-      assert.notEqual(res.json().error?.code, 'unknown_academy', `${key} must not need an academy`);
+      const code = String(res.headers['content-type']).startsWith('application/json') ? res.json().error?.code : undefined;
+      assert.notEqual(code, 'unknown_academy', `${key} must not need an academy`);
     } else {
       assert.equal(res.statusCode, 404, key);
       assert.equal(res.json().error.code, 'unknown_academy', `${key} must resolve an academy first`);

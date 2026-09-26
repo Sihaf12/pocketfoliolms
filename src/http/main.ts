@@ -3,7 +3,13 @@ import { shutdown } from '../db/unitOfWork.js';
 import { logger } from '../logger.js';
 import { buildServer } from './server.js';
 
-const app = await buildServer({ trustProxy: config.http.trustProxy });
+const app = await buildServer({
+  trustProxy: config.http.trustProxy,
+  insecureDevCookie: config.http.insecureDevCookie,
+});
+if (config.http.insecureDevCookie) {
+  logger.warn({}, 'DEV_INSECURE_COOKIE is on: session cookies are sent without Secure. Never use this outside local development.');
+}
 await app.listen({ host: config.http.host, port: config.http.port });
 logger.info({ host: config.http.host, port: config.http.port }, 'http server listening');
 

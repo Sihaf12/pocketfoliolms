@@ -35,13 +35,15 @@ export async function requirePlacement(db: ScopedDb, learner: Learner): Promise<
 }
 
 // No Domain attribute: the cookie is host-only, so the browser never
-// sends one academy's session to another academy's domain.
-const COOKIE_OPTIONS = { path: '/', httpOnly: true, secure: true, sameSite: 'lax' } as const;
+// sends one academy's session to another academy's domain. Secure unless
+// the server was built with the development switch.
+const cookieOptions = (reply: FastifyReply) =>
+  ({ path: '/', httpOnly: true, secure: reply.server.sessionCookieSecure, sameSite: 'lax' }) as const;
 
 export function setSessionCookie(reply: FastifyReply, token: string): void {
-  reply.setCookie(SESSION_COOKIE, token, { ...COOKIE_OPTIONS, maxAge: SESSION_TTL_SECONDS });
+  reply.setCookie(SESSION_COOKIE, token, { ...cookieOptions(reply), maxAge: SESSION_TTL_SECONDS });
 }
 
 export function clearSessionCookie(reply: FastifyReply): void {
-  reply.clearCookie(SESSION_COOKIE, COOKIE_OPTIONS);
+  reply.clearCookie(SESSION_COOKIE, cookieOptions(reply));
 }

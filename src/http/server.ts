@@ -7,6 +7,8 @@
  * Which scope a route is registered in is the whole of its tenancy.
  * There is no per-route flag to forget.
  */
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
@@ -20,11 +22,15 @@ import { lessonRoutes } from './routes/lessons.js';
 import { checkRoutes } from './routes/checks.js';
 import { meRoutes } from './routes/me.js';
 import { certificateRoutes } from './routes/public/certificates.js';
+import { academyPage, verifyPage } from './routes/pages.js';
+import { config } from '../config.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
     /** Every route registered, for the test that audits which scope each lives in. */
     routeList: ReadonlyArray<{ method: string; url: string }>;
+    /** False only under the development cookie switch. */
+    sessionCookieSecure: boolean;
   }
 }
 
@@ -38,6 +44,30 @@ export interface ServerOptions {
   trustProxy?: string[];
   /** Per-IP request limits. The client IP is only as good as trustProxy. */
   limits?: { tenant?: RouteLimit; login?: RouteLimit; certificates?: RouteLimit };
+  /** Where index.html and verify.html are read from. */
+  webRoot?: string;
+  /**
+   * Development only: send the session cookie without Secure, so a
+   * browser keeps it over plain HTTP on a local .test host. Refused
+   * outright when NODE_ENV is production.
+   */
+  insecureDevCookie?: boolean;
+}
+
+export class InsecureCookieInProductionError extends Error {
+  constructor() {
+    super('DEV_INSECURE_COOKIE is set while NODE_ENV is production. Refusing to start.');
+    this.name = 'InsecureCookieInProductionError';
+  }
+}
+
+async function readPage(path: string): Promise<string | null> {
+  try {
+    return await readFile(path, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
+  }
 }
 
 const DEFAULT_LIMITS = {
@@ -47,6 +77,8 @@ const DEFAULT_LIMITS = {
 } as const;
 
 export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInstance> {
+  if (opts.insecureDevCookie && process.env.NODE_ENV === 'production') throw new InsecureCookieInProductionError();
+
   const trustProxy = opts.trustProxy && opts.trustProxy.length > 0 ? opts.trustProxy : false;
   const app = Fastify({
     logger: false,
@@ -59,6 +91,7 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
 
   const routes: { method: string; url: string }[] = [];
   app.decorate('routeList', routes);
+  app.decorate('sessionCookieSecure', !opts.insecureDevCookie);
   app.addHook('onRoute', (r) => {
     for (const method of [r.method].flat()) routes.push({ method, url: r.url });
   });
@@ -75,20 +108,30 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
   });
   const limits = { ...DEFAULT_LIMITS, ...opts.limits };
 
+  const webRoot = opts.webRoot ?? config.http.webRoot;
+  const [academyHtml, verifyHtml] = await Promise.all([
+    readPage(join(webRoot, 'index.html')),
+    readPage(join(webRoot, 'verify.html')),
+  ]);
+
   await app.register(async (publicScope) => {
-    await publicScope.register(certificateRoutes, { limit: limits.certificates });
-  }, { prefix: '/api/v1' });
+    await publicScope.register(certificateRoutes, { prefix: '/api/v1', limit: limits.certificates });
+    await publicScope.register(verifyPage, { page: verifyHtml });
+  });
 
   await app.register(async (scope) => {
     tenantScope(scope, { limit: limits.tenant });
-    await scope.register(authRoutes, { loginLimit: limits.login });
-    await scope.register(onboardingRoutes);
-    await scope.register(placementRoutes);
-    await scope.register(pathwayRoutes);
-    await scope.register(lessonRoutes);
-    await scope.register(checkRoutes);
-    await scope.register(meRoutes);
-  }, { prefix: '/api/v1' });
+    await scope.register(academyPage, { page: academyHtml });
+    await scope.register(async (api) => {
+      await api.register(authRoutes, { loginLimit: limits.login });
+      await api.register(onboardingRoutes);
+      await api.register(placementRoutes);
+      await api.register(pathwayRoutes);
+      await api.register(lessonRoutes);
+      await api.register(checkRoutes);
+      await api.register(meRoutes);
+    }, { prefix: '/api/v1' });
+  });
 
   return app;
 }
