@@ -1,0 +1,184 @@
+/**
+ * The studio's main path, through the browser: an author writes a course
+ * and a lesson with the learner preview beside it, a reviewer sends it
+ * back and then approves it, compliance publishes it.
+ */
+import { expect, test, type Page } from '@playwright/test';
+import { inline, parseLesson } from '../packages/shared/markdown';
+import { GTL, asAnother, at, expectAccessible, shot, signInStudio, unique } from './helpers';
+
+const BODY = [
+  '## What a spread is',
+  'The gap between the **bid** and the ask, which a [[market maker|a firm quoting both sides]] keeps.',
+  '',
+  '## Why it matters',
+  'Every trade pays it once, going in.',
+  '',
+  '> **In practice**',
+  '> Check the spread before the price.',
+].join('\n');
+
+const isPhone = (page: Page) => (page.viewportSize()?.width ?? 0) < 1100;
+
+/** On a phone, the preview is a tap away; on a desktop, it is always beside the form. */
+async function showPreview(page: Page) {
+  if (isPhone(page)) await page.getByRole('button', { name: 'Preview', exact: true }).click();
+}
+async function showForm(page: Page) {
+  if (isPhone(page)) await page.getByRole('button', { name: 'Write', exact: true }).click();
+}
+
+async function addQuestion(page: Page, n: number) {
+  await page.getByRole('button', { name: 'Add a check question' }).click();
+  await page.getByLabel('Question', { exact: true }).nth(n - 1).fill(`Question ${n} about spreads?`);
+  for (const k of ['A', 'B', 'C']) {
+    await page.getByLabel(`Option ${k} of question ${n}`).fill(`Answer ${k}`);
+    await page.getByLabel(`Why option ${k} is right or wrong`).nth(n - 1).fill(`Because ${k} is how it works.`);
+  }
+}
+
+test('an author writes a lesson against the learner preview, and three people take it to learners', async ({ page, browser }, info) => {
+  const courseTitle = unique('Spreads');
+  const lessonTitle = unique('Reading a spread');
+
+  await signInStudio(page, GTL, 'author');
+  await page.getByRole('link', { name: 'Start a new course' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Start a new course' })).toBeVisible();
+  await page.getByLabel('Title').fill(courseTitle);
+  await page.getByLabel('Summary').fill('What a spread costs, and how to read it.');
+  await page.getByRole('button', { name: 'Create course draft' }).click();
+  await page.waitForURL(/\/studio\/courses\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole('heading', { level: 1, name: courseTitle })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Add a lesson' }).first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'New lesson' })).toBeVisible();
+  await page.getByLabel('Title').fill(lessonTitle);
+  await page.getByRole('button', { name: 'Create lesson draft' }).click();
+  await page.waitForURL(/\/studio\/lessons\//);
+  await expect(page.getByText('Version 1')).toBeVisible();
+
+  // The preview follows the text as it is typed, through the shared renderer.
+  await page.getByLabel('Lesson text').fill(BODY);
+  await showPreview(page);
+  const preview = page.getByRole('figure', { name: 'Learner preview' });
+  await expect(preview.getByRole('heading', { name: 'What a spread is' })).toBeVisible();
+  const doc = parseLesson(BODY);
+  expect(await preview.locator('.step p').first().innerHTML()).toBe(inline(doc.steps[0]!.p));
+  expect(await preview.locator('.callout p').innerHTML()).toBe(inline(doc.callout!.p));
+  await expect(preview.getByText('a firm quoting both sides')).toBeVisible();
+  await showForm(page);
+
+  // Not ready until it has five questions.
+  await expect(page.getByText('Add 5 more check questions: a lesson needs 5.')).toBeVisible();
+  for (let n = 1; n <= 5; n++) await addQuestion(page, n);
+  await expect(page.getByText('Ready to send for review.')).toBeVisible();
+  await expect(page.getByText('5 of 5 needed')).toBeVisible();
+  await showPreview(page);
+  await expect(preview.getByText('3 of the 5 questions below are drawn each time. 2 of 3 correct to pass.')).toBeVisible();
+  await shot(page, info, 'lesson-editor');
+  await showForm(page);
+  await expectAccessible(page, 'the lesson editor');
+
+  // Sending for review saves first.
+  await page.getByRole('button', { name: 'Send for review' }).click();
+  await expect(page.getByText('In expert review').first()).toBeVisible();
+  const lessonUrl = page.url();
+
+  // A reviewer sends it back with notes.
+  const reviewer = await asAnother(browser, info);
+  await signInStudio(reviewer.page, GTL, 'reviewer');
+  await reviewer.page.goto(at(GTL, '/studio/review'));
+  await reviewer.page.getByRole('link', { name: new RegExp(lessonTitle) }).click();
+  await expect(reviewer.page.getByRole('figure', { name: 'Learner preview' }).getByRole('heading', { name: 'Why it matters' })).toBeVisible();
+  await shot(reviewer.page, info, 'version-review');
+  await reviewer.page.getByRole('button', { name: 'Send back with notes' }).click();
+  await reviewer.page.getByLabel('Notes for the author').fill('Say who pays the spread.');
+  await reviewer.page.getByRole('dialog').getByRole('button', { name: 'Send back with notes' }).click();
+  await expect(reviewer.page.getByText('Sent back').first()).toBeVisible();
+
+  // The author reads the notes and revises.
+  await page.goto(lessonUrl);
+  await expect(page.getByText('Say who pays the spread.')).toBeVisible();
+  await page.getByRole('button', { name: 'Start a revision' }).click();
+  await expect(page.getByLabel('Lesson text')).toBeVisible();
+  await page.getByLabel('Lesson text').fill(BODY.replace('Every trade pays it once', 'The trader pays it once on every trade'));
+  await page.getByRole('button', { name: 'Send for review' }).click();
+  await expect(page.getByText('In expert review').first()).toBeVisible();
+
+  // The reviewer approves; compliance publishes. The course goes the same way first.
+  await reviewer.page.goto(at(GTL, '/studio/review'));
+  await reviewer.page.getByRole('link', { name: new RegExp(lessonTitle) }).click();
+  await reviewer.page.getByRole('button', { name: 'Approve for compliance' }).click();
+  await expect(reviewer.page.getByText('In compliance review').first()).toBeVisible();
+  await reviewer.close();
+
+  await page.goto(lessonUrl);
+  await page.getByRole('link', { name: courseTitle }).click();
+  await page.getByRole('button', { name: 'Send for review' }).click();
+  await expect(page.getByText('In expert review').first()).toBeVisible();
+  const courseUrl = page.url();
+
+  const second = await asAnother(browser, info);
+  await signInStudio(second.page, GTL, 'reviewer');
+  await second.page.goto(courseUrl);
+  await second.page.getByRole('button', { name: 'Approve for compliance' }).click();
+  await expect(second.page.getByText('In compliance review').first()).toBeVisible();
+  await second.close();
+
+  const compliance = await asAnother(browser, info);
+  await signInStudio(compliance.page, GTL, 'compliance');
+  await compliance.page.goto(courseUrl);
+  await compliance.page.getByRole('button', { name: 'Publish to learners' }).click();
+  await expect(compliance.page.getByText('Published').first()).toBeVisible();
+  await compliance.page.goto(lessonUrl);
+  await compliance.page.getByRole('button', { name: 'Publish to learners' }).click();
+  await expect(compliance.page.getByRole('heading', { level: 1, name: lessonTitle })).toBeVisible();
+  await expect(compliance.page.getByText('Published').first()).toBeVisible();
+  await compliance.close();
+
+  // The author cannot publish their own work: the button is never offered.
+  await page.goto(courseUrl);
+  await expect(page.getByRole('button', { name: 'Publish to learners' })).toHaveCount(0);
+});
+
+test('an admin offers a course, invites a colleague once, and cannot save an unreadable brand', async ({ page }, info) => {
+  await signInStudio(page, GTL, 'admin');
+
+  await page.goto(at(GTL, '/studio/catalogue'));
+  const first = page.getByRole('switch').first();
+  const name = await first.getAttribute('aria-label');
+  const was = await first.getAttribute('aria-checked');
+  await first.click();
+  await expect(page.getByRole('switch', { name: name! })).toHaveAttribute('aria-checked', was === 'true' ? 'false' : 'true');
+  await expect(page.getByRole('switch', { name: name! })).toBeFocused();
+  await page.getByRole('switch', { name: name! }).click();
+  await shot(page, info, 'catalogue');
+
+  await page.goto(at(GTL, '/studio/team'));
+  await page.getByRole('button', { name: 'Invite someone' }).click();
+  const email = `${unique('colleague').replace(/\s/g, '-')}@example.com`;
+  await page.getByLabel('Their email').fill(email);
+  await page.getByRole('dialog').getByRole('checkbox', { name: /^Author/ }).check();
+  await page.getByRole('button', { name: 'Make the invitation link' }).click();
+  const link = await page.getByRole('dialog').locator('code').textContent();
+  expect(link).toMatch(new RegExp(`^http://${GTL}:\\d+/studio/invite/[A-Za-z0-9_-]{40,}$`));
+  await shot(page, info, 'team-invite');
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByText(email, { exact: true })).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(link!.split('/invite/')[1]!);
+
+  await page.goto(at(GTL, '/studio/settings/brand'));
+  await page.getByLabel('Secondary text').fill('#C8CDD4');
+  await expect(page.getByText('Too faint').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save brand' })).toBeDisabled();
+  await shot(page, info, 'brand-refused');
+});
+
+test('learner search says when nobody matches', async ({ page }, info) => {
+  await signInStudio(page, GTL, 'admin');
+  await page.goto(at(GTL, '/studio/learners'));
+  await expect(page.getByRole('heading', { level: 1, name: 'Learners' })).toBeVisible();
+  await page.getByLabel('Find a learner').fill('zzzz-nobody');
+  await expect(page.getByText('Nobody matches “zzzz-nobody”.')).toBeVisible();
+  await shot(page, info, 'learners');
+});

@@ -181,3 +181,11 @@ test('a write from another site is refused', async () => {
   const same = await studio('POST', '/auth/logout', NORTHGATE, token, undefined, { origin: 'http://learn.northgate.ae:3000' });
   assert.equal(same.statusCode, 204, 'its own origin is fine');
 });
+
+test('the studio shell reads the academy\'s name and brand before sign-in, and nothing else', async () => {
+  const res = await app.inject({ method: 'GET', url: '/api/studio/academy', headers: { host: NORTHGATE } });
+  assert.equal(res.statusCode, 200, res.body);
+  assert.deepEqual(Object.keys(res.json()).sort(), ['name', 'sub', 'tokens']);
+  assert.equal(res.json().tokens['--brand'], '#1A6DC2');
+  assert.equal((await app.inject({ method: 'GET', url: '/api/studio/academy', headers: { host: 'learn.unknown.example' } })).statusCode, 404);
+});

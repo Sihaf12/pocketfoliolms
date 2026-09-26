@@ -160,6 +160,8 @@ export interface VersionView {
   version: Version;
   people: Record<string, string>;
   changedFields: string[];
+  /** Nothing of this is live yet, so there is nothing to compare against. */
+  isNew: boolean;
   actions: ReviewAction[];
   readOnly: boolean;
 }
@@ -192,7 +194,8 @@ export async function viewVersion(db: ContentDb, scope: Scope, actor: Actor, id:
   return {
     version,
     people: Object.fromEntries(names),
-    changedFields: version.state === 'published' ? [] : changedFields(live, version.snapshot),
+    changedFields: version.state === 'published' || live === null ? [] : changedFields(live, version.snapshot),
+    isNew: live === null,
     actions,
     readOnly,
   };

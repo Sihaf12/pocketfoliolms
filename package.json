@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && next typegen studio >/dev/null && tsc -p studio --noEmit && tsc -p e2e",
     "migrate": "psql \"${OWNER_DATABASE_URL:-postgres:///academy}\" -v ON_ERROR_STOP=1 -f db/001_schema.sql -f db/002_rls.sql -f db/003_platform_rls.sql -f db/004_content_versions_rls.sql -f db/005_request_path.sql -f db/006_attempt_lessons.sql -f db/007_pathway_and_branding.sql -f db/008_studio.sql -f db/009_studio_identity.sql -f db/010_academy_settings.sql",
     "test:db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/tests/rls_proof.sql",
     "test:migrate": "sh db/tests/migrate_fresh.sh",
@@ -19,17 +19,29 @@
     "test": "node --test --test-concurrency=1 dist/test/*.test.js",
     "start": "node dist/src/http/main.js",
     "console:create-owner": "node dist/src/cli/createOwner.js",
-    "worker": "node dist/src/outbox/worker.js"
+    "worker": "node dist/src/outbox/worker.js",
+    "demo:team": "node dist/src/cli/demoTeam.js",
+    "demo:code": "node dist/src/cli/demoTeam.js --code",
+    "studio:build": "next build studio",
+    "studio:start": "node dist/src/studio/server.js",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.2",
     "@fastify/rate-limit": "11.2.0",
     "fastify": "5.12.5",
-    "pg": "^8.13.1"
+    "next": "16.3.6",
+    "pg": "^8.13.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
     "@types/node": "^22.9.0",
     "@types/pg": "^8.11.10",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "typescript": "^5.6.3"
   }
 }

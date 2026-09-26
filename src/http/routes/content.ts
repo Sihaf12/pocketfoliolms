@@ -160,6 +160,16 @@ export async function contentRoutes(app: FastifyInstance, opts: { run: ContentRu
   app.get('/glossary', async (req) =>
     run(req, async ({ db }) => ({
       terms: await db.query('SELECT id, term, definition, related FROM platform.glossary_terms ORDER BY lower(term)'),
+      // On the console, terms still being written or reviewed, so a draft
+      // can be found again before it has a live row.
+      ...(opts.platform ? {
+        inProgress: await db.query(
+          `SELECT DISTINCT ON (entity_id) entity_id AS id, id::text AS "versionId", snapshot->>'term' AS term, review_state AS state
+             FROM platform.content_versions
+            WHERE entity_type = 'glossary_term' AND owner_tenant_id IS NULL
+            ORDER BY entity_id, version DESC`,
+        ).then((rows) => rows.filter((r) => !['published', 'retired'].includes(String(r.state)))),
+      } : {}),
     })));
 
   if (opts.platform) {

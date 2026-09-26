@@ -1,7 +1,8 @@
 # Trader Academy Platform
 
-Multi-tenant learning platform. Modules 1 and 2: the data boundary and
-the backend that enforces it.
+Multi-tenant learning platform: the data boundary, the backend that
+enforces it, the learner client, and (Module 4a) the content studio and
+platform console as a Next.js front end.
 
 ## What is here
 
@@ -56,6 +57,14 @@ the backend that enforces it.
     test/platform.test.ts       integration tests against a real database
     test/http.*.test.ts         the REST routes through app.inject()
 
+    studio/                     Next.js: the academy studio and the platform console
+    studio/proxy.ts             which host gets which pages: studio on academies, console on its host
+    studio/app/api/[...path]    every /api request, forwarded to Fastify with the shared secret
+    studio/components/LessonPreview.tsx  the lesson as a learner reads it, via packages/shared
+    src/studio/server.ts        the front end's edge server: drops client forwarded headers
+    src/cli/demoTeam.ts         npm run demo:team and demo:code
+    e2e/                        Playwright: every screen, both academies, phone and desktop
+
 ## Running it
 
     createdb academy
@@ -65,9 +74,12 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 157 tests
+    npm test                                             # 158 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow (68)
+    npm run typecheck                                    # the API, the studio and the end-to-end specs
+    npx playwright install chromium                      # once
+    npm run test:e2e                                     # 18 browser tests, on academy_e2e
 
 ### Connections
 
@@ -122,8 +134,9 @@ verification have their own tighter limits (10 and 30 a minute).
 
 ## The local demo
 
-    npm run demo          # build, migrate and seed academy_demo, then serve on :3000
-    npm run demo:reset    # remove the demo learners; keep the academies and curriculum
+    npm run demo          # build, migrate and seed academy_demo, then serve on :3100 (API on :3000)
+    npm run demo:code     # the console owner's current sign-in code
+    npm run demo:reset    # remove the demo learners; keep the academies, curriculum and team
     npm run test:demo-seed
 
 The demo runs against its own database, `academy_demo`, never the test
@@ -135,9 +148,27 @@ tier: eleven lessons with their prerequisites, five knowledge-check
 questions per lesson and eight placement questions, every option with a
 rationale.
 
-The script prints the `/etc/hosts` line the three hosts need and never
-edits the file itself. It starts the server on 127.0.0.1 with
-`DEV_INSECURE_COOKIE=1`, so the session cookie works over plain HTTP.
+The script prints the `/etc/hosts` line the four hosts need (the three
+academies and `console.academy.test`) and never edits the file itself.
+It starts Fastify on 127.0.0.1:3000 and the Next.js front end on
+127.0.0.1:3100, which is what you open, with `DEV_INSECURE_COOKIE=1` so
+session cookies work over plain HTTP. The two share a secret made once in
+`.demo/proxy.secret`.
+
+It also makes a demo team (`src/cli/demoTeam.ts`): admin@, author@,
+reviewer@ and compliance@ each academy's domain, one role each because
+the separation rule counts people, and owner@, author@, reviewer@ and
+compliance@ `console.academy.test`. They share one generated password,
+kept with the owner's TOTP secret in `.demo/team.json` (git-ignored,
+mode 600). The owner signs in with a code from `npm run demo:code`, and
+each code works once.
+
+`npm run test:e2e` runs the same script against `academy_e2e` on ports
+3201 and 3301, with the per-address rate limits lifted
+(`RATE_TENANT_PER_MIN`, `RATE_LOGIN_PER_MIN`, `RATE_CONSOLE_PER_MIN`),
+because every request it makes comes from 127.0.0.1. Chromium maps
+`*.academy.test` to this machine itself, so it needs no `/etc/hosts`
+entries. Screenshots of every screen land in `test-results/screens/`.
 
 All lesson content is a draft: author "Draft, Global Tutoring Lab
 curriculum", reviewer "Pending compliance review", no review date. It
@@ -192,6 +223,12 @@ else, put a TLS-terminating proxy in front instead. The API tests are
 unaffected: they use `app.inject()` and send the cookie header directly.
 
 ## Backlog: before production
+
+- **The Next.js edge server trusts only its socket.** It drops every
+  forwarded header a client sends and records the socket's address, so
+  a load balancer or TLS terminator in front of it would be recorded as
+  every client. Before production, either Next.js is the edge, or it
+  learns to trust exactly one proxy in front of it.
 
 - **TLS provisioning must be tied to domain changes.** Today a verified
   or overridden domain change switches `primary_domain` at once and

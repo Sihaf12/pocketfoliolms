@@ -17,6 +17,7 @@ import {
 import { HttpError } from '../../errors.js';
 import { clearStudioCookie, inStudio, requireStudio, setStudioCookie } from '../../studioScope.js';
 import type { RouteLimit } from '../../server.js';
+import { sanitiseBrand } from '../../brand.js';
 
 export const studioUserSchema = {
   type: 'object',
@@ -69,6 +70,27 @@ export async function studioAccountRoutes(app: FastifyInstance, opts: { loginLim
     clearStudioCookie(reply);
     return reply.status(204).send();
   });
+
+  // What the studio shell needs before anyone signs in: the academy's
+  // name and its brand. Both are already public on the learner page.
+  app.get('/academy', {
+    schema: {
+      response: {
+        200: {
+          type: 'object', required: ['name', 'sub', 'tokens'],
+          properties: {
+            name: { type: 'string' }, sub: { type: 'string' },
+            tokens: { type: 'object', additionalProperties: { type: 'string' } },
+          },
+        },
+      },
+    },
+  }, async (req) =>
+    inStudio(req, async (db) => {
+      const academy = await db.one<{ name: string; brand: unknown }>('SELECT name, brand FROM app.current_tenant_brand()');
+      const { sub, tokens } = sanitiseBrand(academy.brand);
+      return { name: academy.name, sub, tokens };
+    }));
 
   app.get('/me', {
     schema: {

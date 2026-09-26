@@ -3,8 +3,14 @@ import { shutdown } from '../db/unitOfWork.js';
 import { logger } from '../logger.js';
 import { buildServer } from './server.js';
 
+// Only the limits the environment sets; the rest keep the server's defaults.
+const limits = Object.fromEntries(Object.entries({
+  tenant: config.limits.tenantPerMinute, login: config.limits.loginPerMinute, console: config.limits.consolePerMinute,
+}).flatMap(([scope, max]) => (max ? [[scope, { max, windowMs: 60_000 }]] : [])));
+
 const app = await buildServer({
   proxySecret: config.http.proxySecret,
+  limits,
   console: { host: config.console.host, totpKey: config.console.totpKey },
   insecureDevCookie: config.http.insecureDevCookie,
 });

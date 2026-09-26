@@ -23,6 +23,14 @@ export const config = {
     // Development only. The server refuses to start with it in production.
     insecureDevCookie: process.env.DEV_INSECURE_COOKIE === '1',
   },
+  // Requests per client address per minute. Unset: the server's defaults
+  // (300, 10 for sign-in, 120 for the console). The end-to-end run lifts
+  // them, since every request it makes comes from one address.
+  limits: {
+    tenantPerMinute: optionalNumber(process.env.RATE_TENANT_PER_MIN),
+    loginPerMinute: optionalNumber(process.env.RATE_LOGIN_PER_MIN),
+    consolePerMinute: optionalNumber(process.env.RATE_CONSOLE_PER_MIN),
+  },
   console: {
     // The one host the platform console answers on. Empty disables the console.
     host: (process.env.CONSOLE_HOST ?? '').trim().toLowerCase(),
@@ -43,3 +51,8 @@ export const config = {
     retention: 'none' as const,
   },
 } as const;
+
+function optionalNumber(raw: string | undefined): number | undefined {
+  const n = Number(raw);
+  return raw && Number.isInteger(n) && n > 0 ? n : undefined;
+}

@@ -3,3 +3,8 @@ dist/
 .env
 .DS_Store
 .demo/
+studio/.next/
+studio/next-env.d.ts
+studio/tsconfig.tsbuildinfo
+test-results/
+playwright-report/

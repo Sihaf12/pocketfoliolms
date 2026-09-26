@@ -291,6 +291,7 @@ test('a waiting domain change can be cancelled, or applied by the platform owner
 
   const target = `override.${a.slug}.example.com`;
   const pending = (await studio(a, a.admin, 'POST', '/settings/domain', { domain: target })).json().pending;
+  assert.equal((await consoleCall('GET', `/tenants/${a.id}`, owner)).json().pendingDomain, target, 'the owner sees what was asked for');
   assert.equal((await override(await staffToken('platform_author'))).statusCode, 403);
   const done = await override(owner);
   assert.equal(done.statusCode, 200, done.body);

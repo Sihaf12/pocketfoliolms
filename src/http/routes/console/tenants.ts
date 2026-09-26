@@ -123,8 +123,12 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
       params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } },
       response: {
         200: {
-          type: 'object', required: ['tenant', 'reviewSignoffs', 'openInvitations'],
-          properties: { tenant: tenantSchema, reviewSignoffs: { type: 'integer' }, openInvitations: { type: 'integer' } },
+          type: 'object', required: ['tenant', 'reviewSignoffs', 'openInvitations', 'pendingDomain'],
+          properties: {
+            tenant: tenantSchema, reviewSignoffs: { type: 'integer' }, openInvitations: { type: 'integer' },
+            // A domain the academy asked for and has not yet proved, which the owner may apply.
+            pendingDomain: { type: ['string', 'null'] },
+          },
         },
       },
     },
@@ -138,7 +142,9 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
       const open = await db.one<{ n: number }>(
         `SELECT count(*)::int AS n FROM app.studio_invitations
           WHERE tenant_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()`, [tenant.id]);
-      return { tenant: shape(tenant), reviewSignoffs: settings?.n ?? 2, openInvitations: open.n };
+      const pending = await db.maybeOne<{ domain: string }>(
+        `SELECT requested_domain AS domain FROM app.domain_changes WHERE tenant_id = $1 AND status = 'pending'`, [tenant.id]);
+      return { tenant: shape(tenant), reviewSignoffs: settings?.n ?? 2, openInvitations: open.n, pendingDomain: pending?.domain ?? null };
     }));
 
   app.patch<{ Params: { id: string }; Body: { status: 'active' | 'suspended' } }>('/tenants/:id', {

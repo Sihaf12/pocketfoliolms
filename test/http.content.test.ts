@@ -187,6 +187,8 @@ test('a revision replaces the live content only when published, retiring the ver
   const course = await newCourse();
   await throughReview(course.id);
   const lesson = await newLesson(course.entityId, 'http-first-title');
+  const first = (await studio('GET', `/versions/${lesson.id}`, team.reviewer)).json();
+  assert.deepEqual([first.isNew, first.changedFields], [true, []], 'a first version has nothing live to differ from');
   await throughReview(lesson.id);
 
   const v2 = (await studio('POST', `/versions/${lesson.id}/revise`, team.author)).json().version;
@@ -196,6 +198,7 @@ test('a revision replaces the live content only when published, retiring the ver
 
   const view = (await studio('GET', `/versions/${v2.id}`, team.reviewer)).json();
   assert.ok(view.changedFields.includes('title'), 'the reviewer sees what changed');
+  assert.equal(view.isNew, false);
 
   await throughReview(v2.id);
   assert.equal(await liveTitle(), 'http-second-title');
@@ -316,6 +319,8 @@ test('platform content goes through three different staff, and academies then re
 
   const course = (await staffCall('POST', '/courses', tokens.author, courseBody(title('platform')))).json().version;
   const term = (await staffCall('POST', '/glossary', tokens.author, { term: title('term'), definition: 'A thing worth knowing.' })).json().version;
+  const drafting = (await staffCall('GET', '/glossary', tokens.author)).json();
+  assert.equal(drafting.inProgress.find((t: { id: string }) => t.id === term.entityId)?.state, 'draft', 'the console can find a draft term again');
   for (const v of [course, term]) {
     assert.equal((await staffCall('POST', `/versions/${v.id}/submit`, tokens.author)).statusCode, 200);
     assert.equal((await staffCall('POST', `/versions/${v.id}/approve`, tokens.owner)).json().error.code, 'wrong_role', 'the owner has no review duty');
@@ -326,6 +331,8 @@ test('platform content goes through three different staff, and academies then re
   const studioCourses = (await studio('GET', '/courses', team.author)).json().courses;
   assert.equal(studioCourses.find((c: { id: string }) => c.id === course.entityId)?.readOnly, true, 'an academy now sees it, read-only');
   const glossary = (await studio('GET', '/glossary', team.author)).json().terms;
+  assert.equal((await studio('GET', '/glossary', team.author)).json().inProgress, undefined, 'academies never see unpublished terms');
+  assert.ok(!(await staffCall('GET', '/glossary', tokens.author)).json().inProgress.some((t: { id: string }) => t.id === term.entityId), 'published terms leave the list');
   assert.ok(glossary.some((t: { term: string }) => t.term === term.snapshot.term));
   assert.equal((await studio('POST', '/glossary', team.author, { term: title('nope'), definition: 'x' })).statusCode, 404,
     'the glossary is edited only on the console');
