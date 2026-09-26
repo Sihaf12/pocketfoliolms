@@ -4,8 +4,9 @@
  * matched against app.tenants.primary_domain by the database.
  *
  * Nothing the client sends in a body, query, cookie or custom header can
- * choose the tenant. X-Forwarded-Host is honoured only when the server is
- * built with trustProxy naming the proxy it came through.
+ * choose the tenant. The host is the one forwarding.ts decided: the Host
+ * header, or X-Forwarded-Host when it came with the front end's secret.
+ * The console's host is never an academy, whatever the database says.
  *
  * An unknown, malformed or suspended host is a 404. There is no default
  * academy to fall back to.
@@ -87,7 +88,7 @@ async function tenantFor(host: string): Promise<string | null> {
   return tenantId;
 }
 
-export function tenantScope(scope: FastifyInstance, opts: { limit: RouteLimit }): void {
+export function tenantScope(scope: FastifyInstance, opts: { limit: RouteLimit; consoleHost: string }): void {
   scope.decorateRequest('tenantId', '');
 
   // createRateLimit rather than a rateLimit hook: the plugin lets only one
@@ -106,8 +107,8 @@ export function tenantScope(scope: FastifyInstance, opts: { limit: RouteLimit })
   });
 
   scope.addHook('onRequest', async (req) => {
-    const host = normaliseHost(req.host);
-    const tenantId = host ? await tenantFor(host) : null;
+    const host = normaliseHost(req.publicHost);
+    const tenantId = host && host !== opts.consoleHost ? await tenantFor(host) : null;
     if (!tenantId) throw new HttpError(404, 'unknown_academy', 'No academy is served at this address.');
     req.tenantId = tenantId;
   });

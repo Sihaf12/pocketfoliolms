@@ -18,6 +18,10 @@
  * Separation: the author and the publisher are always different people.
  * An academy may also require the reviewer to be a third person; platform
  * content always does.
+ *
+ * People hold a set of roles. Holding every role lets someone take any
+ * step, but never lets them count as more than one person: separation
+ * compares who acted, not which roles they hold.
  */
 
 export type ReviewState =
@@ -31,7 +35,7 @@ export type Duty = 'author' | 'reviewer' | 'compliance';
 export type StudioRole = 'author' | 'reviewer' | 'compliance' | 'tenant_admin';
 export type StaffRole = 'platform_owner' | 'platform_author' | 'platform_reviewer' | 'platform_compliance';
 
-export const DUTY_OF: Record<StudioRole | StaffRole, Duty | null> = {
+const DUTY_OF: Record<StudioRole | StaffRole, Duty | null> = {
   author: 'author',
   reviewer: 'reviewer',
   compliance: 'compliance',
@@ -41,6 +45,12 @@ export const DUTY_OF: Record<StudioRole | StaffRole, Duty | null> = {
   platform_compliance: 'compliance',
   platform_owner: null,
 };
+
+/** The workflow duties a set of roles carries. A tenant admin carries none. */
+export function dutiesOf(roles: readonly (StudioRole | StaffRole)[]): Duty[] {
+  const duties = roles.map((r) => DUTY_OF[r]).filter((d): d is Duty => d !== null);
+  return [...new Set(duties)];
+}
 
 interface Step {
   from: ReviewState;
@@ -111,7 +121,8 @@ export function separationRefusal(s: Signoffs, required: number): Refusal | null
 export interface Attempt {
   action: ReviewAction;
   state: ReviewState;
-  actorDuty: Duty | null;
+  /** Every duty the actor's roles carry. */
+  actorDuties: readonly Duty[];
   actorId: string;
   notes?: string | null;
   signoffs: Signoffs;
@@ -124,7 +135,7 @@ export function decide(a: Attempt): Outcome {
   if (!step) {
     return { ok: false, refusal: { code: 'illegal_transition', message: `A version that is ${label(a.state)} cannot be ${PAST[a.action]}.` } };
   }
-  if (a.actorDuty !== step.duty) {
+  if (!a.actorDuties.includes(step.duty)) {
     return { ok: false, refusal: { code: 'wrong_role', message: `Only ${DUTY_LABEL[step.duty]} can do that.` } };
   }
   if (step.notes && !(a.notes ?? '').trim()) {
@@ -141,9 +152,9 @@ export function decide(a: Attempt): Outcome {
 }
 
 /** The actions a person could take on a version now, for the studio to offer. */
-export function availableActions(state: ReviewState, duty: Duty | null): ReviewAction[] {
+export function availableActions(state: ReviewState, duties: readonly Duty[]): ReviewAction[] {
   return (Object.keys(STEPS) as ReviewAction[]).filter((action) =>
-    STEPS[action].some((s) => s.from === state && s.duty === duty));
+    STEPS[action].some((s) => s.from === state && duties.includes(s.duty)));
 }
 
 const PAST: Record<ReviewAction, string> = {

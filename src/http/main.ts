@@ -4,7 +4,8 @@ import { logger } from '../logger.js';
 import { buildServer } from './server.js';
 
 const app = await buildServer({
-  trustProxy: config.http.trustProxy,
+  proxySecret: config.http.proxySecret,
+  console: { host: config.console.host, totpKey: config.console.totpKey },
   insecureDevCookie: config.http.insecureDevCookie,
 });
 if (config.http.insecureDevCookie) {

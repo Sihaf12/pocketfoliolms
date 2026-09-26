@@ -72,8 +72,36 @@ export const controlPool = new Pool({
   idleTimeoutMillis: 30_000,
 });
 
+/**
+ * The academy studio. Runs as app_studio: tenant RLS like app_user, plus
+ * writes to its own academy's private content and settings. Only the
+ * studio scope acquires it, so a learner request cannot write content.
+ */
+export const studioPool = new Pool({
+  connectionString: config.studioDatabaseUrl,
+  max: config.pool.studioMax,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 5_000,
+  statement_timeout: config.pool.statementTimeoutMs,
+});
+
+/**
+ * The platform console. Runs as app_console: platform content, the list
+ * of academies and the outbox across them, and nothing about learners.
+ * Only the console scope, on the console host, acquires it.
+ */
+export const consolePool = new Pool({
+  connectionString: config.consoleDatabaseUrl,
+  max: config.pool.consoleMax,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 5_000,
+  statement_timeout: config.pool.statementTimeoutMs,
+});
+
 requestPool.on('error', (err) => logger.error({ err }, 'request pool error'));
 controlPool.on('error', (err) => logger.error({ err }, 'control pool error'));
+studioPool.on('error', (err) => logger.error({ err }, 'studio pool error'));
+consolePool.on('error', (err) => logger.error({ err }, 'console pool error'));
 
 /* ------------------------------------------------------------------ */
 /* Unit of work                                                        */
@@ -105,8 +133,55 @@ export async function withTenant<T>(
   fn: (db: ScopedDb) => Promise<T>,
 ): Promise<T> {
   if (!opts.tenantId) throw new TenantContextMissingError();
+  return runScoped(requestPool, opts.tenantId, opts, (client) => fn(makeScopedDb(client, opts.tenantId, opts.actor ?? 'system')));
+}
 
-  const client: PoolClient = await requestPool.connect();
+/** The same unit of work, for the studio, as app_studio. */
+export async function withStudio<T>(
+  opts: RunOptions,
+  fn: (db: ScopedDb) => Promise<T>,
+): Promise<T> {
+  if (!opts.tenantId) throw new TenantContextMissingError();
+  return runScoped(studioPool, opts.tenantId, opts, (client) => fn(makeScopedDb(client, opts.tenantId, opts.actor ?? 'system')));
+}
+
+/** What the console works with: no tenant, and the platform audit log. */
+export interface ConsoleDb {
+  readonly actor: string;
+  query<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<T[]>;
+  one<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<T>;
+  maybeOne<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<T | null>;
+  /** Appends a hash-chained record to platform.audit_log, in this transaction. */
+  audit(entry: AuditEntry): Promise<void>;
+}
+
+/** A console unit of work, as app_console. No tenant is ever set. */
+export async function withConsole<T>(
+  opts: { actor: string; readOnly?: boolean },
+  fn: (db: ConsoleDb) => Promise<T>,
+): Promise<T> {
+  return runScoped(consolePool, '', opts, (client) => {
+    const q = makeQueries(client);
+    return fn({
+      actor: opts.actor,
+      ...q,
+      async audit(entry: AuditEntry) {
+        await q.query(
+          'SELECT platform.audit_append($1, $2, $3, $4, $5::jsonb)',
+          [opts.actor, entry.action, entry.entityType, entry.entityId ?? null, JSON.stringify(entry.payload ?? {})],
+        );
+      },
+    });
+  });
+}
+
+async function runScoped<T>(
+  pool: Pool,
+  tenantId: string,
+  opts: { actor?: string; readOnly?: boolean },
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client: PoolClient = await pool.connect();
   const started = Date.now();
   let committed = false;
   // Set once the connection's state can no longer be trusted, for example
@@ -120,11 +195,10 @@ export async function withTenant<T>(
     // SET LOCAL is scoped to this transaction. It cannot survive into
     // the next borrower of this connection. Values are bound rather
     // than interpolated, so a tenant id can never carry SQL with it.
-    await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [opts.tenantId]);
+    await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [tenantId]);
     await client.query(`SELECT set_config('app.actor', $1, true)`, [opts.actor ?? 'system']);
 
-    const db = makeScopedDb(client, opts.tenantId, opts.actor ?? 'system');
-    const result = await fn(db);
+    const result = await fn(client);
 
     await client.query('COMMIT');
     committed = true;
@@ -153,7 +227,7 @@ export async function withTenant<T>(
     client.release(broken);
     const ms = Date.now() - started;
     if (ms > config.pool.slowTransactionMs) {
-      logger.warn({ ms, tenantId: opts.tenantId }, 'slow transaction');
+      logger.warn({ ms, tenantId }, 'slow transaction');
     }
   }
 }
@@ -162,7 +236,7 @@ function toError(value: unknown): Error {
   return value instanceof Error ? value : new Error(String(value));
 }
 
-function makeScopedDb(client: PoolClient, tenantId: string, actor: string): ScopedDb {
+function makeQueries(client: PoolClient) {
   // Callers may fan out with Promise.all, but one client can only run one
   // statement at a time (pg 9 will reject overlap outright). Each statement
   // waits for the previous one to settle, whether it succeeded or failed.
@@ -179,8 +253,6 @@ function makeScopedDb(client: PoolClient, tenantId: string, actor: string): Scop
   };
 
   return {
-    tenantId,
-    actor,
     query,
     async one<T extends QueryResultRow>(text: string, values: unknown[] = []) {
       const rows = await query<T>(text, values);
@@ -195,14 +267,23 @@ function makeScopedDb(client: PoolClient, tenantId: string, actor: string): Scop
       if (rows.length > 1) throw new Error(`expected at most one row, received ${rows.length}`);
       return rows[0] ?? null;
     },
+  };
+}
+
+function makeScopedDb(client: PoolClient, tenantId: string, actor: string): ScopedDb {
+  const q = makeQueries(client);
+  return {
+    tenantId,
+    actor,
+    ...q,
     async enqueue(event: OutboxEvent) {
-      await query(
+      await q.query(
         `SELECT app.outbox_enqueue($1, $2::jsonb, $3, $4)`,
         [event.type, JSON.stringify(event.payload), event.idempotencyKey, event.partitionKey ?? ''],
       );
     },
     async audit(entry: AuditEntry) {
-      await query(
+      await q.query(
         `SELECT app.audit_append($1, $2, $3, $4, $5::jsonb)`,
         [actor, entry.action, entry.entityType, entry.entityId ?? null, JSON.stringify(entry.payload ?? {})],
       );
@@ -251,5 +332,5 @@ export async function withControl<T>(fn: (client: PoolClient) => Promise<T>): Pr
 }
 
 export async function shutdown(): Promise<void> {
-  await Promise.allSettled([requestPool.end(), controlPool.end()]);
+  await Promise.allSettled([requestPool.end(), controlPool.end(), studioPool.end(), consolePool.end()]);
 }

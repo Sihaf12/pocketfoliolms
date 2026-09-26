@@ -9,7 +9,10 @@ import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { requestPool, shutdown, withControl } from '../src/db/unitOfWork.js';
 import { normaliseHost } from '../src/http/tenantScope.js';
-import { NORTHGATE, PASSWORD, SABLE, removeHttpAccounts, server, tenantId, uniqueEmail } from './httpHarness.js';
+import {
+  CONSOLE, NORTHGATE, PASSWORD, SABLE, TEST_TOTP_KEY, removeHttpAccounts, server, tenantId, uniqueEmail,
+} from './httpHarness.js';
+import { ConsoleHostIsAnAcademyError } from '../src/http/server.js';
 
 let app: FastifyInstance;
 let northgate = '';
@@ -77,22 +80,32 @@ test('case, port and trailing-dot variants reach the same academy', async () => 
   }
 });
 
-test('X-Forwarded-Host is ignored unless it comes through a trusted proxy', async () => {
+test('forwarded headers are refused unless they come with the front end\'s secret', async () => {
   const smuggled = await signupAt('learn.unknown.example', { 'x-forwarded-host': NORTHGATE });
-  assert.equal(smuggled.statusCode, 404, 'an untrusted header cannot choose an academy');
+  assert.equal(smuggled.statusCode, 400, 'no secret: refused outright, not quietly ignored');
+  assert.equal(smuggled.json().error.code, 'forwarding_refused');
 
   const sideways = await signupAt(NORTHGATE, { 'x-forwarded-host': SABLE });
-  assert.equal(sideways.statusCode, 201);
-  assert.equal(await tenantOfUser(sideways.json().user.id), northgate, 'the Host header still decides');
+  assert.equal(sideways.statusCode, 400, 'even on a real academy host');
+  assert.equal((await signupAt(NORTHGATE, { 'x-forwarded-for': '203.0.113.1' })).statusCode, 400,
+    'any forwarded header counts, not just the host');
 
-  // inject() connects from 127.0.0.1, which this server is told to trust.
-  const proxied = await server({ trustProxy: ['127.0.0.1'] });
+  const secret = 'a-shared-secret-long-enough-to-matter-1234';
+  const fronted = await server({ proxySecret: secret });
   try {
-    const res = await signupAt('internal.lb', { 'x-forwarded-host': NORTHGATE }, proxied);
-    assert.equal(res.statusCode, 201, 'a trusted proxy may forward the public host');
+    const res = await signupAt('internal.backend', { 'x-forwarded-host': NORTHGATE, 'x-academy-proxy-secret': secret }, fronted);
+    assert.equal(res.statusCode, 201, 'with the secret, the forwarded host decides the academy');
     assert.equal(await tenantOfUser(res.json().user.id), northgate);
+
+    const wrong = await signupAt('internal.backend', { 'x-forwarded-host': NORTHGATE, 'x-academy-proxy-secret': secret + 'x' }, fronted);
+    assert.equal(wrong.statusCode, 400, 'a wrong secret is no secret');
+    const truncated = await signupAt('internal.backend', { 'x-forwarded-host': NORTHGATE, 'x-academy-proxy-secret': secret.slice(0, 10) }, fronted);
+    assert.equal(truncated.statusCode, 400);
+
+    const direct = await signupAt(NORTHGATE, {}, fronted);
+    assert.equal(direct.statusCode, 201, 'a request with no forwarded headers still uses its Host');
   } finally {
-    await proxied.close();
+    await fronted.close();
   }
 });
 
@@ -107,30 +120,46 @@ test('a tenant id in the body is rejected, not used', async () => {
   assert.equal(res.json().error.code, 'invalid_request');
 });
 
-test('every route except public certificate verification sits behind the tenant scope', async () => {
+test('every route sits in exactly one scope: public, academy, or console', async () => {
   const PUBLIC = new Set([
     'GET /api/v1/certificates/:serial', 'HEAD /api/v1/certificates/:serial',
     'GET /verify/:serial', 'HEAD /verify/:serial',
   ]);
-  assert.ok(app.routeList.length > 0);
+  const isConsole = (url: string) => url.startsWith('/api/console');
+  assert.ok(app.routeList.some((r) => isConsole(r.url)), 'the console is registered');
+  assert.ok(app.routeList.some((r) => r.url.startsWith('/api/studio')), 'the studio is registered');
+
+  const probe = (method: string, url: string, host: string) => app.inject({
+    method: method as 'GET',
+    url: url.replace(/:[A-Za-z]+/g, '00000000-0000-0000-0000-000000000000'),
+    headers: { host },
+  });
+  // HEAD responses carry the headers of the GET but no body to read.
+  const codeOf = (res: Awaited<ReturnType<typeof probe>>) =>
+    res.body && String(res.headers['content-type']).startsWith('application/json') ? res.json().error?.code : undefined;
+
   for (const { method, url } of app.routeList) {
     const key = `${method} ${url}`;
-    const res = await app.inject({
-      method: method as 'GET',
-      url: url.replace(/:[A-Za-z]+/g, '00000000-0000-0000-0000-000000000000'),
-      headers: { host: 'learn.unknown.example' },
-    });
-    if (method === 'HEAD') {
-      // No body to read; the matching GET checks the error code.
-      if (!PUBLIC.has(key)) assert.equal(res.statusCode, 404, key);
-    } else if (PUBLIC.has(key)) {
-      const code = String(res.headers['content-type']).startsWith('application/json') ? res.json().error?.code : undefined;
-      assert.notEqual(code, 'unknown_academy', `${key} must not need an academy`);
-    } else {
-      assert.equal(res.statusCode, 404, key);
-      assert.equal(res.json().error.code, 'unknown_academy', `${key} must resolve an academy first`);
+    for (const host of ['learn.unknown.example', NORTHGATE, CONSOLE]) {
+      const res = await probe(method, url, host);
+      const where = `${key} on ${host}`;
+      if (PUBLIC.has(key)) {
+        assert.notEqual(codeOf(res), 'unknown_academy', `${where}: public routes need no academy`);
+      } else if (isConsole(url)) {
+        if (host !== CONSOLE) {
+          assert.equal(res.statusCode, 404, where);
+          if (method !== 'HEAD') assert.equal(codeOf(res), 'not_found', `${where}: the console does not exist here`);
+        }
+      } else if (host !== NORTHGATE) {
+        assert.equal(res.statusCode, 404, where);
+        if (method !== 'HEAD') assert.equal(codeOf(res), 'unknown_academy', `${where}: academy routes need an academy host`);
+      }
     }
   }
+});
+
+test('the server refuses to start if the console host is an academy\'s domain', async () => {
+  await assert.rejects(server({ console: { host: NORTHGATE, totpKey: TEST_TOTP_KEY } }), ConsoleHostIsAnAcademyError);
 });
 
 /** Counts request-pool checkouts: for a host that resolves to nothing, each one is a resolver query. */

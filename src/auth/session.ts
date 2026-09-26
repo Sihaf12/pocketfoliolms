@@ -48,6 +48,7 @@ export async function readSession(db: ScopedDb, token: string | undefined): Prom
        FROM app.sessions s
        JOIN app.users u ON u.id = s.user_id
       WHERE s.token_hash = $1
+        AND s.kind = 'learner'
         AND s.revoked_at IS NULL
         AND s.expires_at > now()`,
     [hashToken(token)],
@@ -56,7 +57,7 @@ export async function readSession(db: ScopedDb, token: string | undefined): Prom
 
 export async function revokeSession(db: ScopedDb, token: string): Promise<void> {
   await db.query(
-    'UPDATE app.sessions SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL',
+    `UPDATE app.sessions SET revoked_at = now() WHERE token_hash = $1 AND kind = 'learner' AND revoked_at IS NULL`,
     [hashToken(token)],
   );
 }

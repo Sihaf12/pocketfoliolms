@@ -103,8 +103,9 @@ BEGIN
   PERFORM pg_temp.expect(pg_temp.refused($q$SELECT count(*) FROM app.studio_invitations$q$, ARRAY['42501'])
     AND pg_temp.refused($q$SELECT count(*) FROM app.domain_changes$q$, ARRAY['42501'])
     AND pg_temp.refused($q$SELECT count(*) FROM platform.staff$q$, ARRAY['42501'])
-    AND pg_temp.refused($q$SELECT count(*) FROM platform.audit_log$q$, ARRAY['42501']),
-    'app_user cannot read invitations, domain changes, staff or the platform audit log');
+    AND pg_temp.refused($q$SELECT count(*) FROM platform.audit_log$q$, ARRAY['42501'])
+    AND pg_temp.refused($q$SELECT count(*) FROM platform.staff_invitations$q$, ARRAY['42501']),
+    'app_user cannot read invitations, domain changes, staff, staff invitations or the platform audit log');
   PERFORM pg_temp.expect(pg_temp.refused($q$SELECT count(*) FROM app.tenants$q$, ARRAY['42501']),
     'app_user still cannot read app.tenants');
 END $$;
@@ -283,16 +284,23 @@ SET LOCAL ROLE app_studio;
 DO $$
 BEGIN
   PERFORM set_config('app.tenant_id', pg_temp.id('northgate')::text, true);
-  INSERT INTO app.studio_invitations (tenant_id, email, role, token_hash, invited_by, invited_by_kind)
-  VALUES (pg_temp.id('northgate'), 'new.author@example.com', 'author', sha256('proof-invite'::bytea), pg_temp.id('ann'), 'studio');
+  INSERT INTO app.studio_invitations (tenant_id, email, roles, token_hash, invited_by, invited_by_kind)
+  VALUES (pg_temp.id('northgate'), 'new.author@example.com', ARRAY['author', 'reviewer'], sha256('proof-invite'::bytea), pg_temp.id('ann'), 'studio');
   PERFORM pg_temp.expect(pg_temp.refused(format(
-    $q$INSERT INTO app.studio_invitations (tenant_id, email, role, token_hash, invited_by_kind, expires_at)
-       VALUES (%L, 'late@example.com', 'author', sha256('late'::bytea), 'studio', now() + interval '73 hours')$q$, pg_temp.id('northgate'))),
+    $q$INSERT INTO app.studio_invitations (tenant_id, email, roles, token_hash, invited_by_kind, expires_at)
+       VALUES (%L, 'late@example.com', ARRAY['author'], sha256('late'::bytea), 'studio', now() + interval '73 hours')$q$, pg_temp.id('northgate'))),
     'an invitation cannot outlive 72 hours');
   PERFORM pg_temp.expect(pg_temp.refused(format(
-    $q$INSERT INTO app.studio_invitations (tenant_id, email, role, token_hash, invited_by_kind)
-       VALUES (%L, 'learner@example.com', 'learner', sha256('learner'::bytea), 'studio')$q$, pg_temp.id('northgate'))),
-    'an invitation is for a studio role, never learner');
+    $q$INSERT INTO app.studio_invitations (tenant_id, email, roles, token_hash, invited_by_kind)
+       VALUES (%L, 'learner@example.com', ARRAY['author', 'learner'], sha256('learner'::bytea), 'studio')$q$, pg_temp.id('northgate'))),
+    'an invitation grants studio roles only, never learner');
+  PERFORM pg_temp.expect(pg_temp.refused(format(
+    $q$INSERT INTO app.studio_invitations (tenant_id, email, roles, token_hash, invited_by_kind)
+       VALUES (%L, 'nothing@example.com', ARRAY[]::text[], sha256('nothing'::bytea), 'studio')$q$, pg_temp.id('northgate'))),
+    'an invitation grants at least one role');
+  PERFORM pg_temp.expect(pg_temp.refused(format(
+    $q$UPDATE app.users SET studio_roles = ARRAY['author', 'platform_owner'] WHERE tenant_id = %L$q$, pg_temp.id('northgate'))),
+    'a user''s studio roles come from the four studio roles only');
 
   PERFORM set_config('app.tenant_id', pg_temp.id('sable')::text, true);
   PERFORM pg_temp.expect(NOT EXISTS (SELECT 1 FROM app.studio_invitations), 'another academy cannot see it');
@@ -308,6 +316,19 @@ BEGIN
   INSERT INTO platform.staff (email, display_name, role, password_hash, totp_secret)
   VALUES ('owner@example.com', 'Owner', 'platform_owner', 'x', 'JBSWY3DPEHPK3PXP');
   PERFORM pg_temp.expect(true, 'with TOTP it can');
+
+  PERFORM pg_temp.expect(pg_temp.refused(
+    $q$INSERT INTO platform.staff_invitations (email, role, token_hash, invited_by)
+       SELECT 'next@example.com', 'platform_owner', sha256('o'::bytea), id FROM platform.staff WHERE email = 'owner@example.com'$q$),
+    'the owner role cannot be invited');
+  PERFORM pg_temp.expect(pg_temp.refused(
+    $q$INSERT INTO platform.staff_invitations (email, role, token_hash, invited_by, expires_at)
+       SELECT 'late@example.com', 'platform_author', sha256('l'::bytea), id, now() + interval '73 hours'
+         FROM platform.staff WHERE email = 'owner@example.com'$q$),
+    'a staff invitation cannot outlive 72 hours');
+  INSERT INTO platform.staff_invitations (email, role, token_hash, invited_by)
+  SELECT 'reviewer@example.com', 'platform_reviewer', sha256('r'::bytea), id FROM platform.staff WHERE email = 'owner@example.com';
+  PERFORM pg_temp.expect(true, 'a reviewer can be invited');
 END $$;
 RESET ROLE;
 

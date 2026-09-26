@@ -13,6 +13,7 @@ the backend that enforces it.
     db/006_attempt_lessons.sql attempts record their lesson; one open paper at a time
     db/007_pathway_and_branding.sql lesson prerequisites, XP, onboarding answers, branding
     db/008_studio.sql      studio and console roles, the review workflow, staff, brand contract
+    db/009_studio_identity.sql studio roles as a set, staff invitations, TOTP replay guard
     db/tests/seed.sql      academies, courses and certificates for the proof tests
     db/tests/rls_proof.sql 51 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
@@ -32,13 +33,17 @@ the backend that enforces it.
     src/domain/pathway.ts       lesson availability: the one rule behind every lock
     src/domain/review.ts        the content review workflow and its separation rule
     packages/shared/            brand contract, contrast checks, lesson Markdown: one copy for API and studio
-    src/auth/                   scrypt passwords, RLS-backed sessions
     src/http/server.ts          Fastify: a public scope and a tenant scope
     src/http/tenantScope.ts     host -> academy, or 404; never a default
     src/http/routes/            the REST routes, one file per area
     src/http/routes/public/     certificate verification: no tenant, no session
     src/http/routes/pages.ts    GET / (branded client) and GET /verify/:serial
     src/http/brand.ts           brand tokens: allowlisted, validated, escaped
+    src/http/forwarding.ts      public host and client IP; forwarded headers need the front end's secret
+    src/http/studioScope.ts     /api/studio: studio sessions, role sets, app_studio
+    src/http/consoleScope.ts    /api/console: its own host only, staff sessions, app_console
+    src/auth/                   passwords, sessions, TOTP (RFC 6238), secrets sealed at rest
+    src/cli/createOwner.ts      npm run console:create-owner
 
     web/index.html              the academy client, served per host at /
     web/verify.html             the public, unbranded verification page
@@ -55,30 +60,45 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 110 tests
+    npm test                                             # 132 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow
 
 ### Connections
 
-Three roles, three URLs. Each has a default that works on a local
+Five roles, five URLs. Each has a default that works on a local
 PostgreSQL where your OS user is a superuser.
 
 | Variable               | Role             | Used by                       | Default                          |
 |------------------------|------------------|-------------------------------|----------------------------------|
 | `OWNER_DATABASE_URL`   | database owner   | `npm run migrate`             | `postgres:///academy` (OS user)  |
-| `DATABASE_URL`         | `app_user`       | request path, `npm run test:db` | see `src/config.ts`            |
-| `CONTROL_DATABASE_URL` | `app_control`    | provisioning, outbox relay    | see `src/config.ts`              |
+| `DATABASE_URL`         | `app_user`       | learner routes, `npm run test:db` | see `src/config.ts`          |
+| `STUDIO_DATABASE_URL`  | `app_studio`     | the academy studio            | see `src/config.ts`              |
+| `CONSOLE_DATABASE_URL` | `app_console`    | the platform console          | see `src/config.ts`              |
+| `CONTROL_DATABASE_URL` | `app_control`    | the outbox relay              | see `src/config.ts`              |
 
 Migrations create schemas, extensions and the two application roles, so
 they must run as the owner. `app_user` does not exist until
 `002_rls.sql` creates it, and could not create a schema if it did.
 
 The HTTP server (`npm start`) reads `HTTP_HOST`, `HTTP_PORT`,
-`TRUST_PROXY`, `WEB_ROOT` (default `web`) and `DEV_INSECURE_COOKIE`. The request host alone decides the academy.
-`TRUST_PROXY` is a comma-separated list of proxy addresses allowed to
-forward the public host in `X-Forwarded-Host`; leave it empty unless
-the server sits behind one, or any client could choose an academy.
+`PROXY_SECRET`, `CONSOLE_HOST`, `CONSOLE_TOTP_KEY`, `WEB_ROOT` (default
+`web`) and `DEV_INSECURE_COOKIE`.
+
+- **The host decides the academy.** Forwarded headers (`X-Forwarded-Host`,
+  `-For`, `-Proto`, `Forwarded`) are believed only when the request also
+  carries `X-Academy-Proxy-Secret` equal to `PROXY_SECRET`, which the
+  Next.js front end sends. Any forwarded header without it is refused
+  with a 400, so a load balancer in front must strip them, or the front
+  end must be the only way in. With no `PROXY_SECRET`, every forwarded
+  header is refused and the `Host` header decides.
+- **The console answers on `CONSOLE_HOST` only**, at `/api/console`. Empty
+  disables it. The server refuses to start if that host is an academy's
+  primary domain. `CONSOLE_TOTP_KEY` (32 bytes, base64) encrypts staff
+  TOTP secrets at rest.
+- **The first platform owner** is made with
+  `npm run console:create-owner -- --email … --name …`, which prints the
+  password and TOTP secret once. The owner role cannot be invited.
 
 Every tenant route is rate limited per client IP (300 a minute),
 counted before the host is resolved, and login and certificate
@@ -141,9 +161,8 @@ Nothing is shared between instances:
   balancer allow up to N times each limit. A shared store (Redis, for
   `@fastify/rate-limit`) is needed before the limits mean the same thing
   at scale.
-- The limits are per client IP. Behind a proxy, every request carries
-  the proxy's address unless `TRUST_PROXY` names it, which would put all
-  users behind one counter.
+- The limits are per client IP: the socket's, or `X-Forwarded-For` when
+  it arrived with the front end's secret.
 
 **The session cookie is `Secure`, so browsers only send it over HTTPS.**
 Academies are served on real domain names (the resolver rejects

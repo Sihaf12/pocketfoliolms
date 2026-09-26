@@ -6,20 +6,42 @@
  * after each suite, taking their sessions, attempts and enrolments with
  * them, so the seeded counts the SQL proof relies on stay put.
  */
+import pg from 'pg';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
-import { withControl } from '../src/db/unitOfWork.js';
+import { withConsole, withControl } from '../src/db/unitOfWork.js';
 import { buildServer, type ServerOptions } from '../src/http/server.js';
+import { hashPassword } from '../src/auth/password.js';
+import { keyFrom, seal } from '../src/auth/secretBox.js';
+import { newTotpSecret } from '../src/auth/totp.js';
+import type { StaffRole } from '../src/auth/staffSession.js';
 
 export const NORTHGATE = 'learn.northgate.ae';
 export const SABLE = 'training.sablewealth.io';
+export const CONSOLE = 'console.academy.test';
 export const PASSWORD = 'correct horse battery';
+/** A fixed test key. Real deployments take CONSOLE_TOTP_KEY from the environment. */
+export const TEST_TOTP_KEY = Buffer.alloc(32, 7).toString('base64');
 
 /**
- * Every suite sends all its requests from 127.0.0.1, so the tenant-wide
- * limit is lifted here unless a test sets it; the rate-limit tests do.
+ * The database owner, for clean-up only: platform staff and audit rows
+ * belong to no request role that may delete them, which is the point.
  */
+export const ownerPool = new pg.Pool({
+  connectionString: process.env.OWNER_DATABASE_URL ?? 'postgres:///academy', max: 2, allowExitOnIdle: true,
+});
+
+/** A server as the tests use it: the console enabled, and rate limits lifted unless a test sets them. */
 export async function server(opts: ServerOptions = {}): Promise<FastifyInstance> {
-  const app = await buildServer({ ...opts, limits: { tenant: { max: 100_000, windowMs: 60_000 }, ...opts.limits } });
+  const app = await buildServer({
+    console: { host: CONSOLE, totpKey: TEST_TOTP_KEY },
+    ...opts,
+    // Every suite signs in many times from 127.0.0.1. The rate-limit tests
+    // set their own limits; everything else runs without them.
+    limits: {
+      tenant: { max: 100_000, windowMs: 60_000 }, console: { max: 100_000, windowMs: 60_000 },
+      login: { max: 100_000, windowMs: 60_000 }, ...opts.limits,
+    },
+  });
   await app.ready();
   return app;
 }
@@ -32,7 +54,62 @@ export async function tenantId(slug: string): Promise<string> {
 export async function removeHttpAccounts(): Promise<void> {
   await withControl(async (c) => {
     await c.query(`DELETE FROM app.users WHERE email LIKE 'http-%@example.com'`);
+    await c.query(`DELETE FROM app.studio_invitations WHERE email LIKE 'http-%@example.com'`);
   });
+}
+
+/**
+ * Removes what the console tests made: academies, staff, and their
+ * invitations. An academy's audit history is append-only and cascades
+ * with it, so, for test clean-up alone, the owner lifts that trigger for
+ * one transaction. Nothing on the request path can.
+ */
+export async function removeConsoleFixtures(): Promise<void> {
+  const c = await ownerPool.connect();
+  try {
+    await c.query('BEGIN');
+    await c.query('ALTER TABLE app.system_audit_log DISABLE TRIGGER trg_audit_immutable');
+    await c.query(`DELETE FROM app.tenants WHERE slug LIKE 'http-%'`);
+    await c.query('ALTER TABLE app.system_audit_log ENABLE TRIGGER trg_audit_immutable');
+    await c.query('COMMIT');
+  } catch (err) {
+    await c.query('ROLLBACK');
+    throw err;
+  } finally {
+    c.release();
+  }
+  await ownerPool.query(`DELETE FROM platform.staff_invitations WHERE email LIKE 'http-%@example.com'`);
+  await ownerPool.query(`DELETE FROM platform.staff WHERE email LIKE 'http-%@example.com'`);
+}
+
+/** A studio member made directly, as a seed would, so tests start from a known team. */
+export async function studioMember(tenantSlug: string, roles: string[], label = 'studio') {
+  const email = uniqueEmail(label);
+  const passwordHash = await hashPassword(PASSWORD);
+  const id = await withControl(async (c) => (await c.query<{ id: string }>(
+    `INSERT INTO app.users (tenant_id, email, display_name, password_hash, studio_roles)
+     SELECT id, $2, 'Studio Member', $3, $4::text[] FROM app.tenants WHERE slug = $1 RETURNING id`,
+    [tenantSlug, email, passwordHash, roles])).rows[0]!.id);
+  return { id, email };
+}
+
+export async function studioLogin(app: FastifyInstance, host: string, email: string, password = PASSWORD) {
+  const res = await app.inject({ method: 'POST', url: '/api/studio/auth/login', headers: { host }, payload: { email, password } });
+  return { res, token: res.cookies.find((c) => c.name === 'studio_session')?.value };
+}
+
+export const asStudio = (token: string) => ({ cookie: `studio_session=${token}` });
+export const asStaff = (token: string) => ({ cookie: `console_session=${token}` });
+
+/** Platform staff made directly. An owner always gets a TOTP secret; others only if asked. */
+export async function staffMember(role: StaffRole, opts: { totp?: boolean } = {}) {
+  const email = uniqueEmail('staff');
+  const secret = role === 'platform_owner' || opts.totp ? newTotpSecret() : null;
+  const passwordHash = await hashPassword(PASSWORD);
+  const id = await withConsole({ actor: 'test' }, async (db) => (await db.one<{ id: string }>(
+    `INSERT INTO platform.staff (email, display_name, role, password_hash, totp_secret) VALUES ($1, 'Staff Member', $2, $3, $4) RETURNING id`,
+    [email, role, passwordHash, secret ? seal(secret, keyFrom(TEST_TOTP_KEY)) : null])).id);
+  return { id, email, secret };
 }
 
 /** The session token from a Set-Cookie header, if one was set. */
