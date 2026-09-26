@@ -18,6 +18,7 @@ import { placementRoutes } from './routes/placement.js';
 import { pathwayRoutes } from './routes/pathway.js';
 import { lessonRoutes } from './routes/lessons.js';
 import { checkRoutes } from './routes/checks.js';
+import { meRoutes } from './routes/me.js';
 import { certificateRoutes } from './routes/public/certificates.js';
 
 declare module 'fastify' {
@@ -86,6 +87,7 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
     await scope.register(pathwayRoutes);
     await scope.register(lessonRoutes);
     await scope.register(checkRoutes);
+    await scope.register(meRoutes);
   }, { prefix: '/api/v1' });
 
   return app;

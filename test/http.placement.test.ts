@@ -64,7 +64,7 @@ test('onboarding moves the learner on and emits once, however often it is saved'
   const { token, userId } = await signup(app, NORTHGATE);
   const first = await put(NORTHGATE, token, SELF_RATING);
   assert.equal(first.statusCode, 200);
-  assert.deepEqual(first.json(), { selfRating: SELF_RATING, lifecycle: 'onboarded' });
+  assert.deepEqual(first.json(), { selfRating: SELF_RATING, goal: null, dailyMinutes: null, lifecycle: 'onboarded' });
 
   const revised = { ...SELF_RATING, learn: 60 };
   assert.equal((await put(NORTHGATE, token, revised)).statusCode, 200);

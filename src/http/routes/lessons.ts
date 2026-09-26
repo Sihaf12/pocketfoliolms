@@ -3,9 +3,10 @@
  *
  * A lesson is served only if RLS lets this academy see its course, the
  * course is published and enabled in this academy's catalogue, and the
- * learner's baseline has opened its tier. Anything unseen is a 404 that
- * looks the same as a lesson that never existed; a locked tier is a 403
- * carrying the published gate text.
+ * learner's baseline has opened its tier and every lesson it requires
+ * has a passed check. Anything unseen is a 404 that looks the same as a
+ * lesson that never existed; a locked lesson is a 403 carrying the same
+ * reason the pathway shows for it.
  *
  * Opening a lesson, or drawing its check, enrols the learner in the
  * course the first time, copying the IB code held since signup.
@@ -13,10 +14,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { ScopedDb } from '../../db/unitOfWork.js';
 import type { Learner } from '../../auth/session.js';
-import { gateReason, tierUnlocked, type Tier, type TierScores } from '../../domain/placement.js';
+import type { Tier, TierScores } from '../../domain/placement.js';
+import { availability } from '../../domain/pathway.js';
 import { drawCheck } from '../../domain/papers.js';
 import { inAcademy, requireLearner, requirePlacement } from '../context.js';
 import { HttpError } from '../errors.js';
+import { passedLessons, unmetPrerequisites } from '../learning.js';
 import { inPaperOrder, paper, uuid, type PaperQuestion } from '../schemas.js';
 
 interface LessonRow {
@@ -32,6 +35,9 @@ interface LessonRow {
   reviewerName: string;
   reviewedAt: Date | null;
   tier: Tier;
+  courseTitle: string;
+  experience: string | null;
+  xp: number;
 }
 
 const lessonParams = {
@@ -43,17 +49,21 @@ const lessonParams = {
 
 const lessonSchema = {
   type: 'object',
-  required: ['id', 'courseId', 'position', 'title', 'bodyMd', 'videoAsset', 'transcript', 'durationSecs',
-    'authorName', 'reviewerName', 'reviewedAt', 'nextLessonId'],
+  required: ['id', 'courseId', 'courseTitle', 'tier', 'position', 'title', 'bodyMd', 'videoAsset', 'transcript',
+    'durationSecs', 'xp', 'experience', 'authorName', 'reviewerName', 'reviewedAt', 'nextLessonId'],
   properties: {
     id: { type: 'string' },
     courseId: { type: 'string' },
+    courseTitle: { type: 'string' },
+    tier: { type: 'string' },
     position: { type: 'integer' },
     title: { type: 'string' },
     bodyMd: { type: 'string' },
     videoAsset: { type: ['string', 'null'] },
     transcript: {},
     durationSecs: { type: 'integer' },
+    xp: { type: 'integer' },
+    experience: { type: ['string', 'null'] },
     authorName: { type: 'string' },
     reviewerName: { type: 'string' },
     reviewedAt: { type: ['string', 'null'] },
@@ -67,7 +77,7 @@ async function openLesson(db: ScopedDb, learner: Learner, baseline: TierScores, 
     `SELECT l.id, l.course_id AS "courseId", l.position, l.title, l.body_md AS "bodyMd",
             l.video_asset AS "videoAsset", l.transcript, l.duration_secs AS "durationSecs",
             l.author_name AS "authorName", l.reviewer_name AS "reviewerName", l.reviewed_at AS "reviewedAt",
-            c.tier
+            l.xp, l.experience, c.tier, c.title AS "courseTitle"
        FROM platform.lessons l
        JOIN platform.courses c ON c.id = l.course_id
        JOIN app.tenant_catalogues tc ON tc.course_id = c.id AND tc.enabled
@@ -75,8 +85,14 @@ async function openLesson(db: ScopedDb, learner: Learner, baseline: TierScores, 
     [lessonId],
   );
   if (!lesson) throw new HttpError(404, 'lesson_not_found', 'No such lesson.');
-  if (!tierUnlocked(lesson.tier, baseline)) {
-    throw new HttpError(403, 'tier_locked', gateReason(lesson.tier, baseline) ?? 'This tier is locked.');
+
+  // A passed lesson stays open for revision whatever its requirements say.
+  const passed = (await passedLessons(db, learner.id)).has(lesson.id);
+  const unmet = (await unmetPrerequisites(db, learner.id, [lesson.id])).get(lesson.id) ?? [];
+  const { state, gateReason, blockedBy } = availability(lesson.tier, baseline, passed, unmet);
+  if (state === 'locked') {
+    const code = blockedBy === 'tier' ? 'tier_locked' : 'prerequisite_required';
+    throw new HttpError(403, code, gateReason ?? 'This lesson is locked.');
   }
 
   const enrolled = await db.maybeOne<{ ibRefCode: string | null }>(
@@ -107,7 +123,7 @@ export async function lessonRoutes(app: FastifyInstance): Promise<void> {
     inAcademy(req, async (db) => {
       const learner = await requireLearner(db, req);
       const baseline = await requirePlacement(db, learner);
-      const { tier: _tier, reviewedAt, ...lesson } = await openLesson(db, learner, baseline, req.params.lessonId);
+      const { reviewedAt, ...lesson } = await openLesson(db, learner, baseline, req.params.lessonId);
       const next = await db.maybeOne<{ id: string }>(
         `SELECT id FROM platform.lessons WHERE course_id = $1 AND position > $2 ORDER BY position LIMIT 1`,
         [lesson.courseId, lesson.position],

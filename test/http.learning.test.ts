@@ -99,7 +99,8 @@ test('a lesson opens with its content and enrols the learner once, carrying the 
   const lesson = res.json();
   assert.equal(lesson.title, 'What a market is');
   assert.equal(lesson.nextLessonId, lessonIds['how-markets-work/2']);
-  assert.equal('tier' in lesson, false);
+  assert.equal(lesson.tier, 'learn');
+  assert.equal(lesson.courseTitle, 'How markets work');
 
   await get(NORTHGATE, token, `/api/v1/lessons/${lessonIds['how-markets-work/2']}`);
 

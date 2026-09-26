@@ -333,7 +333,7 @@ END $$;
 DO $$
 DECLARE f text;
 BEGIN
-  FOREACH f IN ARRAY ARRAY['app.resolve_tenant(text)', 'app.verify_certificate(text)'] LOOP
+  FOREACH f IN ARRAY ARRAY['app.resolve_tenant(text)', 'app.verify_certificate(text)', 'app.current_tenant_brand()'] LOOP
     PERFORM pg_temp.expect(
       (SELECT p.prosecdef
           AND p.proconfig @> ARRAY['search_path=pg_catalog, pg_temp']
@@ -432,8 +432,60 @@ BEGIN
   PERFORM pg_temp.expect(
     (SELECT bool_and(r.rolsuper OR r.rolbypassrls)
        FROM pg_proc p JOIN pg_roles r ON r.oid = p.proowner
-      WHERE p.oid IN ('app.resolve_tenant(text)'::regprocedure, 'app.verify_certificate(text)'::regprocedure)),
-    'resolve_tenant and verify_certificate are owned by a role that bypasses RLS');
+      WHERE p.oid IN ('app.resolve_tenant(text)'::regprocedure, 'app.verify_certificate(text)'::regprocedure,
+                      'app.current_tenant_brand()'::regprocedure)),
+    'every SECURITY DEFINER function is owned by a role that bypasses RLS');
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 19. A prerequisite link involving a private lesson stays with its academy
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE a uuid; b uuid; priv_lesson uuid; n integer;
+BEGIN
+  SELECT id INTO a FROM app.tenants_seed_view WHERE slug='northgate';
+  SELECT id INTO b FROM app.tenants_seed_view WHERE slug='sable';
+
+  PERFORM set_config('app.tenant_id', a::text, true);
+  SELECT l.id INTO priv_lesson FROM platform.lessons l JOIN platform.courses c ON c.id = l.course_id
+   WHERE c.slug = 'northgate-desk-rules';
+  SELECT count(*) INTO n FROM platform.lesson_prerequisites WHERE lesson_id = priv_lesson;
+  PERFORM pg_temp.expect(n = 1, 'an academy sees the prerequisites of its own private lesson');
+
+  PERFORM set_config('app.tenant_id', b::text, true);
+  SELECT count(*) INTO n FROM platform.lesson_prerequisites WHERE lesson_id = priv_lesson;
+  PERFORM pg_temp.expect(n = 0, 'tenant B cannot read prerequisites of tenant A''s private lesson');
+  SELECT count(*) INTO n FROM platform.lesson_prerequisites;
+  PERFORM pg_temp.expect(n >= 1, 'tenant B still reads prerequisites between platform lessons');
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 20. Branding: the academy in scope, only that academy, nothing without one
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE a uuid; b uuid; r record; n integer; out_cols integer;
+BEGIN
+  SELECT id INTO a FROM app.tenants_seed_view WHERE slug='northgate';
+  SELECT id INTO b FROM app.tenants_seed_view WHERE slug='sable';
+
+  PERFORM set_config('app.tenant_id', a::text, true);
+  SELECT count(*) INTO n FROM app.current_tenant_brand();
+  SELECT * INTO r FROM app.current_tenant_brand();
+  PERFORM pg_temp.expect(n = 1 AND r.name = 'Northgate Markets' AND r.brand->'tokens'->>'--brand' = '#1A6DC2',
+    'an academy reads its own name and brand');
+
+  PERFORM set_config('app.tenant_id', b::text, true);
+  SELECT * INTO r FROM app.current_tenant_brand();
+  PERFORM pg_temp.expect(r.name = 'Sable Wealth', 'with another tenant in scope, only that tenant''s brand comes back');
+
+  PERFORM set_config('app.tenant_id', '', true);
+  SELECT count(*) INTO n FROM app.current_tenant_brand();
+  PERFORM pg_temp.expect(n = 0, 'with no tenant in scope, no brand comes back');
+
+  SELECT count(*) INTO out_cols
+    FROM pg_proc p, unnest(p.proargmodes) m
+   WHERE p.oid = 'app.current_tenant_brand()'::regprocedure AND m = 't';
+  PERFORM pg_temp.expect(out_cols = 2, 'branding returns name and brand only, no id, domain or CRM settings');
 END $$;
 
 SELECT 'ALL MODULE 1 TESTS PASSED' AS result;

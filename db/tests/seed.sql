@@ -4,9 +4,11 @@ VALUES ('how-markets-work','How markets work','learn','Foundations',9,'published
 ON CONFLICT (slug) DO NOTHING;
 
 INSERT INTO app.tenants (slug,name,primary_domain,brand)
-VALUES ('northgate','Northgate Markets','learn.northgate.ae','{"brand":"#1A6DC2"}'),
-       ('sable','Sable Wealth','training.sablewealth.io','{"brand":"#6B3F7A"}')
-ON CONFLICT (slug) DO NOTHING;
+VALUES ('northgate','Northgate Markets','learn.northgate.ae',
+        '{"sub":"Northgate test academy","mode":"light","tokens":{"--brand":"#1A6DC2","--accent":"#F5C400"}}'),
+       ('sable','Sable Wealth','training.sablewealth.io',
+        '{"sub":"Sable test academy","mode":"dark","tokens":{"--brand":"#6B3F7A","--r":"10px"}}')
+ON CONFLICT (slug) DO UPDATE SET brand = EXCLUDED.brand;
 
 INSERT INTO app.users (tenant_id,email,display_name)
 SELECT id,'amara@example.com','Amara' FROM app.tenants WHERE slug='northgate'
@@ -77,6 +79,22 @@ SELECT l.course_id, l.id, c.tier, v.prompt,
   JOIN platform.courses c ON c.slug = v.slug
   JOIN platform.lessons l ON l.course_id = c.id AND l.position = v.position
  WHERE NOT EXISTS (SELECT 1 FROM platform.questions q WHERE q.prompt = v.prompt);
+
+-- XP for the lessons the HTTP tests pass, and one cross-course
+-- prerequisite: Reading the tape needs Orders and fills.
+UPDATE platform.lessons l SET xp = v.xp
+  FROM (VALUES ('how-markets-work', 1, 100), ('how-markets-work', 2, 150), ('reading-the-tape', 1, 200)) AS v(slug, position, xp),
+       platform.courses c
+ WHERE c.slug = v.slug AND l.course_id = c.id AND l.position = v.position;
+
+INSERT INTO platform.lesson_prerequisites (lesson_id, requires_lesson_id)
+SELECT need.id, has.id
+  FROM platform.lessons need JOIN platform.courses nc ON nc.id = need.course_id,
+       platform.lessons has  JOIN platform.courses hc ON hc.id = has.course_id
+ WHERE (nc.slug, need.position, hc.slug, has.position) IN
+       (('reading-the-tape', 1, 'how-markets-work', 2),
+        ('northgate-desk-rules', 1, 'how-markets-work', 1))
+ON CONFLICT DO NOTHING;
 
 -- Catalogues. Northgate offers everything but has switched Risk basics
 -- off. Sable's catalogue even names northgate's private course, which

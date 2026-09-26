@@ -11,8 +11,9 @@ the backend that enforces it.
     db/004_content_versions_rls.sql RLS on version snapshots, via the owning course
     db/005_request_path.sql resolve_tenant(), verify_certificate(), sessions
     db/006_attempt_lessons.sql attempts record their lesson; one open paper at a time
+    db/007_pathway_and_branding.sql lesson prerequisites, XP, onboarding answers, branding
     db/tests/seed.sql      academies, courses and certificates for the proof tests
-    db/tests/rls_proof.sql 42 assertions run as the unprivileged app role
+    db/tests/rls_proof.sql 51 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
 
     src/config.ts               environment-backed configuration
@@ -23,6 +24,7 @@ the backend that enforces it.
     src/domain/placement.ts     60/40 baseline, gates, check grading
     src/domain/papers.ts        server-drawn placement and check papers
     src/domain/serial.ts        random PA-XXXX-XXXX certificate serials
+    src/domain/pathway.ts       lesson availability: the one rule behind every lock
     src/auth/                   scrypt passwords, RLS-backed sessions
     src/http/server.ts          Fastify: a public scope and a tenant scope
     src/http/tenantScope.ts     host -> academy, or 404; never a default
@@ -37,11 +39,11 @@ the backend that enforces it.
     createdb academy
     npm run migrate                                      # as the database owner
     psql academy -f db/tests/seed.sql
-    psql academy -U app_user -f db/tests/rls_proof.sql   # 42 assertions
+    psql academy -U app_user -f db/tests/rls_proof.sql   # 51 assertions
 
     npm install
     npm run build
-    npm test                                             # 72 tests
+    npm test                                             # 79 tests
     npm run test:migrate                                 # migrate a fresh database
 
 ### Connections
