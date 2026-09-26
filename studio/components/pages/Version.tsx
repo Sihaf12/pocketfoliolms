@@ -4,11 +4,13 @@
  * the live content, who has handled it so far, and what this person can
  * do next. A lesson is shown the way a learner will see it.
  */
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type {
   CourseDetail, CourseSnapshot, GlossarySnapshot, LessonSnapshot, VersionView as View,
 } from '@/lib/content';
-import { FIELD_NAME, TIER_NAME, day } from '@/lib/format';
+import { FIELD_NAME, TIER_NAME, day, type Action } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading, StateChip } from '../bits';
 import { LessonPreview } from '../LessonPreview';
@@ -34,7 +36,34 @@ function History({ view }: { view: View }) {
   return <ol className="history">{lines.map((l) => <li key={l}>{l}</li>)}</ol>;
 }
 
-export function VersionScreen({ view, course, onChanged }: { view: View; course?: CourseDetail | null; onChanged(): void }) {
+/**
+ * What a publish did, said once it is done: published is not the same as
+ * seen by learners, and the person should know which it is.
+ */
+function AfterPublish({ view, course }: { view: View; course?: CourseDetail | null }) {
+  const ws = useWorkspace();
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => { box.current?.focus(); }, []);
+  const v = view.version;
+  if (v.entityType === 'lesson' && course && course.course.liveState !== 'published') {
+    return (
+      <div className="notice caution" role="status" tabIndex={-1} ref={box}>
+        <p><b>Published, but not yet seen by learners.</b></p>
+        <p>Its course, {course.course.title}, is still a draft. Nothing in it reaches learners until the course itself is published.</p>
+        <p><Link href={ws.href(`/courses/${course.course.id}#where`)}>Go to the course and where it stands</Link></p>
+      </div>
+    );
+  }
+  return <div className="notice success" role="status" tabIndex={-1} ref={box}><p><b>Published.</b></p></div>;
+}
+
+export function VersionScreen({ view, course, done, onChanged }: {
+  view: View;
+  course?: CourseDetail | null;
+  /** The action this person just took here, for the confirmation that follows it. */
+  done?: Action | null;
+  onChanged(action?: Action): void;
+}) {
   const ws = useWorkspace();
   const router = useRouter();
   const v = view.version;
@@ -52,6 +81,7 @@ export function VersionScreen({ view, course, onChanged }: { view: View; course?
 
       <div className="version">
         <div className="stack version-side">
+          {done === 'publish' && v.state === 'published' ? <AfterPublish view={view} course={course} /> : null}
           {view.readOnly ? <div className="notice"><p>Platform content. Your academy can offer or hide it in the catalogue; it is edited on the platform.</p></div> : null}
           {v.state === 'rejected' && v.rejectionNotes ? (
             <div className="notice danger"><p><b>Notes from the reviewer</b></p><p className="prewrap">{v.rejectionNotes}</p></div>
@@ -71,7 +101,7 @@ export function VersionScreen({ view, course, onChanged }: { view: View; course?
         <VersionActions versionId={v.id} entityId={v.entityId} entityType={v.entityType} actions={view.actions}
           onDone={(next, action) => {
             // A revision of a lesson or term opens on this same page, as its editor.
-            onChanged();
+            onChanged(action);
             if (action === 'revise') router.push(editorOf(next.entityId));
           }} />
         </div>
@@ -133,10 +163,12 @@ function GlossaryBody({ snapshot }: { snapshot: GlossarySnapshot }) {
 /** /versions/:id, where the review queue leads. */
 export function VersionPage({ versionId }: { versionId: string }) {
   const ws = useWorkspace();
+  const [done, setDone] = useState<Action | null>(null);
   const view = useLoad<View>(ws.content(`/versions/${versionId}`));
   const snapshot = view.data?.version.snapshot as Partial<LessonSnapshot> | undefined;
   const course = useLoad<CourseDetail>(view.data?.version.entityType === 'lesson' && snapshot?.courseId ? ws.content(`/courses/${snapshot.courseId}`) : null);
   if (!view.data) return <><Head title="Version" /><Loading error={view.error} /></>;
   if (view.data.version.entityType === 'lesson' && !course.data) return <><Head title={titleOf(view.data)} /><Loading error={course.error} /></>;
-  return <VersionScreen view={view.data} course={course.data} onChanged={view.reload} />;
+  return <VersionScreen view={view.data} course={course.data} done={done}
+    onChanged={(action) => { setDone(action ?? null); view.reload(); course.reload(); }} />;
 }

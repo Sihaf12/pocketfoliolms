@@ -4,12 +4,12 @@
  * review, and its lessons in order. Platform courses open read-only in
  * an academy's studio.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { call } from '@/lib/api';
 import type { CourseDetail, CourseSnapshot, Version, VersionView as View } from '@/lib/content';
-import { TIER_NAME, TIERS, moment, type Tier } from '@/lib/format';
+import { TIER_NAME, TIERS, moment, type ReviewState, type Tier } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading, StateChip, TierChip } from '../bits';
 import { ErrorScope, Field } from '../Form';
@@ -69,6 +69,42 @@ function Lessons({ detail, canWrite }: { detail: CourseDetail; canWrite: boolean
   );
 }
 
+/** What comes next for a course in each state, in the words of whoever is reading. */
+function nextStep(state: ReviewState, author: boolean): string {
+  switch (state) {
+    case 'draft': return author
+      ? 'A draft. Send it for review when it is ready: a reviewer checks it, then compliance publishes it.'
+      : 'A draft. Its author sends it for review when it is ready.';
+    case 'in_expert_review': return 'In expert review. A reviewer approves it for compliance, or sends it back with notes.';
+    case 'in_compliance_review': return 'In compliance review. Compliance publishes it to learners, or sends it back with notes.';
+    case 'rejected': return 'Sent back with notes. Its author starts a revision from them.';
+    case 'retired': return 'Withdrawn from every learner\'s path.';
+    case 'published': return 'Published.';
+  }
+}
+
+/** The course's own state and next action, first on the page, above its lessons. */
+function CourseStatus({ state, liveState, readOnly, children }: {
+  state: ReviewState; liveState: ReviewState; readOnly: boolean; children?: React.ReactNode;
+}) {
+  const ws = useWorkspace();
+  const box = useRef<HTMLElement>(null);
+  // Arriving from "where the course stands" on a lesson: the card is where to look.
+  useEffect(() => {
+    if (window.location.hash === '#where') { box.current?.scrollIntoView({ block: 'start' }); box.current?.focus({ preventScroll: true }); }
+  }, []);
+  return (
+    <section className="card stack status-card" id="where" aria-labelledby="where-title" tabIndex={-1} ref={box}>
+      <h2 id="where-title">Where the course stands</h2>
+      <p className="row tight"><StateChip state={state} /><span>{readOnly ? 'Published by the platform.' : nextStep(state, ws.has('author'))}</span></p>
+      {liveState !== 'published' && !readOnly ? (
+        <p className="soft">Learners see none of its lessons until the course itself is published, whatever state each lesson is in.</p>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
 export function CoursePage({ courseId }: { courseId: string }) {
   const ws = useWorkspace();
   const detail = useLoad<CourseDetail>(ws.content(`/courses/${courseId}`));
@@ -86,9 +122,9 @@ export function CoursePage({ courseId }: { courseId: string }) {
   return (
     <>
       <Head title={d.course.title} back={{ href: ws.href('/'), label: 'Content' }}
-        lead={<span className="row tight"><TierChip tier={d.course.tier} /><StateChip state={latest?.state ?? d.course.liveState} />{d.course.readOnly ? <span className="chip plain">Platform course, read-only</span> : null}</span>} />
+        lead={<span className="row tight"><TierChip tier={d.course.tier} />{d.course.readOnly ? <span className="chip plain">Platform course, read-only</span> : null}</span>} />
       {editable && latest && view.data
-        ? <CourseEditor key={latest.id} version={latest} actions={view.data.actions} onChanged={reload} />
+        ? <CourseEditor key={latest.id} version={latest} liveState={d.course.liveState} actions={view.data.actions} onChanged={reload} />
         : <CourseSummary detail={d} view={view.data ?? null} onChanged={reload} />}
       <Lessons detail={d} canWrite={ws.has('author')} />
     </>
@@ -99,6 +135,14 @@ function CourseSummary({ detail, view, onChanged }: { detail: CourseDetail; view
   const ws = useWorkspace();
   const s = view?.version.snapshot;
   return (
+    <>
+    <CourseStatus state={view?.version.state ?? detail.course.liveState} liveState={detail.course.liveState} readOnly={detail.course.readOnly}>
+      {view && view.actions.length ? (
+        <VersionActions versionId={view.version.id} entityId={view.version.entityId} entityType="course" actions={view.actions}
+          status={<>Version {view.version.number}. <Link href={ws.href(`/versions/${view.version.id}`)}>Read it as a reviewer</Link></>}
+          onDone={() => onChanged()} />
+      ) : null}
+    </CourseStatus>
     <section className="stack" aria-labelledby="about">
       <h2 id="about">About this course</h2>
       {view?.version.state === 'rejected' && view.version.rejectionNotes ? (
@@ -109,16 +153,14 @@ function CourseSummary({ detail, view, onChanged }: { detail: CourseDetail; view
         <dt>Length</dt><dd>About {s?.estMinutes ?? detail.course.estMinutes} minutes</dd>
         {s ? <><dt>Placement questions</dt><dd>{s.placementQuestions.length}</dd></> : null}
       </dl>
-      {view && view.actions.length ? (
-        <VersionActions versionId={view.version.id} entityId={view.version.entityId} entityType="course" actions={view.actions}
-          status={<>Version {view.version.number}. <Link href={ws.href(`/versions/${view.version.id}`)}>Read it as a reviewer</Link></>}
-          onDone={() => onChanged()} />
-      ) : null}
     </section>
+    </>
   );
 }
 
-function CourseEditor({ version, actions, onChanged }: { version: Version<CourseSnapshot>; actions: View['actions']; onChanged(): void }) {
+function CourseEditor({ version, liveState, actions, onChanged }: {
+  version: Version<CourseSnapshot>; liveState: ReviewState; actions: View['actions']; onChanged(): void;
+}) {
   const ws = useWorkspace();
   const [draft, setDraft] = useState<CourseSnapshot>(version.snapshot);
   const [saved, setSaved] = useState(JSON.stringify(version.snapshot));
@@ -143,6 +185,11 @@ function CourseEditor({ version, actions, onChanged }: { version: Version<Course
   }
 
   return (
+    <>
+    <CourseStatus state={version.state} liveState={liveState} readOnly={false}>
+      <VersionActions versionId={version.id} entityId={version.entityId} entityType="course" actions={actions.filter((a) => a === 'submit')}
+        before={save} onDone={() => onChanged()} onError={(err) => { ws.handle(err); setError(err); }} />
+    </CourseStatus>
     <section className="stack form-width" aria-labelledby="about">
       <h2 id="about">About this course</h2>
       <ErrorScope error={error}>
@@ -151,11 +198,13 @@ function CourseEditor({ version, actions, onChanged }: { version: Version<Course
       <p className="soft">Optional. They help place a new learner on the path; each one measures one tier.</p>
       <QuestionsEditor questions={draft.placementQuestions} path="placementQuestions" withTier noun="placement question"
         onChange={(q) => setDraft({ ...draft, placementQuestions: q.map((x) => ({ ...x, tier: x.tier ?? 'learn' })) })} />
-      <VersionActions versionId={version.id} entityId={version.entityId} entityType="course" actions={actions.filter((a) => a === 'submit')}
-        status={dirty ? 'Unsaved changes.' : `Saved ${moment(savedAt)}.`} before={save} onDone={() => onChanged()} onError={(err) => { ws.handle(err); setError(err); }}
-        secondary={<button type="button" className="btn" disabled={!dirty} onClick={() => void save().then((ok) => ok && ws.say('Draft saved'))}>Save draft</button>} />
+      <div className="row">
+        <button type="button" className="btn" disabled={!dirty} onClick={() => void save().then((ok) => ok && ws.say('Draft saved'))}>Save draft</button>
+        <span className="soft small">{dirty ? 'Unsaved changes.' : `Saved ${moment(savedAt)}.`}</span>
+      </div>
       </ErrorScope>
     </section>
+    </>
   );
 }
 

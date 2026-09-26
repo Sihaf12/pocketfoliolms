@@ -109,7 +109,7 @@ const DONE: Record<Action, string> = {
   submit: 'Sent for review',
   approve: 'Approved. It is with compliance now.',
   reject: 'Sent back to the author',
-  publish: 'Published. Learners see it now.',
+  publish: 'Published',
   retire: 'Withdrawn from every path',
   revise: 'A new draft is open',
 };

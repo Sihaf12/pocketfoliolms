@@ -13,7 +13,7 @@ import { call } from '@/lib/api';
 import {
   MIN_CHECK_QUESTIONS, lessonDraftBody, type CourseDetail, type LessonSnapshot, type Version, type VersionView as View,
 } from '@/lib/content';
-import { moment } from '@/lib/format';
+import { moment, type Action } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading, StateChip } from '../bits';
 import { ErrorScope, Field } from '../Form';
@@ -219,7 +219,8 @@ export function LessonPage({ lessonId }: { lessonId: string }) {
   const latest = history.data?.versions[0];
   const view = useLoad<View<LessonSnapshot>>(latest ? ws.content(`/versions/${latest.id}`) : null);
   const course = useLoad<CourseDetail>(latest ? ws.content(`/courses/${latest.snapshot.courseId}`) : null);
-  const reload = () => { history.reload(); view.reload(); course.reload(); };
+  const [done, setDone] = useState<Action | null>(null);
+  const reload = (action?: Action) => { setDone(action ?? null); history.reload(); view.reload(); course.reload(); };
 
   if (history.data && !latest) return <><Head title="Lesson" /><p>No such lesson here.</p></>;
   if (!latest || !view.data || !course.data || view.data.version.id !== latest.id) {
@@ -229,7 +230,7 @@ export function LessonPage({ lessonId }: { lessonId: string }) {
   if (editable) {
     return <Editor key={latest.id} course={course.data} initial={latest.snapshot} version={latest} actions={view.data.actions} onChanged={reload} />;
   }
-  return <VersionScreen view={view.data} course={course.data} onChanged={reload} />;
+  return <VersionScreen view={view.data} course={course.data} done={done} onChanged={reload} />;
 }
 
 export function NewLessonPage({ courseId }: { courseId: string }) {

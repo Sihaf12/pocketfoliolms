@@ -304,3 +304,34 @@ test('an open invitation can be reissued: the old link stops working and the new
   await expect(visitor.page.locator('.notice.danger')).toContainText('expired, been used');
   await visitor.close();
 });
+
+/** A lesson through expert review, its course left as a draft: made with the API as each person in turn. */
+async function lessonAwaitingCompliance(page: Page) {
+  await signInStudio(page, GTL, 'author');
+  const made = await draftLesson(page, { questions: [1, 2, 3, 4, 5].map((n) => ({
+    prompt: `Q${n}?`, options: [{ key: 'a', text: 'Yes' }, { key: 'b', text: 'No' }], correctKey: 'a', rationales: { a: 'Right.', b: 'Wrong.' },
+  })) });
+  const versions = (await api<{ versions: { id: string }[] }>(page, `/api/studio/entities/lesson/${made.lessonId}/versions`)).body.versions;
+  expect((await api(page, `/api/studio/versions/${versions[0]!.id}/submit`, { method: 'POST' })).status).toBe(200);
+  await signInStudio(page, GTL, 'reviewer');
+  expect((await api(page, `/api/studio/versions/${versions[0]!.id}/approve`, { method: 'POST' })).status).toBe(200);
+  return made;
+}
+
+test('publishing a lesson whose course is a draft says nothing reaches learners yet, and leads to the course', async ({ page }) => {
+  const { courseId, lessonId } = await lessonAwaitingCompliance(page);
+  await signInStudio(page, GTL, 'compliance');
+  await page.goto(at(GTL, `/studio/lessons/${lessonId}`));
+  await page.getByRole('button', { name: 'Publish to learners' }).click();
+  const notice = page.getByRole('status').filter({ hasText: 'Published, but not yet seen by learners.' });
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText('is still a draft. Nothing in it reaches learners until the course itself is published.');
+
+  await notice.getByRole('link', { name: 'Go to the course and where it stands' }).click();
+  await page.waitForURL(new RegExp(`/studio/courses/${courseId}#where$`));
+  const where = page.getByRole('region', { name: 'Where the course stands' });
+  await expect(where).toContainText('Draft');
+  await expect(where).toContainText('Learners see none of its lessons until the course itself is published');
+  const lessons = page.getByRole('heading', { level: 2, name: 'Lessons' });
+  expect((await where.boundingBox())!.y).toBeLessThan((await lessons.boundingBox())!.y);
+});
