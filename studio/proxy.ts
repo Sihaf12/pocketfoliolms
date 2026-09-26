@@ -1,7 +1,7 @@
 /**
  * Which pages a host gets. The console's host serves the console, at its
- * root; every other host is an academy, with the learner page at /, the
- * studio under /studio and certificate checks under /verify. A path that
+ * root; every other host is an academy, with the learner app at / and its
+ * own paths, the studio under /studio and certificate checks under /verify. A path that
  * belongs to the other surface is a plain 404 on this one. The API
  * enforces the same split again; this keeps the pages apart.
  *
@@ -10,7 +10,11 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 
-const ACADEMY_PATHS = [/^\/$/, /^\/studio(\/|$)/, /^\/verify\//];
+/** An academy's pages: the learner app, the studio, and certificate checks. */
+const ACADEMY_PATHS = [
+  /^\/$/, /^\/studio(\/|$)/, /^\/verify(\/|$)/,
+  /^\/(signup|signin|onboarding|placement|start|path|explore|progress|me)$/, /^\/learn\//,
+];
 
 function hostOf(request: NextRequest): string {
   return (request.headers.get('host') ?? '').toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');

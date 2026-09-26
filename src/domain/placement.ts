@@ -53,6 +53,13 @@ export function tierUnlocked(tier: Tier, b: TierScores): boolean {
   }
 }
 
+/** What opens a tier, said without anyone's scores: for pages anyone can read. */
+export function tierRequirement(tier: Tier): string | null {
+  if (tier === 'apply') return 'Unlocks at Learn 50';
+  if (tier === 'specialise') return 'Unlocks at Learn 70 and Safeguard 50';
+  return null;
+}
+
 export function gateReason(tier: Tier, b: TierScores): string | null {
   if (tierUnlocked(tier, b)) return null;
   if (tier === 'apply') return `Unlocks at Learn 50 or above. You are at ${b.learn}.`;

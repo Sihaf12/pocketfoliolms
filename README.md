@@ -58,7 +58,9 @@ platform console as a Next.js front end.
     test/platform.test.ts       integration tests against a real database
     test/http.*.test.ts         the REST routes through app.inject()
 
-    studio/                     Next.js: the academy studio and the platform console
+    studio/                     Next.js: the learner app, the academy studio and the platform console
+    studio/app/(learner)/       the learner app, from design/learner-journey.html (Module 4b)
+    studio/app/(staff)/         the studio (/studio) and the console (its own host)
     studio/proxy.ts             which host gets which pages: studio on academies, console on its host
     studio/app/api/[...path]    every /api request, forwarded to Fastify with the shared secret
     studio/components/LessonPreview.tsx  the lesson as a learner reads it, via packages/shared
@@ -75,12 +77,12 @@ platform console as a Next.js front end.
 
     npm install
     npm run build
-    npm test                                             # 167 tests
+    npm test                                             # 170 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow (75)
     npm run typecheck                                    # the API, the studio and the end-to-end specs
     npx playwright install chromium                      # once
-    npm run test:e2e                                     # 42 browser tests, on academy_e2e
+    npm run test:e2e                                     # 52 browser tests, on academy_e2e
 
 ### Connections
 

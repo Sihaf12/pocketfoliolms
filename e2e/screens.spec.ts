@@ -5,7 +5,7 @@
  * for the keyboard, and nothing moving under reduced motion.
  */
 import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test';
-import { ACADEMIES, CONSOLE, GTL, api, at, expectAccessible, shot, signInConsole, signInStudio, team, unique } from './helpers';
+import { ACADEMIES, CONSOLE, GTL, api, at, expectAccessible, expectKeyboardFocus, expectStill, shot, signInConsole, signInStudio, team, unique } from './helpers';
 
 const QUESTION = (n: number) => ({
   prompt: `Question ${n}?`,
@@ -47,44 +47,6 @@ async function learner(browser: Browser, info: TestInfo, host: string): Promise<
   await api(page, `/api/v1/placement/${paper.attemptId}/submission`, { method: 'POST', data: { answers } });
   await context.close();
   return signup.body.user.id;
-}
-
-/** The keyboard reaches the page and every stop it lands on shows the brand-coloured ring. */
-async function expectKeyboardFocus(page: Page, what: string) {
-  await page.locator('body').click({ position: { x: 1, y: 1 } });
-  const brand = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--brand').trim());
-  for (let i = 0; i < 4; i++) {
-    await page.keyboard.press('Tab');
-    const ring = await page.evaluate(() => {
-      const el = document.activeElement as HTMLElement | null;
-      if (!el || el === document.body) return null;
-      const s = getComputedStyle(el);
-      return { tag: el.tagName, style: s.outlineStyle, width: parseFloat(s.outlineWidth), color: s.outlineColor, visible: el.matches(':focus-visible') };
-    });
-    if (!ring) continue;
-    expect(ring.visible, `${what}: focus stop ${i + 1} (${ring.tag}) is focus-visible`).toBe(true);
-    expect(ring.style, `${what}: focus stop ${i + 1} (${ring.tag}) has an outline`).not.toBe('none');
-    expect(ring.width, `${what}: focus stop ${i + 1} (${ring.tag}) outline width`).toBeGreaterThanOrEqual(2);
-    expect(toHex(ring.color), `${what}: focus stop ${i + 1} (${ring.tag}) outline is the brand colour`).toBe(brand.toUpperCase());
-  }
-}
-
-function toHex(rgb: string): string {
-  const m = rgb.match(/\d+/g);
-  if (!m) return rgb;
-  return `#${m.slice(0, 3).map((n) => Number(n).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
-}
-
-/** Under reduced motion nothing animates and nothing transitions. */
-async function expectStill(page: Page, what: string) {
-  const moving = await page.evaluate(() => [...document.querySelectorAll('*')].flatMap((el) => {
-    const s = getComputedStyle(el);
-    const durations = `${s.transitionDuration},${s.animationDuration}`.split(',').map((d) => parseFloat(d));
-    return (s.animationName !== 'none' && parseFloat(s.animationDuration) > 0) || durations.some((d) => d > 0)
-      ? [`${el.tagName.toLowerCase()}.${String((el as HTMLElement).className).split(' ')[0]}`] : [];
-  }));
-  expect(moving, `${what}: moves under reduced motion`).toEqual([]);
-  expect(await page.evaluate(() => document.getAnimations().length), `${what}: running animations`).toBe(0);
 }
 
 async function check(page: Page, info: TestInfo, url: string, name: string, ready: string | RegExp) {

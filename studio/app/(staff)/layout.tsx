@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Nunito_Sans, Poppins } from 'next/font/google';
 import './globals.css';
 
+// The skill's two families: Poppins for display, Nunito Sans for reading.
 const poppins = Poppins({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-poppins', display: 'swap' });
 const nunito = Nunito_Sans({ subsets: ['latin'], weight: ['400', '600', '700'], variable: '--font-nunito', display: 'swap' });
 

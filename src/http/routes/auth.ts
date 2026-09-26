@@ -9,7 +9,7 @@ import type { FastifyInstance } from 'fastify';
 import { hashPassword, verifyPassword } from '../../auth/password.js';
 import { issueSession, revokeSession, SESSION_COOKIE, type Lifecycle } from '../../auth/session.js';
 import { clearSessionCookie, inAcademy, setSessionCookie } from '../context.js';
-import { HttpError } from '../errors.js';
+import { HttpError, fieldError } from '../errors.js';
 import type { RouteLimit } from '../server.js';
 
 interface User {
@@ -87,7 +87,7 @@ export async function authRoutes(app: FastifyInstance, opts: { loginLimit: Route
          RETURNING ${USER_COLUMNS}`,
         [address, displayName, locale, passwordHash, ibRefCode],
       );
-      if (!user) throw new HttpError(409, 'email_taken', 'An account with this email already exists here.');
+      if (!user) throw fieldError(409, 'email_taken', 'email', 'An account with this email already exists here. Sign in instead.');
 
       await db.enqueue({
         type: 'lead.registered',

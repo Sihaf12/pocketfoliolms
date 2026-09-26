@@ -21,6 +21,7 @@ import rateLimit from '@fastify/rate-limit';
 import { HttpError, errorBody, handleError } from './errors.js';
 import { tenantScope } from './tenantScope.js';
 import { authRoutes } from './routes/auth.js';
+import { academyRoutes } from './routes/academy.js';
 import { onboardingRoutes } from './routes/onboarding.js';
 import { placementRoutes } from './routes/placement.js';
 import { pathwayRoutes } from './routes/pathway.js';
@@ -198,6 +199,7 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
       await studio.register(studioOutboxRoutes);
     }, { prefix: '/api/studio' });
     await scope.register(async (api) => {
+      await api.register(academyRoutes);
       await api.register(authRoutes, { loginLimit: limits.login });
       await api.register(onboardingRoutes);
       await api.register(placementRoutes);
