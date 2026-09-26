@@ -10,6 +10,7 @@ the backend that enforces it.
     db/003_platform_rls.sql RLS on platform courses, lessons, questions
     db/004_content_versions_rls.sql RLS on version snapshots, via the owning course
     db/005_request_path.sql resolve_tenant(), verify_certificate(), sessions
+    db/006_attempt_lessons.sql attempts record their lesson; one open paper at a time
     db/tests/seed.sql      academies, courses and certificates for the proof tests
     db/tests/rls_proof.sql 41 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
@@ -40,7 +41,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 63 tests
+    npm test                                             # 66 tests
     npm run test:migrate                                 # migrate a fresh database
 
 ### Connections

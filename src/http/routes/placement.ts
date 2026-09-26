@@ -76,13 +76,16 @@ export async function placementRoutes(app: FastifyInstance): Promise<void> {
 
       // An open paper is handed back rather than redrawn, so asking again
       // cannot be used to shop for easier questions.
-      const open = await db.maybeOne<{ id: string; questionIds: string[] }>(
-        `SELECT id, question_ids AS "questionIds" FROM app.quiz_attempts
-          WHERE user_id = $1 AND kind = 'placement' AND submitted_at IS NULL
-          ORDER BY started_at DESC LIMIT 1`,
-        [learner.id],
-      );
-      if (open) return { status: 200 as const, body: { attemptId: open.id, questions: await paperFor(db, open.questionIds) } };
+      const openPaper = async () => {
+        const open = await db.maybeOne<{ id: string; questionIds: string[] }>(
+          `SELECT id, question_ids AS "questionIds" FROM app.quiz_attempts
+            WHERE user_id = $1 AND kind = 'placement' AND submitted_at IS NULL`,
+          [learner.id],
+        );
+        return open && { status: 200 as const, body: { attemptId: open.id, questions: await paperFor(db, open.questionIds) } };
+      };
+      const existing = await openPaper();
+      if (existing) return existing;
 
       const bank = await db.query<PaperQuestion & { tier: Tier }>(
         `SELECT q.id, q.tier, q.prompt, q.options
@@ -95,13 +98,20 @@ export async function placementRoutes(app: FastifyInstance): Promise<void> {
         throw new HttpError(503, 'placement_unavailable', 'Placement is not available yet.');
       }
 
-      const attempt = await db.one<{ id: string }>(
+      // A concurrent draw may have inserted first. The unique index on open
+      // placement papers makes this insert wait for it, then do nothing, and
+      // the caller gets the paper that won.
+      const attempt = await db.maybeOne<{ id: string }>(
         `INSERT INTO app.quiz_attempts (tenant_id, user_id, kind, question_ids, total_count)
          VALUES (app.current_tenant(), $1, 'placement', $2::uuid[], $3)
+         ON CONFLICT (user_id) WHERE kind = 'placement' AND submitted_at IS NULL DO NOTHING
          RETURNING id`,
         [learner.id, questions.map((q) => q.id), questions.length],
       );
-      return { status: 201 as const, body: { attemptId: attempt.id, questions } };
+      if (attempt) return { status: 201 as const, body: { attemptId: attempt.id, questions } };
+      const winner = await openPaper();
+      if (!winner) throw new Error('placement insert conflicted but no open paper is visible');
+      return winner;
     });
     return reply.status(status).send(body);
   });

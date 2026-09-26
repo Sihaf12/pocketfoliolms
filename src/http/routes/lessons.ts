@@ -128,16 +128,16 @@ export async function lessonRoutes(app: FastifyInstance): Promise<void> {
         'SELECT id, prompt, options FROM platform.questions WHERE id = ANY($1::uuid[])', [ids]));
 
       // Hand back an open paper for this lesson rather than redrawing.
-      const open = await db.maybeOne<{ id: string; questionIds: string[] }>(
-        `SELECT a.id, a.question_ids AS "questionIds"
-           FROM app.quiz_attempts a
-          WHERE a.user_id = $1 AND a.kind = 'knowledge_check' AND a.submitted_at IS NULL
-            AND a.course_id = $2
-            AND a.question_ids <@ ARRAY(SELECT q.id FROM platform.questions q WHERE q.lesson_id = $3)
-          ORDER BY a.started_at DESC LIMIT 1`,
-        [learner.id, lesson.courseId, lessonId],
-      );
-      if (open) return { status: 200 as const, body: { attemptId: open.id, questions: await questionsFor(open.questionIds) } };
+      const openPaper = async () => {
+        const open = await db.maybeOne<{ id: string; questionIds: string[] }>(
+          `SELECT id, question_ids AS "questionIds" FROM app.quiz_attempts
+            WHERE user_id = $1 AND lesson_id = $2 AND kind = 'knowledge_check' AND submitted_at IS NULL`,
+          [learner.id, lessonId],
+        );
+        return open && { status: 200 as const, body: { attemptId: open.id, questions: await questionsFor(open.questionIds) } };
+      };
+      const existing = await openPaper();
+      if (existing) return existing;
 
       const bank = await db.query<{ id: string }>(
         'SELECT id FROM platform.questions WHERE lesson_id = $1 AND NOT is_placement',
@@ -147,13 +147,19 @@ export async function lessonRoutes(app: FastifyInstance): Promise<void> {
       if (!drawn) throw new HttpError(409, 'check_unavailable', 'This lesson has no knowledge check yet.');
 
       const ids = drawn.map((q) => q.id);
-      const attempt = await db.one<{ id: string }>(
-        `INSERT INTO app.quiz_attempts (tenant_id, user_id, course_id, kind, question_ids, total_count)
-         VALUES (app.current_tenant(), $1, $2, 'knowledge_check', $3::uuid[], $4)
+      // As with placement: a concurrent draw that inserted first wins, and
+      // this caller is handed its paper.
+      const attempt = await db.maybeOne<{ id: string }>(
+        `INSERT INTO app.quiz_attempts (tenant_id, user_id, course_id, lesson_id, kind, question_ids, total_count)
+         VALUES (app.current_tenant(), $1, $2, $3, 'knowledge_check', $4::uuid[], $5)
+         ON CONFLICT (user_id, lesson_id) WHERE kind = 'knowledge_check' AND submitted_at IS NULL DO NOTHING
          RETURNING id`,
-        [learner.id, lesson.courseId, ids, ids.length],
+        [learner.id, lesson.courseId, lessonId, ids, ids.length],
       );
-      return { status: 201 as const, body: { attemptId: attempt.id, questions: await questionsFor(ids) } };
+      if (attempt) return { status: 201 as const, body: { attemptId: attempt.id, questions: await questionsFor(ids) } };
+      const winner = await openPaper();
+      if (!winner) throw new Error('check insert conflicted but no open paper is visible');
+      return winner;
     });
     return reply.status(status).send(body);
   });
