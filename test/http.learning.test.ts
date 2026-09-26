@@ -233,6 +233,49 @@ test('a lesson failed first and passed on a retake emits the North Star once, on
   assert.equal(events[0]!.payload.attempt_id, retake.attemptId);
 });
 
+test('a replayed submission returns the stored grade, not a regrade', async () => {
+  const { token } = await placedLearner(app, NORTHGATE);
+  const paper = (await drawCheck(NORTHGATE, token, 'how-markets-work/1')).json<Paper>();
+  const first = (await submit(NORTHGATE, token, paper.attemptId, answersFor(paper, 2))).json();
+  assert.equal(first.correct, 2);
+
+  // Change the answer key after the fact. A regrade would now score 1/3.
+  const changed = paper.questions[0]!.id;
+  await withControl((c) => c.query(`UPDATE platform.questions SET correct_key = 'b' WHERE id = $1`, [changed]));
+  try {
+    const replay = (await submit(NORTHGATE, token, paper.attemptId, answersFor(paper, 2))).json();
+    assert.equal(replay.correct, 2, 'correct_count as stored');
+    assert.equal(replay.passed, true, 'passed as stored');
+    assert.equal(replay.stars, 2, 'stars as stored');
+    assert.equal(replay.total, 3);
+  } finally {
+    await withControl((c) => c.query(`UPDATE platform.questions SET correct_key = 'a' WHERE id = $1`, [changed]));
+  }
+});
+
+test('progress counts the lessons recorded on passed attempts, not how questions are tagged', async () => {
+  const { token } = await placedLearner(app, NORTHGATE);
+  const lessonTwo = (await drawCheck(NORTHGATE, token, 'how-markets-work/2')).json<Paper>();
+  await submit(NORTHGATE, token, lessonTwo.attemptId, answersFor(lessonTwo, 3));
+
+  // A lesson-1 paper whose questions are re-tagged to lesson 2 before it
+  // is submitted. By tags it would add nothing; by attempt it is lesson 1.
+  const lessonOne = (await drawCheck(NORTHGATE, token, 'how-markets-work/1')).json<Paper>();
+  const ids = lessonOne.questions.map((q) => q.id);
+  await withControl((c) => c.query('UPDATE platform.questions SET lesson_id = $2 WHERE id = ANY($1::uuid[])',
+    [ids, lessonIds['how-markets-work/2']]));
+  try {
+    await submit(NORTHGATE, token, lessonOne.attemptId, answersFor(lessonOne, 3));
+  } finally {
+    await withControl((c) => c.query('UPDATE platform.questions SET lesson_id = $2 WHERE id = ANY($1::uuid[])',
+      [ids, lessonIds['how-markets-work/1']]));
+  }
+
+  const path = (await get(NORTHGATE, token, '/api/v1/pathway')).json<PathwayBody>();
+  const markets = path.tiers.find((t) => t.tier === 'learn')!.courses.find((c) => c.slug === 'how-markets-work')!;
+  assert.equal(markets.progressPct, 100, 'both lessons passed, whatever the questions now say');
+});
+
 test('one of three fails and emits nothing', async () => {
   const { token, userId } = await placedLearner(app, NORTHGATE);
   const paper = (await drawCheck(NORTHGATE, token, 'how-markets-work/1')).json<Paper>();

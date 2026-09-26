@@ -52,7 +52,7 @@ const resultSchema = {
   },
 } as const;
 
-/** Grading is a pure function of the paper and the answers, so a replay reproduces it exactly. */
+/** Grades a fresh submission. A replay does not come through here; it reads the stored grade. */
 function grade(keys: KeyRow[], answers: Record<string, string>): CheckResult {
   const feedback = keys.map((q) => {
     const chosenKey = answers[q.id] ?? null;
@@ -63,17 +63,22 @@ function grade(keys: KeyRow[], answers: Record<string, string>): CheckResult {
   return { correct, total: keys.length, ...gradeCheck(correct), feedback };
 }
 
+/**
+ * Progress is the share of the course's lessons that have a passed check,
+ * counted from the lesson each attempt recorded at draw. Lessons since
+ * removed from the course no longer count.
+ */
 async function recordProgress(db: ScopedDb, userId: string, courseId: string): Promise<void> {
   await db.query(
     `UPDATE app.enrolments e
         SET progress_pct = p.pct,
             state        = CASE WHEN p.pct >= 100 THEN 'completed' ELSE 'in_progress' END,
             completed_at = CASE WHEN p.pct >= 100 THEN COALESCE(e.completed_at, now()) END
-       FROM (SELECT LEAST(100, round(100.0 * count(DISTINCT q.lesson_id)
+       FROM (SELECT LEAST(100, round(100.0 * count(DISTINCT a.lesson_id)
                      / NULLIF((SELECT count(*) FROM platform.lessons WHERE course_id = $2), 0)))::smallint AS pct
                FROM app.quiz_attempts a
-               JOIN platform.questions q ON q.id = ANY(a.question_ids)
-              WHERE a.user_id = $1 AND a.course_id = $2 AND a.kind = 'knowledge_check' AND a.passed) p
+               JOIN platform.lessons l ON l.id = a.lesson_id AND l.course_id = $2
+              WHERE a.user_id = $1 AND a.kind = 'knowledge_check' AND a.passed) p
       WHERE e.user_id = $1 AND e.course_id = $2 AND p.pct IS NOT NULL`,
     [userId, courseId],
   );
@@ -92,9 +97,11 @@ export async function checkRoutes(app: FastifyInstance): Promise<void> {
         // Locked, so two submissions racing each other grade once.
         const attempt = await db.maybeOne<{
           courseId: string; lessonId: string; questionIds: string[]; stored: Record<string, string>; submitted: boolean;
+          correctCount: number; totalCount: number; passed: boolean; stars: number;
         }>(
           `SELECT course_id AS "courseId", lesson_id AS "lessonId", question_ids AS "questionIds", answers AS stored,
-                  submitted_at IS NOT NULL AS submitted
+                  submitted_at IS NOT NULL AS submitted,
+                  correct_count AS "correctCount", total_count AS "totalCount", passed, stars
              FROM app.quiz_attempts
             WHERE id = $1 AND user_id = $2 AND kind = 'knowledge_check'
             FOR UPDATE`,
@@ -106,7 +113,17 @@ export async function checkRoutes(app: FastifyInstance): Promise<void> {
           'SELECT id, correct_key AS "correctKey", rationales FROM platform.questions WHERE id = ANY($1::uuid[])',
           [attempt.questionIds],
         ));
-        if (attempt.submitted) return grade(keys, attempt.stored);
+        if (attempt.submitted) {
+          // The grade given at submission stands, even if an answer key has
+          // been corrected since. Feedback is rebuilt from the stored answers.
+          return {
+            correct: attempt.correctCount,
+            total: attempt.totalCount,
+            passed: attempt.passed,
+            stars: attempt.stars,
+            feedback: grade(keys, attempt.stored).feedback,
+          };
+        }
 
         const onPaper = new Set(attempt.questionIds);
         if (Object.keys(answers).some((id) => !onPaper.has(id))) {
