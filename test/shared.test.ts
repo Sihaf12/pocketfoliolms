@@ -4,6 +4,8 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { VIDEO_ASSET, videoAssetProblem } from '../packages/shared/content.js';
+import { lessonDraftSchema } from '../src/content/model.js';
 import { BRAND_TOKENS, DEFAULT_TOKENS, resolveTokens, sanitiseBrand } from '../packages/shared/brand.js';
 import { CONTRAST_PAIRS, checkPalette, contrastRatio } from '../packages/shared/contrast.js';
 import { escapeHtml, inline, lessonProblems, parseLesson } from '../packages/shared/markdown.js';
@@ -78,4 +80,20 @@ test('every demo lesson passes the submission check, and broken lessons are expl
   assert.ok(lessonProblems('## Step\nText with [[broken term]]').includes('Write every glossary term as [[term|definition]].'));
   assert.ok(lessonProblems('## Step\nText\n\n### Too deep\nx').some((p) => p.startsWith('Use "## "')));
   assert.ok(lessonProblems('## Empty\n\n## Next\nok').includes('Step 1 ("Empty") needs some text.'));
+});
+
+test('the video reference rule is one rule: the API schema uses the shared pattern the studio checks with', () => {
+  assert.equal(lessonDraftSchema.properties.videoAsset.pattern, VIDEO_ASSET.source);
+  for (const ok of [null, '', 'lessons/reading-a-spread.mp4', 'a', 'A1/b_c.d-e']) assert.equal(videoAssetProblem(ok), null, String(ok));
+  const problems: [string, RegExp][] = [
+    ['https://cdn.example.com/v.mp4', /not a web address/],
+    ['lessons/a video.mp4', /spaces/],
+    ['/lessons/v.mp4', /Start with a letter or a digit/],
+    ['lessons/v?.mp4', /only letters, digits/],
+    ['a'.repeat(301), /300/],
+  ];
+  for (const [value, says] of problems) {
+    assert.match(videoAssetProblem(value) ?? '', says, value);
+    assert.equal(VIDEO_ASSET.test(value), false, `${value}: the API refuses what the studio flags`);
+  }
 });

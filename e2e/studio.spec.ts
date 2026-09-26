@@ -216,3 +216,20 @@ test('a refused save shows its message beside the field it names, and takes the 
   await expect(top).toContainText('A lesson needs at least 5 check questions');
   await expect(top).toBeInViewport();
 });
+
+test('the video field says what it accepts, and checks it as the author types', async ({ page }) => {
+  await signInStudio(page, GTL, 'author');
+  const { lessonId } = await draftLesson(page);
+  await page.goto(at(GTL, `/studio/lessons/${lessonId}`));
+  const video = page.getByRole('textbox', { name: 'Video asset reference' });
+  const field = page.locator('.field').filter({ has: video });
+  await expect(field).toContainText('Letters, digits and / _ . - only');
+  await video.fill('https://cdn.example.com/a.mp4');
+  await expect(field.locator('.error')).toHaveText('Use the asset\'s name in the media store, not a web address.');
+  await video.fill('lessons/a spread.mp4');
+  await expect(field.locator('.error')).toHaveText('Take out the spaces.');
+  await video.fill('lessons/a-spread.mp4');
+  await expect(field.locator('.error')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await expect(page.getByText(/^Saved /)).toBeVisible();
+});

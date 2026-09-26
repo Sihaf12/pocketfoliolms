@@ -9,6 +9,7 @@
  * the live rows. Drafts may be saved half-finished; the checks here run
  * when a version is sent for review, and again when it is published.
  */
+import { VIDEO_ASSET } from '../../packages/shared/content.js';
 import { lessonProblems } from '../../packages/shared/markdown.js';
 import { CHECK_LENGTH, TIERS, type Tier } from '../domain/placement.js';
 
@@ -113,7 +114,7 @@ export const lessonDraftSchema = {
     title: { type: 'string', minLength: 1, maxLength: 120 },
     bodyMd: { type: 'string', maxLength: 20_000 },
     // A reference to an asset in the media store, never a URL to anywhere.
-    videoAsset: { type: ['string', 'null'], pattern: '^[A-Za-z0-9][A-Za-z0-9/_.-]{0,299}$' },
+    videoAsset: { type: ['string', 'null'], pattern: VIDEO_ASSET.source },
     transcript: {
       type: 'array', maxItems: 200,
       items: {

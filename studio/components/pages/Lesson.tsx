@@ -5,8 +5,9 @@
  * draft this person can edit opens as its version instead, with the
  * review actions the API allows.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { VIDEO_ASSET_FORMAT, videoAssetProblem } from '../../../packages/shared/content';
 import { lessonProblems } from '../../../packages/shared/markdown';
 import { call } from '@/lib/api';
 import {
@@ -61,6 +62,9 @@ function Editor({ course, initial, version, actions, onChanged }: {
     setView('write');
   }, [ws]);
   const problems = useMemo(() => readiness(draft), [draft]);
+  // The API's own rule, from packages/shared, checked as the author types.
+  const videoProblem = videoAssetProblem(draft.videoAsset);
+  const videoInput = useRef<HTMLInputElement>(null);
   const set = <K extends keyof LessonSnapshot>(key: K, value: LessonSnapshot[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
   useEffect(() => {
@@ -73,6 +77,12 @@ function Editor({ course, initial, version, actions, onChanged }: {
   const save = useCallback(async (): Promise<boolean> => {
     if (!version) return false;
     setError(null);
+    if (videoProblem) {
+      // Known to be refused: say so where it is, without sending it.
+      setView('write');
+      videoInput.current?.focus();
+      return false;
+    }
     if (!dirty) return true;
     try {
       const res = await call<{ version: Version<LessonSnapshot> }>(ws.content(`/lessons/${version.entityId}/draft`), {
@@ -87,9 +97,10 @@ function Editor({ course, initial, version, actions, onChanged }: {
       fail(err);
       return false;
     }
-  }, [version, dirty, draft, fail]);
+  }, [version, dirty, draft, fail, videoProblem]);
 
   async function create() {
+    if (videoProblem) { videoInput.current?.focus(); return; }
     setBusy(true);
     setError(null);
     try {
@@ -145,7 +156,10 @@ function Editor({ course, initial, version, actions, onChanged }: {
               <Field label="Position in the course" name="position">{(p) => <input {...p} className="input short" type="number" min={1} max={200} value={draft.position} onChange={(e) => set('position', Number(e.target.value))} />}</Field>
               <Field label="Minutes to read and watch" name="minutes">{(p) => <input {...p} className="input short" type="number" min={1} max={60} value={draft.minutes} onChange={(e) => set('minutes', Number(e.target.value))} />}</Field>
               <Field label="XP for passing its check" name="xp">{(p) => <input {...p} className="input short" type="number" min={0} max={1000} value={draft.xp} onChange={(e) => set('xp', Number(e.target.value))} />}</Field>
-              <Field label="Video" name="videoAsset" hint="Its name in the media store, not a web address.">{(p) => <input {...p} className="input" value={draft.videoAsset ?? ''} onChange={(e) => set('videoAsset', e.target.value.trim() ? e.target.value : null)} />}</Field>
+              <Field label="Video asset reference" name="videoAsset" error={videoProblem} hint={VIDEO_ASSET_FORMAT}>
+                {(p) => <input {...p} ref={videoInput} className="input mono" spellCheck={false} autoCapitalize="none" value={draft.videoAsset ?? ''}
+                  onChange={(e) => set('videoAsset', e.target.value ? e.target.value : null)} />}
+              </Field>
             </div>
           </section>
 
