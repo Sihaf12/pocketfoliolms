@@ -1,6 +1,6 @@
 /** Console forms, from the owner's side. */
 import { expect, test } from '@playwright/test';
-import { CONSOLE, at, signInConsole } from './helpers';
+import { CONSOLE, api, at, signInConsole } from './helpers';
 
 test('adding an academy says what the short name and domain accept, and shows a refusal beside its field', async ({ page }) => {
   await signInConsole(page, 'owner');
@@ -30,4 +30,21 @@ test('adding an academy says what the short name and domain accept, and shows a 
   await page.getByRole('button', { name: 'Create academy' }).click();
   await expect(domainField.locator('.error')).toHaveText('Another academy already uses that domain.');
   await expect(domain).toBeFocused();
+});
+
+test('the first admin\'s invitation can be reissued from the academy\'s page', async ({ page }) => {
+  await signInConsole(page, 'owner');
+  await page.goto(at(CONSOLE, '/academies'));
+  const slug = `e2e-${Date.now().toString(36)}`;
+  const made = await api<{ tenant: { id: string }; link: string }>(page, '/api/console/tenants', {
+    method: 'POST', data: { slug, name: 'Reissue Academy', primaryDomain: `${slug}.academy.test`, adminEmail: `${slug}@example.com` },
+  });
+  expect(made.status).toBe(201);
+  await page.goto(at(CONSOLE, `/academies/${made.body.tenant.id}`));
+  await expect(page.getByText('Not joined yet')).toBeVisible();
+  await page.getByRole('button', { name: 'Reissue invitation' }).click();
+  const link = page.getByLabel("First admin's invitation link");
+  await expect(link).toBeVisible();
+  expect(await link.inputValue()).not.toBe(made.body.link);
+  await expect(page.getByText('The link sent before no longer works.')).toBeVisible();
 });

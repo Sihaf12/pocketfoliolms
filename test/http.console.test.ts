@@ -173,3 +173,31 @@ test('platform staff join by invitation: single use, 72 hours, never as owner, a
     token: late.link.split('/invite/')[1], displayName: 'Late', password: PASSWORD,
   })).statusCode, 404, 'expired after 72 hours');
 });
+
+test('the first admin\'s invitation can be reissued until they join, and each reissue is audited', async () => {
+  const boss = await owner();
+  const domain = `${slug()}.academy.test`;
+  const created = (await consoleCall('POST', '/tenants', boss.token, {
+    slug: domain.split('.')[0], name: 'Reissue Trading', primaryDomain: domain, adminEmail: uniqueEmail('firstadmin'),
+  })).json();
+  const firstToken = (created.link as string).split('/studio/invite/')[1]!;
+  assert.equal((await consoleCall('GET', `/tenants/${created.tenant.id}`, boss.token)).json().firstAdmin.state, 'waiting');
+
+  const res = await consoleCall('POST', `/tenants/${created.tenant.id}/admin-invitation/reissue`, boss.token);
+  assert.equal(res.statusCode, 201, res.body);
+  const token = (res.json().link as string).split('/studio/invite/')[1]!;
+  assert.notEqual(token, firstToken);
+
+  const accept = (t: string) => app.inject({
+    method: 'POST', url: '/api/studio/invitations/accept', headers: { host: domain },
+    payload: { token: t, password: PASSWORD, displayName: 'First Admin' },
+  });
+  assert.equal((await accept(firstToken)).statusCode, 404, 'the old link no longer works');
+  assert.equal((await accept(token)).statusCode, 201);
+  assert.equal((await consoleCall('GET', `/tenants/${created.tenant.id}`, boss.token)).json().firstAdmin.state, 'joined');
+  assert.equal((await consoleCall('POST', `/tenants/${created.tenant.id}/admin-invitation/reissue`, boss.token)).json().error.code, 'already_joined');
+
+  const audit = await ownerPool.query<{ action: string }>(
+    `SELECT action FROM platform.audit_log WHERE payload->>'tenant_id' = $1 AND action = 'tenant.admin_reinvited'`, [created.tenant.id]);
+  assert.equal(audit.rows.length, 1);
+});

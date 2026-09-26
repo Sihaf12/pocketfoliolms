@@ -45,13 +45,14 @@ export function TeamPage() {
   const [email, setEmail] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
   const [link, setLink] = useState<string | null>(null);
+  const [reissued, setReissued] = useState(false);
   const [editing, setEditing] = useState<Person | null>(null);
   const [problem, setProblem] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const choices = studio ? STUDIO_ROLES : STAFF_ROLES;
 
   function openInvite() {
-    setEmail(''); setPicked([]); setLink(null); setProblem(null);
+    setEmail(''); setPicked([]); setLink(null); setReissued(false); setProblem(null);
     inviteDialog.current?.showModal();
   }
 
@@ -74,6 +75,21 @@ export function TeamPage() {
     try {
       await call(ws.api(`/users/invitations/${i.id}`), { method: 'DELETE' });
       ws.say(`Invitation for ${i.email} withdrawn`);
+      reload();
+    } catch (err) {
+      ws.handle(err); setProblem(err);
+    }
+  }
+
+  /** A new link for an open invitation; the old one stops working. Shown once, in the invite dialog. */
+  async function reissue(i: Invitation) {
+    setProblem(null);
+    try {
+      const res = await call<{ link: string }>(ws.api(`/users/invitations/${i.id}/reissue`), { method: 'POST' });
+      setEmail(i.email);
+      setReissued(true);
+      setLink(res.link);
+      inviteDialog.current?.showModal();
       reload();
     } catch (err) {
       ws.handle(err); setProblem(err);
@@ -134,7 +150,12 @@ export function TeamPage() {
                       <span className="soft small">{i.state === 'expired' ? 'Expired' : `Link works until ${day(i.expiresAt)}`}.</span></span>
                     <span className="row tight">{rolesOf(i).map((r) => <span className="chip plain" key={r}>{ROLE_NAME[r] ?? r}</span>)}</span>
                     {i.state === 'expired' ? <span className="chip">Expired</span> : <span className="chip caution">Waiting</span>}
-                    {studio ? <button type="button" className="btn ghost" onClick={() => void withdraw(i)}>Withdraw<span className="visually-hidden"> the invitation for {i.email}</span></button> : null}
+                    {studio ? (
+                      <span className="row tight">
+                        <button type="button" className="btn ghost" onClick={() => void reissue(i)}>Reissue invitation<span className="visually-hidden"> for {i.email}</span></button>
+                        <button type="button" className="btn ghost" onClick={() => void withdraw(i)}>Withdraw<span className="visually-hidden"> the invitation for {i.email}</span></button>
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -148,7 +169,7 @@ export function TeamPage() {
         {link ? (
           <div className="stack">
             <h2 id="invite-title">Send this link to {email}</h2>
-            <p className="soft">It is shown once, here. It works once, for 72 hours. Send it yourself, by a channel you trust.</p>
+            <p className="soft">{reissued ? 'The link sent before no longer works. ' : ''}This one is shown once, here. It works once, for 72 hours. Send it yourself, by a channel you trust.</p>
             <OneTimeLink label="Invitation link" value={link} />
             <div className="row end"><button type="button" className="btn primary" onClick={() => inviteDialog.current?.close()}>Done</button></div>
           </div>

@@ -124,8 +124,13 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
       params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } },
       response: {
         200: {
-          type: 'object', required: ['tenant', 'reviewSignoffs', 'openInvitations', 'pendingDomain'],
+          type: 'object', required: ['tenant', 'reviewSignoffs', 'openInvitations', 'pendingDomain', 'firstAdmin'],
           properties: {
+            // The first admin's invitation, the one the console makes: whether it is still open.
+            firstAdmin: {
+              type: ['object', 'null'], required: ['email', 'state', 'expiresAt'],
+              properties: { email: { type: 'string' }, state: { type: 'string', enum: ['waiting', 'expired', 'joined'] }, expiresAt: { type: 'string' } },
+            },
             tenant: tenantSchema, reviewSignoffs: { type: 'integer' }, openInvitations: { type: 'integer' },
             // A domain the academy asked for and has not yet proved, which the owner may apply.
             pendingDomain: { type: ['string', 'null'] },
@@ -145,7 +150,18 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
           WHERE tenant_id = $1 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()`, [tenant.id]);
       const pending = await db.maybeOne<{ domain: string }>(
         `SELECT requested_domain AS domain FROM app.domain_changes WHERE tenant_id = $1 AND status = 'pending'`, [tenant.id]);
-      return { tenant: shape(tenant), reviewSignoffs: settings?.n ?? 2, openInvitations: open.n, pendingDomain: pending?.domain ?? null };
+      const first = await db.maybeOne<{ email: string; accepted: boolean; expired: boolean; expiresAt: Date }>(
+        `SELECT email, accepted_at IS NOT NULL AS accepted, expires_at <= now() AS expired, expires_at AS "expiresAt"
+           FROM app.studio_invitations
+          WHERE tenant_id = $1 AND invited_by_kind = 'platform' AND revoked_at IS NULL
+          ORDER BY created_at DESC LIMIT 1`, [tenant.id]);
+      return {
+        tenant: shape(tenant), reviewSignoffs: settings?.n ?? 2, openInvitations: open.n, pendingDomain: pending?.domain ?? null,
+        firstAdmin: first && {
+          email: first.email, expiresAt: first.expiresAt.toISOString(),
+          state: first.accepted ? 'joined' as const : first.expired ? 'expired' as const : 'waiting' as const,
+        },
+      };
     }));
 
   app.patch<{ Params: { id: string }; Body: { status: 'active' | 'suspended' } }>('/tenants/:id', {
@@ -173,6 +189,45 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
     // Other processes follow within the cache's 30 seconds; see the README.
     forgetResolvedHosts();
     return { tenant: shape(tenant) };
+  });
+
+  // A new link for the first admin, while their invitation is unused. The
+  // old token stops working in the same transaction; the link is shown once.
+  app.post<{ Params: { id: string } }>('/tenants/:id/admin-invitation/reissue', {
+    schema: {
+      params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } },
+      response: {
+        201: {
+          type: 'object', required: ['email', 'expiresAt', 'link'],
+          properties: { email: { type: 'string' }, expiresAt: { type: 'string' }, link: { type: 'string' } },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const token = randomBytes(32).toString('base64url');
+    const made = await inConsole(async (db) => {
+      const owner = await requireStaff(db, req, OWNER);
+      const tenant = await db.maybeOne<{ domain: string }>('SELECT primary_domain AS domain FROM app.tenants WHERE id = $1', [req.params.id]);
+      if (!tenant) throw new HttpError(404, 'not_found', 'No academy with that id.');
+      const old = await db.maybeOne<{ id: string; email: string }>(
+        `UPDATE app.studio_invitations SET revoked_at = now()
+          WHERE id = (SELECT id FROM app.studio_invitations
+                       WHERE tenant_id = $1 AND invited_by_kind = 'platform' AND accepted_at IS NULL AND revoked_at IS NULL
+                       ORDER BY created_at DESC LIMIT 1 FOR UPDATE)
+          RETURNING id, email`, [req.params.id]);
+      if (!old) throw new HttpError(409, 'already_joined', 'The first admin has already joined. Their studio invites anyone else.');
+      const row = await db.one<{ id: string; expiresAt: Date }>(
+        `INSERT INTO app.studio_invitations (tenant_id, email, roles, token_hash, invited_by, invited_by_kind)
+         VALUES ($1, $2, ARRAY['tenant_admin'], $3, $4, 'platform') RETURNING id, expires_at AS "expiresAt"`,
+        [req.params.id, old.email, hashToken(token), owner.id]);
+      await db.audit({
+        action: 'tenant.admin_reinvited', entityType: 'studio_invitation', entityId: row.id,
+        payload: { tenant_id: req.params.id, replaces: old.id, email: old.email },
+      });
+      return { email: old.email, expiresAt: row.expiresAt.toISOString(), domain: tenant.domain };
+    });
+    const scheme = publicOrigin(req).startsWith('https') ? 'https' : 'http';
+    return reply.status(201).send({ email: made.email, expiresAt: made.expiresAt, link: `${scheme}://${made.domain}/studio/invite/${token}` });
   });
 
   // The owner's way past the DNS check, for an academy that cannot add a

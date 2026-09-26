@@ -189,3 +189,27 @@ test('the studio shell reads the academy\'s name and brand before sign-in, and n
   assert.equal(res.json().tokens['--brand'], '#1A6DC2');
   assert.equal((await app.inject({ method: 'GET', url: '/api/studio/academy', headers: { host: 'learn.unknown.example' } })).statusCode, 404);
 });
+
+test('reissuing an open invitation retires its link, shows a new one once, and is audited', async () => {
+  const admin = await adminAt();
+  const email = uniqueEmail('reissued');
+  const first = await invite(admin.token, email, ['author', 'reviewer']);
+
+  const res = await studio('POST', `/users/invitations/${first.id}/reissue`, NORTHGATE, admin.token);
+  assert.equal(res.statusCode, 201, res.body);
+  const { invitation, link } = res.json();
+  assert.deepEqual([invitation.email, invitation.roles], [email, ['author', 'reviewer']]);
+  const token = (link as string).split('/studio/invite/')[1]!;
+  assert.notEqual(token, first.token);
+
+  const old = await studio('POST', '/invitations/accept', NORTHGATE, undefined, { token: first.token, password: PASSWORD, displayName: 'Old Link' });
+  assert.equal(old.statusCode, 404, 'the old link no longer works');
+  const accepted = await studio('POST', '/invitations/accept', NORTHGATE, undefined, { token, password: PASSWORD, displayName: 'New Link' });
+  assert.equal(accepted.statusCode, 201, accepted.body);
+
+  assert.deepEqual(await auditActions(invitation.id), ['studio.invitation_reissued', 'studio.invitation_accepted']);
+  assert.equal((await studio('POST', `/users/invitations/${invitation.id}/reissue`, NORTHGATE, admin.token)).statusCode, 404, 'a used invitation cannot be reissued');
+  const author = await studioMember('northgate', ['author']);
+  const authorToken = (await studioLogin(app, NORTHGATE, author.email)).token!;
+  assert.equal((await studio('POST', `/users/invitations/${first.id}/reissue`, NORTHGATE, authorToken)).statusCode, 403);
+});

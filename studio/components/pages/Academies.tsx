@@ -96,13 +96,21 @@ export function NewAcademyPage() {
   );
 }
 
-interface TenantDetail { tenant: Tenant; reviewSignoffs: number; openInvitations: number; pendingDomain: string | null }
+interface TenantDetail {
+  tenant: Tenant; reviewSignoffs: number; openInvitations: number; pendingDomain: string | null;
+  firstAdmin: { email: string; state: 'waiting' | 'expired' | 'joined'; expiresAt: string } | null;
+}
+
+const FIRST_ADMIN: Record<'waiting' | 'expired' | 'joined', [string, string]> = {
+  waiting: ['caution', 'Not joined yet'], expired: ['danger', 'Link expired'], joined: ['success', 'Joined'],
+};
 
 export function AcademyPage({ tenantId }: { tenantId: string }) {
   const ws = useWorkspace();
   const { data, error, setData } = useLoad<TenantDetail>(ws.api(`/tenants/${tenantId}`));
   const suspendDialog = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState('');
+  const [reissued, setReissued] = useState<string | null>(null);
   const [problem, setProblem] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const back = { href: ws.href('/academies'), label: 'Academies' };
@@ -118,6 +126,11 @@ export function AcademyPage({ tenantId }: { tenantId: string }) {
     suspendDialog.current?.close();
     setData({ ...data, tenant: res.tenant });
     ws.say(status === 'active' ? `${t.name} is back online` : `${t.name} is offline`);
+  });
+  const reissue = () => run(async () => {
+    const res = await call<{ link: string; expiresAt: string }>(ws.api(`/tenants/${t.id}/admin-invitation/reissue`), { method: 'POST' });
+    setReissued(res.link);
+    setData({ ...data, firstAdmin: data.firstAdmin && { ...data.firstAdmin, state: 'waiting', expiresAt: res.expiresAt } });
   });
   const override = () => run(async () => {
     const res = await call<{ tenant: Tenant }>(ws.api(`/tenants/${t.id}/domain/override`), { method: 'POST', body: { reason } });
@@ -138,6 +151,23 @@ export function AcademyPage({ tenantId }: { tenantId: string }) {
           <dt>Review rule</dt><dd>{data.reviewSignoffs} people sign off each change</dd>
           <dt>Open invitations</dt><dd>{data.openInvitations}</dd>
         </dl>
+      </section>
+
+      <section aria-labelledby="first-admin">
+        <h2 id="first-admin">First admin</h2>
+        {data.firstAdmin ? (
+          <div className="card stack">
+            <p className="row"><span>{data.firstAdmin.email}</span><span className={`chip ${FIRST_ADMIN[data.firstAdmin.state][0]}`}>{FIRST_ADMIN[data.firstAdmin.state][1]}</span></p>
+            {reissued ? (
+              <>
+                <p className="soft">The link sent before no longer works. This one is shown once, here, and works once, for 72 hours.</p>
+                <OneTimeLink label="First admin's invitation link" value={reissued} />
+              </>
+            ) : data.firstAdmin.state !== 'joined' ? (
+              <div className="row"><button type="button" className="btn" disabled={busy} onClick={() => void reissue()}>Reissue invitation</button></div>
+            ) : <p className="soft">They run the academy&apos;s team from its studio now.</p>}
+          </div>
+        ) : <div className="card"><p>No first admin invitation on record.</p></div>}
       </section>
 
       <section aria-labelledby="domain">

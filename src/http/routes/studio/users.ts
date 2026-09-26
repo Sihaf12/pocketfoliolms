@@ -116,6 +116,44 @@ export async function studioUserRoutes(app: FastifyInstance): Promise<void> {
     return reply.status(204).send();
   });
 
+  // A new link for an invitation not yet used: the old token stops working
+  // in the same transaction, and the new link is shown once, here.
+  app.post<{ Params: { id: string } }>('/users/invitations/:id/reissue', {
+    schema: {
+      params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } },
+      response: {
+        201: {
+          type: 'object', required: ['invitation', 'link'],
+          properties: { invitation: invitationSchema, link: { type: 'string' } },
+        },
+      },
+    },
+  }, async (req, reply) => {
+    const token = randomBytes(32).toString('base64url');
+    const invitation = await inStudio(req, async (db) => {
+      const admin = await requireStudio(db, req, ADMIN);
+      const old = await db.maybeOne<{ email: string; roles: StudioRole[] }>(
+        `UPDATE app.studio_invitations SET revoked_at = now()
+          WHERE id = $1 AND accepted_at IS NULL AND revoked_at IS NULL RETURNING email, roles`, [req.params.id]);
+      if (!old) throw new HttpError(404, 'not_found', 'No open invitation with that id. It may have been used or withdrawn.');
+      const row = await db.one<{ id: string; createdAt: Date; expiresAt: Date }>(
+        `INSERT INTO app.studio_invitations (tenant_id, email, roles, token_hash, invited_by, invited_by_kind)
+         VALUES (app.current_tenant(), $1, $2::text[], $3, $4, 'studio')
+         RETURNING id, created_at AS "createdAt", expires_at AS "expiresAt"`,
+        [old.email, old.roles, hashToken(token), admin.id],
+      );
+      await db.audit({
+        action: 'studio.invitation_reissued', entityType: 'invitation', entityId: row.id,
+        payload: { replaces: req.params.id, email: old.email, roles: old.roles },
+      });
+      return {
+        id: row.id, email: old.email, roles: old.roles, state: 'pending' as const,
+        createdAt: row.createdAt.toISOString(), expiresAt: row.expiresAt.toISOString(),
+      };
+    });
+    return reply.status(201).send({ invitation, link: `${publicOrigin(req)}/studio/invite/${token}` });
+  });
+
   app.patch<{ Params: { id: string }; Body: { roles: StudioRole[] } }>('/users/:id', {
     schema: {
       params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } },

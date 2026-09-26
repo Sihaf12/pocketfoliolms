@@ -282,3 +282,25 @@ test('where the clipboard exists but refuses, Copy says so and the link stays, s
   await expect(field).toBeFocused();
   expect(await field.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd])).toEqual([0, link.length]);
 });
+
+test('an open invitation can be reissued: the old link stops working and the new one is shown once', async ({ page, browser }, info) => {
+  await signInStudio(page, GTL, 'admin');
+  const field = await inviteSomeone(page);
+  const oldLink = await field.inputValue();
+  const email = (await page.getByRole('dialog').getByRole('heading').textContent())!.replace('Send this link to ', '');
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  await page.getByRole('button', { name: `Reissue invitation for ${email}` }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('The link sent before no longer works.');
+  const newLink = await dialog.getByLabel('Invitation link').inputValue();
+  expect(newLink).not.toBe(oldLink);
+
+  const visitor = await asAnother(browser, info);
+  await visitor.page.goto(oldLink);
+  await visitor.page.getByLabel('Your name').fill('Late Reader');
+  await visitor.page.getByLabel('Password').fill('a long enough password');
+  await visitor.page.getByRole('button', { name: 'Join the studio' }).click();
+  await expect(visitor.page.locator('.notice.danger')).toContainText('expired, been used');
+  await visitor.close();
+});
