@@ -11,7 +11,7 @@
  * even if a catalogue row were to name it.
  */
 import type { FastifyInstance } from 'fastify';
-import { TIERS, levelFrom, type Tier } from '../../domain/placement.js';
+import { TIERS, levelFrom, tierOutlook, type Tier } from '../../domain/placement.js';
 import { availability, type LessonState } from '../../domain/pathway.js';
 import { inAcademy, requireLearner, requirePlacement } from '../context.js';
 import { passedLessons, prerequisitesOf, unmetPrerequisites } from '../learning.js';
@@ -95,11 +95,12 @@ const pathwaySchema = {
       type: 'array',
       items: {
         type: 'object',
-        required: ['tier', 'unlocked', 'gateReason', 'courses'],
+        required: ['tier', 'unlocked', 'gateReason', 'outlook', 'courses'],
         properties: {
           tier: { type: 'string' },
           unlocked: { type: 'boolean' },
           gateReason: { type: ['string', 'null'] },
+          outlook: { type: 'string' },
           courses: { type: 'array', items: courseSchema },
         },
       },
@@ -156,6 +157,7 @@ export async function pathwayRoutes(app: FastifyInstance): Promise<void> {
       const statuses = tierStatuses(baseline);
       const tiers = TIERS.map((tier, i) => ({
         ...statuses[i]!,
+        outlook: tierOutlook(tier, baseline),
         courses: courses
           .filter((c) => c.tier === tier)
           .map((c) => {

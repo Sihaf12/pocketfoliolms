@@ -60,6 +60,24 @@ export function tierRequirement(tier: Tier): string | null {
   return null;
 }
 
+const toGo = (score: number, need: number) => `${need - score} point${need - score === 1 ? '' : 's'} to go`;
+
+/**
+ * What a tier's score means for what opens next, in the learner's words:
+ * the line under each bar on the starting point and progress screens.
+ */
+export function tierOutlook(tier: Tier, b: TierScores): string {
+  if (tier === 'learn') {
+    if (b.learn < 50) return `Apply opens at 50. ${toGo(b.learn, 50)}.`;
+    if (b.learn < 70) return `Specialise opens at 70. ${toGo(b.learn, 70)}.`;
+    return 'Enough for every tier.';
+  }
+  if (tier === 'safeguard') return b.safeguard < 50 ? `Specialise also needs 50 here. ${toGo(b.safeguard, 50)}.` : 'Enough for every tier.';
+  if (tierUnlocked(tier, b)) return 'Open now.';
+  if (tier === 'apply') return `Opens when Learn reaches 50. ${toGo(b.learn, 50)}.`;
+  return 'Opens when Learn reaches 70 and Safeguard reaches 50.';
+}
+
 export function gateReason(tier: Tier, b: TierScores): string | null {
   if (tierUnlocked(tier, b)) return null;
   if (tier === 'apply') return `Unlocks at Learn 50 or above. You are at ${b.learn}.`;
