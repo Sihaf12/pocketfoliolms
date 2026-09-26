@@ -233,3 +233,18 @@ test('the video field says what it accepts, and checks it as the author types', 
   await page.getByRole('button', { name: 'Save draft' }).click();
   await expect(page.getByText(/^Saved /)).toBeVisible();
 });
+
+test('a draft saves with a question still being written; the checklist only advises', async ({ page }) => {
+  await signInStudio(page, GTL, 'author');
+  const { lessonId } = await draftLesson(page);
+  await page.goto(at(GTL, `/studio/lessons/${lessonId}`));
+  await page.getByRole('button', { name: 'Add a check question' }).click();
+  await page.getByLabel('Option A of question 1').fill('Half an answer');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await expect(page.getByText(/^Saved /)).toBeVisible();
+  await expect(page.locator('.notice.danger')).toHaveCount(0);
+  await expect(page.getByText('Question 1 needs its question.')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByLabel('Option A of question 1')).toHaveValue('Half an answer');
+});

@@ -354,3 +354,23 @@ test('a refused draft names each field it refused, in words a form can show besi
   assert.equal(fields.get('minutes'), 'Use 1 or more.');
   assert.ok(![...fields.values()].some((m) => /must|pattern|\^/.test(m)), 'no schema jargon reaches a person');
 });
+
+test('a draft may hold unfinished questions; sending it for review refuses them', async () => {
+  const course = await newCourse();
+  const questions = [0, 1, 2, 3, 4].map((i) => question(`Q${i}`));
+  questions[1] = { ...questions[1]!, prompt: '' };
+  questions[2] = { ...questions[2]!, options: [{ key: 'a', text: '' }, { key: 'b', text: 'Wrong' }, { key: 'c', text: 'Also wrong' }] };
+  questions[3] = { ...questions[3]!, rationales: { a: '', b: 'x', c: 'y' } };
+  const lesson = await newLesson(course.entityId, title('unfinished'), 1, { questions });
+
+  const saved = await studio('PUT', `/lessons/${lesson.entityId}/draft`, team.author, lessonBody(title('unfinished'), 1, { questions }));
+  assert.equal(saved.statusCode, 200, 'a draft save takes an empty prompt, option and rationale');
+
+  const submitted = await studio('POST', `/versions/${lesson.id}/submit`, team.author);
+  assert.equal(submitted.statusCode, 422);
+  assert.deepEqual(submitted.json().error.problems, [
+    'Question 2 needs its question.',
+    'Question 3: option A needs its text.',
+    'Question 4: option A needs a rationale.',
+  ]);
+});

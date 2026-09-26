@@ -76,12 +76,14 @@ const question = {
   properties: {
     // Absent for a new question: the server assigns it.
     id: uuid,
-    prompt: { type: 'string', minLength: 1, maxLength: 500 },
+    // A draft may hold a question still being written: empty text is
+    // accepted here and refused at submission and publication.
+    prompt: { type: 'string', maxLength: 500 },
     options: {
       type: 'array', minItems: 2, maxItems: 5,
       items: {
         type: 'object', additionalProperties: false, required: ['key', 'text'],
-        properties: { key, text: { type: 'string', minLength: 1, maxLength: 300 } },
+        properties: { key, text: { type: 'string', maxLength: 300 } },
       },
     },
     correctKey: key,
@@ -147,6 +149,10 @@ export const glossaryDraftSchema = {
 function questionProblems(q: QuestionSnapshot, label: string): string[] {
   const problems: string[] = [];
   const keys = q.options.map((o) => o.key);
+  if (!q.prompt.trim()) problems.push(`${label} needs its question.`);
+  for (const o of q.options) {
+    if (!o.text.trim()) problems.push(`${label}: option ${o.key.toUpperCase()} needs its text.`);
+  }
   if (new Set(keys).size !== keys.length) problems.push(`${label}: each option needs its own letter.`);
   if (!keys.includes(q.correctKey)) problems.push(`${label}: the correct answer is not one of its options.`);
   for (const k of keys) {
