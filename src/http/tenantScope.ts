@@ -19,6 +19,7 @@ import type { FastifyInstance } from 'fastify';
 import { resolveTenantByHost } from '../db/unitOfWork.js';
 import { HttpError } from './errors.js';
 import type { RouteLimit } from './server.js';
+import { HOSTNAME } from '../../packages/shared/names.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -27,8 +28,6 @@ declare module 'fastify' {
   }
 }
 
-const LABEL = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
-const HOSTNAME = new RegExp(`^(?=.{1,253}$)${LABEL}(?:\\.${LABEL})+$`);
 
 /** Lowercase, no port, no trailing dot, and shaped like a DNS name; otherwise null. */
 export function normaliseHost(raw: string | undefined): string | null {

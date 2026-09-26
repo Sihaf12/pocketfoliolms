@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BRAND_TOKENS, COLOUR, RADIUS, resolveTokens, type BrandToken, type Tokens } from '../../../packages/shared/brand';
 import { checkPalette } from '../../../packages/shared/contrast';
+import { HOSTNAME_FORMAT, hostProblem } from '../../../packages/shared/names';
 import { call } from '@/lib/api';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading } from '../bits';
@@ -200,7 +201,7 @@ export function DomainPage() {
     try { await work(); } catch (err) { ws.handle(err); setProblem(err); } finally { setBusy(false); }
   }
   const request = () => run(async () => {
-    await call(ws.api('/settings/domain'), { method: 'POST', body: { domain: domain.trim().toLowerCase() } });
+    await call(ws.api('/settings/domain'), { method: 'POST', body: { domain: domain.trim() } });
     setDomain(''); reload();
   });
   const verify = () => run(async () => {
@@ -244,10 +245,10 @@ export function DomainPage() {
         </section>
       ) : (
         <form className="stack narrow" onSubmit={(e) => { e.preventDefault(); void request(); }}>
-          <Field label="New domain" name="domain" hint="A host name you control, such as learn.example.com. Nothing changes until you prove it with a DNS record.">
+          <Field label="New domain" name="domain" error={hostProblem(domain.trim())} hint={`${HOSTNAME_FORMAT}, that you control. Nothing changes until you prove it with a DNS record.`}>
             {(p) => <input {...p} className="input" inputMode="url" autoCapitalize="none" spellCheck={false} value={domain} onChange={(e) => setDomain(e.target.value)} />}
           </Field>
-          <div className="actions"><button type="submit" className="btn primary" disabled={busy || !domain.trim()}>Request this domain</button></div>
+          <div className="actions"><button type="submit" className="btn primary" disabled={busy || !domain.trim() || !!hostProblem(domain.trim())}>Request this domain</button></div>
         </form>
       )}
       </ErrorScope>

@@ -15,6 +15,7 @@ import { inConsole, requireStaff } from '../../consoleScope.js';
 import { publicOrigin } from '../../sameOrigin.js';
 import { forgetResolvedHosts, normaliseHost } from '../../tenantScope.js';
 import { uuid } from '../../schemas.js';
+import { SLUG } from '../../../../packages/shared/names.js';
 
 const OWNER = ['platform_owner'] as const;
 
@@ -48,7 +49,7 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
       body: {
         type: 'object', additionalProperties: false, required: ['slug', 'name', 'primaryDomain', 'adminEmail'],
         properties: {
-          slug: { type: 'string', pattern: '^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$' },
+          slug: { type: 'string', pattern: SLUG.source },
           name: { type: 'string', minLength: 2, maxLength: 100 },
           primaryDomain: { type: 'string', minLength: 3, maxLength: 253 },
           adminEmail: { type: 'string', format: 'email', maxLength: 254 },

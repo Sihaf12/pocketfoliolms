@@ -6,6 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { VIDEO_ASSET, videoAssetProblem } from '../packages/shared/content.js';
 import { lessonDraftSchema } from '../src/content/model.js';
+import { SLUG, hostProblem, slugProblem } from '../packages/shared/names.js';
+import { normaliseHost } from '../src/http/tenantScope.js';
 import { BRAND_TOKENS, DEFAULT_TOKENS, resolveTokens, sanitiseBrand } from '../packages/shared/brand.js';
 import { CONTRAST_PAIRS, checkPalette, contrastRatio } from '../packages/shared/contrast.js';
 import { escapeHtml, inline, lessonProblems, parseLesson } from '../packages/shared/markdown.js';
@@ -95,5 +97,25 @@ test('the video reference rule is one rule: the API schema uses the shared patte
   for (const [value, says] of problems) {
     assert.match(videoAssetProblem(value) ?? '', says, value);
     assert.equal(VIDEO_ASSET.test(value), false, `${value}: the API refuses what the studio flags`);
+  }
+});
+
+test('short names and host names: the form flags exactly what the API refuses', () => {
+  for (const slug of ['harbour', 'harbour-trading', 'a', 'x1', 'a'.repeat(40)]) assert.equal(slugProblem(slug), null, slug);
+  for (const slug of ['Harbour', 'harbour trading', '-harbour', 'harbour-', 'a'.repeat(41), 'harbour_trading']) {
+    assert.ok(slugProblem(slug), slug);
+    assert.equal(SLUG.test(slug), false, slug);
+  }
+  for (const host of ['learn.broker.com', 'a.b', 'x-1.academy.test']) {
+    assert.equal(hostProblem(host), null, host);
+    assert.equal(normaliseHost(host), host, `${host}: the API takes it as it is`);
+  }
+  const refused: [string, RegExp][] = [
+    ['learn.broker.com:8080', /port/], ['https://learn.broker.com', /https/], ['learn.broker.com/academy', /path/],
+    ['Learn.Broker.com', /lowercase/], ['localhost', /dot/], ['learn.broker.com.', /dot at the end/], ['-x.broker.com', /hyphen/],
+  ];
+  for (const [host, says] of refused) {
+    assert.match(hostProblem(host) ?? '', says, host);
+    assert.notEqual(normaliseHost(host), host, `${host}: the API does not take it as given either`);
   }
 });

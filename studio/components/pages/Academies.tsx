@@ -2,6 +2,7 @@
 /** The console's academies, for the platform owner: list, create, and look after one. */
 import { useRef, useState } from 'react';
 import Link from 'next/link';
+import { HOSTNAME_FORMAT, SLUG_FORMAT, hostProblem, slugProblem } from '../../../packages/shared/names';
 import { call } from '@/lib/api';
 import { day } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
@@ -49,8 +50,11 @@ export function NewAcademyPage() {
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
 
+  const known = slugProblem(form.slug) ?? hostProblem(form.primaryDomain);
+
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    if (known) return;
     setBusy(true); setProblem(null);
     try {
       setMade(await call<{ tenant: Tenant; link: string }>(ws.api('/tenants'), { method: 'POST', body: form }));
@@ -78,10 +82,14 @@ export function NewAcademyPage() {
       <form className="stack narrow" onSubmit={create}>
         <ErrorScope error={problem}>
         <Field label="Name" name="name" hint="As learners will see it.">{(p) => <input {...p} className="input" required maxLength={100} value={form.name} onChange={set('name')} />}</Field>
-        <Field label="Short name" name="slug" hint="Lowercase letters, numbers and hyphens. Used in internal references.">{(p) => <input {...p} className="input mono" required pattern="[a-z0-9-]+" maxLength={40} value={form.slug} onChange={set('slug')} />}</Field>
-        <Field label="Domain" name="primaryDomain" hint="Where learners reach it, such as learn.broker.com.">{(p) => <input {...p} className="input" required spellCheck={false} value={form.primaryDomain} onChange={set('primaryDomain')} />}</Field>
+        <Field label="Short name" name="slug" hint={SLUG_FORMAT} error={slugProblem(form.slug)}>
+          {(p) => <input {...p} className="input mono" required autoCapitalize="none" spellCheck={false} maxLength={40} value={form.slug} onChange={set('slug')} />}
+        </Field>
+        <Field label="Domain" name="primaryDomain" hint={HOSTNAME_FORMAT} error={hostProblem(form.primaryDomain)}>
+          {(p) => <input {...p} className="input" required inputMode="url" autoCapitalize="none" spellCheck={false} value={form.primaryDomain} onChange={set('primaryDomain')} />}
+        </Field>
         <Field label="First admin's email" name="adminEmail">{(p) => <input {...p} className="input" type="email" required value={form.adminEmail} onChange={set('adminEmail')} />}</Field>
-        <div className="actions"><button className="btn primary" type="submit" disabled={busy}>Create academy</button></div>
+        <div className="actions"><button className="btn primary" type="submit" disabled={busy || !!known}>Create academy</button></div>
         </ErrorScope>
       </form>
     </>
