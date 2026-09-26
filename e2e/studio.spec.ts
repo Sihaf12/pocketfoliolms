@@ -160,7 +160,7 @@ test('an admin offers a course, invites a colleague once, and cannot save an unr
   await page.getByLabel('Their email').fill(email);
   await page.getByRole('dialog').getByRole('checkbox', { name: /^Author/ }).check();
   await page.getByRole('button', { name: 'Make the invitation link' }).click();
-  const link = await page.getByRole('dialog').locator('code').textContent();
+  const link = await page.getByRole('dialog').getByLabel('Invitation link').inputValue();
   expect(link).toMatch(new RegExp(`^http://${GTL}:\\d+/studio/invite/[A-Za-z0-9_-]{40,}$`));
   await shot(page, info, 'team-invite');
   await page.getByRole('button', { name: 'Done' }).click();
@@ -247,4 +247,38 @@ test('a draft saves with a question still being written; the checklist only advi
 
   await page.reload();
   await expect(page.getByLabel('Option A of question 1')).toHaveValue('Half an answer');
+});
+
+async function inviteSomeone(page: Page) {
+  await page.goto(at(GTL, '/studio/team'));
+  await page.getByRole('button', { name: 'Invite someone' }).click();
+  await page.getByLabel('Their email').fill(`${unique('linked').replace(/\s/g, '-')}@example.com`);
+  await page.getByRole('dialog').getByRole('checkbox', { name: /^Reviewer/ }).check();
+  await page.getByRole('button', { name: 'Make the invitation link' }).click();
+  return page.getByRole('dialog').getByLabel('Invitation link');
+}
+
+test('on plain http a one-time link is a field that selects itself, with no Copy button to fail', async ({ page }) => {
+  await signInStudio(page, GTL, 'admin');
+  const field = await inviteSomeone(page);
+  const link = await field.inputValue();
+  expect(link).toContain('/studio/invite/');
+  await expect(field).toHaveAttribute('readonly', '');
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Copy' })).toHaveCount(0);
+  await field.click();
+  expect(await field.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd])).toEqual([0, link.length]);
+});
+
+test('where the clipboard exists but refuses, Copy says so and the link stays, selected', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('denied')) }, configurable: true });
+  });
+  await signInStudio(page, GTL, 'admin');
+  const field = await inviteSomeone(page);
+  const link = await field.inputValue();
+  await page.getByRole('dialog').getByRole('button', { name: 'Copy' }).click();
+  await expect(page.getByRole('dialog').getByText('Could not copy it.', { exact: false })).toBeVisible();
+  await expect(field).toHaveValue(link);
+  await expect(field).toBeFocused();
+  expect(await field.evaluate((el: HTMLInputElement) => [el.selectionStart, el.selectionEnd])).toEqual([0, link.length]);
 });

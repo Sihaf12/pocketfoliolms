@@ -10,7 +10,7 @@ import { Head, Loading } from '../bits';
 import { ErrorScope, Field } from '../Form';
 import { Icon } from '../Icon';
 import { useWorkspace } from '../Workspace';
-import { CopyLink } from './Team';
+import { OneTimeLink } from '../OneTimeLink';
 
 interface Tenant { id: string; slug: string; name: string; primaryDomain: string; status: 'active' | 'suspended'; createdAt: string }
 
@@ -69,7 +69,7 @@ export function NewAcademyPage() {
         <div className="card stack">
           <h2>Send this link to {form.adminEmail}</h2>
           <p className="soft">It makes them the academy&apos;s first admin. It is shown once, here, and works once, for 72 hours.</p>
-          <CopyLink link={made.link} />
+          <OneTimeLink label="First admin's invitation link" value={made.link} />
         </div>
         <div className="actions"><Link className="btn primary" href={ws.href(`/academies/${made.tenant.id}`)}>Open {made.tenant.name}</Link></div>
       </>

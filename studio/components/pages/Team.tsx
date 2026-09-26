@@ -11,6 +11,7 @@ import { useLoad } from '@/lib/useLoad';
 import { Head, Loading } from '../bits';
 import { ErrorScope, Field, Problem, useInvalid } from '../Form';
 import { Icon } from '../Icon';
+import { OneTimeLink } from '../OneTimeLink';
 import { useWorkspace } from '../Workspace';
 
 interface Person { id: string; email: string; displayName: string; roles?: string[]; role?: string }
@@ -27,33 +28,6 @@ const STAFF_ROLES = [
   { role: 'platform_reviewer', says: 'Checks the subject matter.' },
   { role: 'platform_compliance', says: 'Publishes platform content to every academy.' },
 ];
-
-export function CopyLink({ link }: { link: string }) {
-  const [said, setSaid] = useState<string | null>(null);
-  const code = useRef<HTMLElement>(null);
-
-  // The clipboard is only there on https (and localhost). Elsewhere, select
-  // the link so a copy shortcut takes it.
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(link);
-      setSaid('Copied');
-    } catch {
-      const range = document.createRange();
-      if (code.current) range.selectNodeContents(code.current);
-      window.getSelection()?.removeAllRanges();
-      window.getSelection()?.addRange(range);
-      setSaid('Selected: copy it now');
-    }
-  }
-
-  return (
-    <div className="copy">
-      <code ref={code}>{link}</code>
-      <button type="button" className="btn" onClick={() => void copy()}><Icon name="copy" />{said ?? 'Copy link'}</button>
-    </div>
-  );
-}
 
 /** A set of role choices, which an API message about roles lands beneath. */
 function RoleGroup({ name, children }: { name: string; children: React.ReactNode }) {
@@ -175,7 +149,7 @@ export function TeamPage() {
           <div className="stack">
             <h2 id="invite-title">Send this link to {email}</h2>
             <p className="soft">It is shown once, here. It works once, for 72 hours. Send it yourself, by a channel you trust.</p>
-            <CopyLink link={link} />
+            <OneTimeLink label="Invitation link" value={link} />
             <div className="row end"><button type="button" className="btn primary" onClick={() => inviteDialog.current?.close()}>Done</button></div>
           </div>
         ) : (

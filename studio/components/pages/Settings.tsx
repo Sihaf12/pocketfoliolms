@@ -11,7 +11,7 @@ import { Head, Loading } from '../bits';
 import { ErrorScope, Field, useInvalid } from '../Form';
 import { Icon, type IconName } from '../Icon';
 import { useWorkspace } from '../Workspace';
-import { CopyLink } from './Team';
+import { OneTimeLink } from '../OneTimeLink';
 
 const PAGES: { path: string; label: string; says: string; icon: IconName }[] = [
   { path: '/settings/brand', label: 'Brand', says: 'The ten colours and the corner radius learners see.', icon: 'palette' },
@@ -236,8 +236,8 @@ export function DomainPage() {
         <section className="card stack" aria-labelledby="waiting">
           <h2 id="waiting">Waiting to move to {data.pending.domain}</h2>
           <p>Add this TXT record where {data.pending.domain}&apos;s DNS is managed, then check it here. The move happens once the record is found; DNS changes can take a while to appear.</p>
-          <div className="stack-sm"><span className="small soft">Name</span><CopyLink link={data.pending.record.name} /></div>
-          <div className="stack-sm"><span className="small soft">Value</span><CopyLink link={data.pending.record.value} /></div>
+          <OneTimeLink label="Record name" value={data.pending.record.name} />
+          <OneTimeLink label="Record value" value={data.pending.record.value} />
           <div className="actions">
             <button type="button" className="btn" disabled={busy} onClick={() => void cancel()}>Cancel the change</button>
             <button type="button" className="btn primary" disabled={busy} onClick={() => void verify()}>Check the TXT record</button>

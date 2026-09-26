@@ -243,10 +243,7 @@ fieldset { border: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
 .switch-hit { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; }
 
 .copy { display: flex; gap: 8px; align-items: stretch; }
-.copy code {
-  flex: 1; min-width: 0; padding: 12px; border-radius: var(--radius-control); border: 1px solid var(--line);
-  background: var(--surface-sunk); font-family: var(--font-mono); font-size: 13.5px; overflow-wrap: anywhere;
-}
+.copy .input { flex: 1; min-width: 0; background: var(--surface-sunk); font-size: 13.5px; }
 
 /* The sticky action bar: where a view's primary action lives on a phone. */
 .actions {
