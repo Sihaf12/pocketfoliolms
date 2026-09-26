@@ -17,7 +17,7 @@ Multi-tenant learning platform. Each broker gets a branded academy on one engine
 
 ## Commands
 - `npm test` runs 72 tests. Run it before saying anything is done.
-- `psql academy -U app_user -f db/tests/rls_proof.sql` proves isolation (41 PASS).
+- `psql academy -U app_user -f db/tests/rls_proof.sql` proves isolation (42 PASS).
 - `npm run test:migrate` proves the migrations build a fresh database as the
   owner (OWNER_DATABASE_URL, default: your OS user on `academy`).
 - Migrations are forward-only files in db/. Never edit an applied migration.

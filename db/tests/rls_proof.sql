@@ -422,4 +422,18 @@ BEGIN
   PERFORM pg_temp.expect(blocked, 'tenant B cannot plant a session in tenant A');
 END $$;
 
+-- ---------------------------------------------------------------------
+-- 18. The SECURITY DEFINER functions are owned by a role that bypasses
+--     RLS. Under FORCE ROW LEVEL SECURITY any other owner sees no rows,
+--     and every host and every certificate would answer 404.
+-- ---------------------------------------------------------------------
+DO $$
+BEGIN
+  PERFORM pg_temp.expect(
+    (SELECT bool_and(r.rolsuper OR r.rolbypassrls)
+       FROM pg_proc p JOIN pg_roles r ON r.oid = p.proowner
+      WHERE p.oid IN ('app.resolve_tenant(text)'::regprocedure, 'app.verify_certificate(text)'::regprocedure)),
+    'resolve_tenant and verify_certificate are owned by a role that bypasses RLS');
+END $$;
+
 SELECT 'ALL MODULE 1 TESTS PASSED' AS result;

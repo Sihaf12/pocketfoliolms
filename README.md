@@ -12,7 +12,7 @@ the backend that enforces it.
     db/005_request_path.sql resolve_tenant(), verify_certificate(), sessions
     db/006_attempt_lessons.sql attempts record their lesson; one open paper at a time
     db/tests/seed.sql      academies, courses and certificates for the proof tests
-    db/tests/rls_proof.sql 41 assertions run as the unprivileged app role
+    db/tests/rls_proof.sql 42 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
 
     src/config.ts               environment-backed configuration
@@ -37,7 +37,7 @@ the backend that enforces it.
     createdb academy
     npm run migrate                                      # as the database owner
     psql academy -f db/tests/seed.sql
-    psql academy -U app_user -f db/tests/rls_proof.sql   # 41 assertions
+    psql academy -U app_user -f db/tests/rls_proof.sql   # 42 assertions
 
     npm install
     npm run build
@@ -67,9 +67,52 @@ the server sits behind one, or any client could choose an academy.
 
 Every tenant route is rate limited per client IP (300 a minute),
 counted before the host is resolved, and login and certificate
-verification have their own tighter limits (10 and 30 a minute). The counters live in each process, so several
-instances behind a balancer each allow the full limit, and behind a
-proxy the client IP is only right if `TRUST_PROXY` names that proxy.
+verification have their own tighter limits (10 and 30 a minute).
+
+## Deployment
+
+**The two SECURITY DEFINER functions must be owned by a role that
+bypasses RLS.** `app.resolve_tenant()` and `app.verify_certificate()`
+read `app.tenants` and `app.certificates`, which have RLS forced. A
+function runs as its owner, and under `FORCE ROW LEVEL SECURITY` an
+owner without `BYPASSRLS` (or superuser) sees no rows: every host would
+answer `unknown_academy` and every certificate 404. It fails closed, not
+open, but it takes the whole platform down. Run migrations as that role
+(`OWNER_DATABASE_URL`), never as `app_user` or `app_control`, and check
+with:
+
+    SELECT p.proname, r.rolname, r.rolsuper OR r.rolbypassrls AS bypasses_rls
+      FROM pg_proc p JOIN pg_roles r ON r.oid = p.proowner
+     WHERE p.proname IN ('resolve_tenant', 'verify_certificate');
+
+The SQL proof asserts this too.
+
+**The host cache and the rate-limit counters live in each process.**
+Nothing is shared between instances:
+
+- A resolved host is cached for 30 seconds and an unknown host for 5,
+  per process. `forgetResolvedHosts()` clears only the process that
+  calls it, so after a domain moves or an academy is suspended, other
+  instances can keep serving the old answer for up to 30 seconds, and a
+  newly provisioned academy can take up to 5 seconds to appear.
+- Each instance counts its own requests, so N instances behind a load
+  balancer allow up to N times each limit. A shared store (Redis, for
+  `@fastify/rate-limit`) is needed before the limits mean the same thing
+  at scale.
+- The limits are per client IP. Behind a proxy, every request carries
+  the proxy's address unless `TRUST_PROXY` names it, which would put all
+  users behind one counter.
+
+**The session cookie is `Secure`, so browsers only send it over HTTPS.**
+Academies are served on real domain names (the resolver rejects
+`localhost` and bare IPs), so trying one locally over plain HTTP, say
+`learn.northgate.ae` mapped in `/etc/hosts`, will sign in and then lose
+the session on the next request. There is no development override in
+the code today. Either put a TLS-terminating proxy with a locally
+trusted certificate (for example from `mkcert`) in front of `npm start`,
+or add an explicit, development-only switch that drops `Secure`; it must
+never be reachable in production. The API tests are unaffected: they
+use `app.inject()` and send the cookie header directly.
 
 ## The three decisions worth knowing
 
