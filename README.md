@@ -77,12 +77,12 @@ platform console as a Next.js front end.
 
     npm install
     npm run build
-    npm test                                             # 171 tests
+    npm test                                             # 172 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow (75)
     npm run typecheck                                    # the API, the studio and the end-to-end specs
     npx playwright install chromium                      # once
-    npm run test:e2e                                     # 56 browser tests, on academy_e2e
+    npm run test:e2e                                     # 68 browser tests, on academy_e2e
 
 ### Connections
 

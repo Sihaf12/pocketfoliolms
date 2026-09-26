@@ -21,7 +21,7 @@ const nullableStr = { type: ['string', 'null'] } as const;
 
 const meSchema = {
   type: 'object',
-  required: ['user', 'academy', 'placement', 'stats', 'tiers', 'recent', 'certificates'],
+  required: ['user', 'academy', 'placement', 'stats', 'tiers', 'recent', 'certificates', 'week'],
   properties: {
     user: {
       type: 'object',
@@ -65,6 +65,11 @@ const meSchema = {
         required: ['serial', 'courseTitle', 'issuedAt'],
         properties: { serial: str, courseTitle: str, issuedAt: str },
       },
+    },
+    // Monday to Sunday of this UTC week: whether any knowledge check was passed that day.
+    week: {
+      type: 'array',
+      items: { type: 'object', required: ['date', 'learned'], properties: { date: str, learned: { type: 'boolean' } } },
     },
   },
 } as const;
@@ -153,6 +158,17 @@ export async function meRoutes(app: FastifyInstance): Promise<void> {
         [learner.id],
       );
 
+      const week = await db.query<{ date: string; learned: boolean }>(
+        `SELECT to_char(d, 'YYYY-MM-DD') AS date,
+                EXISTS (SELECT 1 FROM app.quiz_attempts a
+                         WHERE a.user_id = $1 AND a.kind = 'knowledge_check' AND a.passed
+                           AND (a.submitted_at AT TIME ZONE 'UTC')::date = d) AS learned
+           FROM generate_series(date_trunc('week', now() AT TIME ZONE 'UTC')::date,
+                                date_trunc('week', now() AT TIME ZONE 'UTC')::date + 6, interval '1 day') AS g(d)
+          ORDER BY d`,
+        [learner.id],
+      );
+
       const verifiedIds = new Set(verified.map((v) => v.lessonId));
       return {
         user: { ...learner, ...profile },
@@ -170,6 +186,7 @@ export async function meRoutes(app: FastifyInstance): Promise<void> {
         }),
         recent: verified.slice(0, 10).map((v) => ({ ...v, verifiedAt: v.verifiedAt.toISOString() })),
         certificates: certificates.map((c) => ({ ...c, issuedAt: c.issuedAt.toISOString() })),
+        week,
       };
     }));
 

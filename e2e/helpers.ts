@@ -1,5 +1,6 @@
 /** Shared by the end-to-end specs: hosts, the demo team, signing in, and the checks every screen gets. */
 import { readFileSync } from 'node:fs';
+import pg from 'pg';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Browser, type Page, type TestInfo } from '@playwright/test';
 // Built by scripts/demo.sh before the servers start.
@@ -127,3 +128,13 @@ export async function expectStill(page: Page, what: string) {
   expect(await page.evaluate(() => document.getAnimations().length), `${what}: running animations`).toBe(0);
 }
 
+
+/**
+ * The right answers to some questions, read from the e2e database. Only
+ * the test knows them: a browser never receives an answer key.
+ */
+const owner = new pg.Pool({ connectionString: 'postgres:///academy_e2e', max: 1, allowExitOnIdle: true });
+export async function answerKeys(questionIds: string[]): Promise<Record<string, string>> {
+  const res = await owner.query<{ id: string; correct_key: string }>('SELECT id, correct_key FROM platform.questions WHERE id = ANY($1::uuid[])', [questionIds]);
+  return Object.fromEntries(res.rows.map((r) => [r.id, r.correct_key]));
+}

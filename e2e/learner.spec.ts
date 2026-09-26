@@ -5,7 +5,7 @@
  * reduced motion.
  */
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
-import { ACADEMIES, api, at, expectAccessible, expectKeyboardFocus, expectStill, shot, team, unique } from './helpers';
+import { ACADEMIES, answerKeys, api, at, expectAccessible, expectKeyboardFocus, expectStill, shot, team, unique } from './helpers';
 
 async function check(page: Page, info: TestInfo, name: string, heading: string | RegExp) {
   await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
@@ -181,5 +181,137 @@ for (const host of ACADEMIES) {
 
     await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Explore' }).first().click();
     await check(page, info, `${label}-explore`, 'Explore');
+  });
+}
+
+interface PathLesson { id: string; title: string; state: string }
+interface Path { tiers: { tier: string; courses: { title: string; lessons: PathLesson[] }[] }[] }
+interface Paper { attemptId: string; questions: { id: string; options: { key: string }[] }[] }
+
+/** A placed learner who got everything right in placement, so every tier is open. */
+async function placed(page: Page, host: string) {
+  await onboarded(page, host);
+  const paper = (await api<Paper>(page, '/api/v1/placement', { method: 'POST' })).body;
+  const keys = await answerKeys(paper.questions.map((q) => q.id));
+  expect((await api(page, `/api/v1/placement/${paper.attemptId}/submission`, { method: 'POST', data: { answers: keys } })).status).toBe(200);
+}
+
+async function lessonsByTitle(page: Page): Promise<Map<string, PathLesson>> {
+  const path = (await api<Path>(page, '/api/v1/pathway')).body;
+  return new Map(path.tiers.flatMap((t) => t.courses.flatMap((c) => c.lessons)).map((l) => [l.title, l]));
+}
+
+/** Passes a lesson's check through the API, one answer at a time as the app does. */
+async function pass(page: Page, lessonId: string) {
+  const paper = (await api<Paper>(page, `/api/v1/lessons/${lessonId}/checks`, { method: 'POST' })).body;
+  const keys = await answerKeys(paper.questions.map((q) => q.id));
+  for (const q of paper.questions) await api(page, `/api/v1/checks/${paper.attemptId}/answers`, { method: 'POST', data: { questionId: q.id, key: keys[q.id] } });
+  expect((await api(page, `/api/v1/checks/${paper.attemptId}/submission`, { method: 'POST', data: { answers: keys } })).status).toBe(200);
+}
+
+for (const host of ACADEMIES) {
+  const label = host.split('.')[0]!;
+
+  test(`a lesson, its check and the verified moment in ${label}`, async ({ page }, info) => {
+    await placed(page, host);
+    const lessons = await lessonsByTitle(page);
+    const first = [...lessons.values()].find((l) => l.state === 'open')!;
+    await page.goto(at(host, `/learn/${first.id}`));
+    await check(page, info, `${label}-lesson`, first.title);
+    await expect(page.locator('.rd h2').first()).toBeVisible();
+
+    await page.getByRole('link', { name: 'Check my understanding' }).click();
+    await page.waitForURL(/\/check$/);
+    await expect(page.getByText('1 of 3', { exact: true })).toBeVisible();
+    await check(page, info, `${label}-check`, /./);
+
+    // Two right and one wrong: verified, with each rationale unfolding. Asking
+    // for the paper again hands back the open one, which says which questions it holds.
+    const open = (await api<{ questions: { id: string; prompt: string }[] }>(page, `/api/v1/lessons/${first.id}/checks`, { method: 'POST' })).body;
+    const keys = await answerKeys(open.questions.map((q) => q.id));
+    for (let n = 0; n < 3; n++) {
+      await expect(page.getByText(`${n + 1} of 3`, { exact: true })).toBeVisible();
+      const buttons = page.getByRole('group', { name: 'Answers' }).getByRole('button');
+      const question = (await page.getByRole('heading', { level: 1 }).textContent())!;
+      const correct = keys[open.questions.find((x) => x.prompt === question)!.id]!;
+      const want = n === 1 ? (correct === 'a' ? 'b' : 'a') : correct;
+      await page.keyboard.press(want);
+      const rat = page.locator('.ratwrap');
+      await expect(rat).toHaveClass(/open/);
+      await expect(page.locator('.rat')).toContainText(n === 1 ? 'Not quite' : 'Correct');
+      expect(await rat.evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(20);
+      if (n === 0) await shot(page, info, `learner-${label}-check-answered`);
+      await expect(buttons.first()).toBeDisabled();
+      await page.getByRole('button', { name: n < 2 ? 'Next question' : 'See my result' }).click();
+    }
+    const won = page.getByRole('dialog', { name: 'Verified' });
+    await expect(won).toBeVisible();
+    await expect(won).toContainText('2 of 3 correct.');
+    await expect(won.locator('.xp')).toHaveAccessibleName(/XP$/);
+    await expectAccessible(page, `${label} verified moment`);
+    await shot(page, info, `learner-${label}-verified`);
+    await won.getByRole('link', { name: 'See my path' }).click();
+    await page.waitForURL(/\/path$/);
+
+    await page.goto(at(host, '/progress'));
+    await check(page, info, `${label}-progress`, 'Your progress');
+    await expect(page.getByRole('list', { name: 'Days learned this week' }).locator('li.on')).toHaveCount(1);
+    await expect(page.locator('.recentlist')).toContainText(first.title);
+
+    await page.goto(at(host, '/me'));
+    await check(page, info, `${label}-me`, 'Placement Learner');
+  });
+
+  test(`the simulator turns the page red when a move erases the margin in ${label}`, async ({ page }, info) => {
+    await placed(page, host);
+    let lessons = await lessonsByTitle(page);
+    // Open the way to the simulator lesson by passing what it requires.
+    for (let guard = 0; guard < 8 && lessons.get('Leverage and margin')?.state !== 'open'; guard++) {
+      const next = [...lessons.values()].find((l) => l.state === 'open')!;
+      await pass(page, next.id);
+      lessons = await lessonsByTitle(page);
+    }
+    const sim = lessons.get('Leverage and margin')!;
+    await page.goto(at(host, `/learn/${sim.id}`));
+    await page.getByRole('tab', { name: 'Try it' }).click();
+    await check(page, info, `${label}-simulator`, 'Leverage and margin');
+    const before = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    await page.getByLabel('Leverage').fill('20');
+    await page.getByLabel('Adverse move').fill('10');
+    await expect(page.locator('.sim')).toHaveAttribute('data-state', 'dead');
+    await expect(page.locator('html')).toHaveAttribute('data-zone', 'dead');
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).not.toBe(before);
+    await expect(page.locator('.verdict')).toContainText('erases your margin entirely');
+    await expectAccessible(page, `${label} simulator in the red zone`);
+    await shot(page, info, `learner-${label}-simulator-red`);
+    await page.getByRole('tab', { name: 'Read' }).click();
+    await expect(page.locator('html')).not.toHaveAttribute('data-zone', /./);
+  });
+
+  test(`a finished course's certificate, and its public page with no app around it, in ${label}`, async ({ page, browser }, info) => {
+    await placed(page, host);
+    const path = (await api<Path>(page, '/api/v1/pathway')).body;
+    const course = path.tiers[0]!.courses[0]!;
+    for (const l of course.lessons) await pass(page, l.id);
+    await page.goto(at(host, '/progress'));
+    await page.getByRole('button', { name: `View certificate for ${course.title}` }).click();
+    const modal = page.getByRole('dialog', { name: 'Your certificate' });
+    await expect(modal).toBeVisible();
+    await expectAccessible(page, `${label} certificate`);
+    await shot(page, info, `learner-${label}-certificate`);
+    const url = await modal.getByLabel('Verification address').inputValue();
+    expect(url).toMatch(/\/verify\/PA-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+
+    const visitor = await browser.newContext(info.project.use);
+    const v = await visitor.newPage();
+    await v.goto(url);
+    await check(v, info, `${label}-verify`, 'Valid certificate');
+    await expect(v.getByText(course.title)).toBeVisible();
+    await expect(v.locator('.topbar, .tabbar, .nav, footer')).toHaveCount(0);
+    await v.getByLabel('Check another code').fill('PA-0000-0000');
+    await v.getByRole('button', { name: 'Check' }).click();
+    await expect(v.getByRole('heading', { level: 1 })).toHaveText('No valid certificate has this code');
+    await visitor.close();
   });
 }

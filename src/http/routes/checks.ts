@@ -171,7 +171,61 @@ async function flagChurnRisk(
   });
 }
 
+interface Answered { correct: boolean; correctKey: string; rationale: string }
+
 export async function checkRoutes(app: FastifyInstance): Promise<void> {
+  // One answer at a time, as the learner goes: it is recorded, cannot be
+  // changed, and comes back marked with the rationale for the option
+  // chosen. The submission that follows must carry the same answers, and
+  // is what grades the paper, emits the verified event and issues any
+  // certificate. The browser never holds the answer keys.
+  app.post<{ Params: { attemptId: string }; Body: { questionId: string; key: string } }>(
+    '/checks/:attemptId/answers', {
+      schema: {
+        params: attemptParams,
+        body: {
+          type: 'object', additionalProperties: false, required: ['questionId', 'key'],
+          properties: { questionId: { type: 'string', format: 'uuid' }, key: { type: 'string', maxLength: 16 } },
+        },
+        response: {
+          200: {
+            type: 'object', required: ['correct', 'correctKey', 'rationale'],
+            properties: { correct: { type: 'boolean' }, correctKey: { type: 'string' }, rationale: { type: 'string' } },
+          },
+        },
+      },
+    }, async (req) => {
+      const { attemptId } = req.params;
+      const { questionId, key } = req.body;
+      return inAcademy(req, async (db): Promise<Answered> => {
+        const learner = await requireLearner(db, req);
+        const attempt = await db.maybeOne<{ questionIds: string[]; stored: Record<string, string>; submitted: boolean }>(
+          `SELECT question_ids AS "questionIds", COALESCE(answers, '{}'::jsonb) AS stored, submitted_at IS NOT NULL AS submitted
+             FROM app.quiz_attempts
+            WHERE id = $1 AND user_id = $2 AND kind = 'knowledge_check'
+            FOR UPDATE`,
+          [attemptId, learner.id],
+        );
+        if (!attempt) throw new HttpError(404, 'attempt_not_found', 'No such knowledge check.');
+        if (!attempt.questionIds.includes(questionId)) throw new HttpError(422, 'unknown_question', 'That question is not on this paper.');
+        const q = await db.one<KeyRow & { options: { key: string }[] }>(
+          'SELECT id, correct_key AS "correctKey", rationales, options FROM platform.questions WHERE id = $1', [questionId]);
+        if (!q.options.some((o) => o.key === key)) throw new HttpError(422, 'unknown_option', 'That is not one of the options.');
+
+        const already = attempt.stored[questionId];
+        if (already !== undefined && already !== key) {
+          throw new HttpError(409, 'already_answered', 'This question has been answered. The first answer stands.');
+        }
+        if (already === undefined) {
+          if (attempt.submitted) throw new HttpError(409, 'already_submitted', 'This check has been submitted.');
+          await db.query(
+            `UPDATE app.quiz_attempts SET answers = COALESCE(answers, '{}'::jsonb) || jsonb_build_object($2::text, $3::text) WHERE id = $1`,
+            [attemptId, questionId, key]);
+        }
+        return { correct: key === q.correctKey, correctKey: q.correctKey, rationale: q.rationales[key] ?? q.rationales[q.correctKey] ?? '' };
+      });
+    });
+
   app.post<{ Params: { attemptId: string }; Body: { answers: Record<string, string> } }>(
     '/checks/:attemptId/submission', {
       schema: { params: attemptParams, body: answersBody(false), response: { 200: resultSchema } },
@@ -216,6 +270,11 @@ export async function checkRoutes(app: FastifyInstance): Promise<void> {
         const onPaper = new Set(attempt.questionIds);
         if (Object.keys(answers).some((id) => !onPaper.has(id))) {
           throw new HttpError(422, 'unknown_question', 'An answer was given for a question not on this paper.');
+        }
+        // An answer already given one at a time stands: the submission cannot change it.
+        const stored = attempt.stored ?? {};
+        if (Object.entries(stored).some(([id, key]) => answers[id] !== key)) {
+          throw new HttpError(422, 'answer_changed', 'An answer differs from the one already given to that question.');
         }
 
         const result = grade(keys, answers);

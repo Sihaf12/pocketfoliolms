@@ -163,3 +163,35 @@ test('sign-up to a publicly verified certificate, through the API alone', async 
     assert.ok(types.includes(expected), `${expected} is in the learner's events`);
   }
 });
+
+test('a check can be answered one question at a time; each answer stands, and the submission must match', async () => {
+  const learner = await placedLearner(app, NORTHGATE);
+  const headers = { host: NORTHGATE, ...asLearner(learner.token) };
+  const paper = (await app.inject({ method: 'POST', url: `/api/v1/lessons/${lessonIds['how-markets-work/1']}/checks`, headers })).json<Paper>();
+  const [q1, q2, q3] = paper.questions;
+  const answer = (questionId: string, key: string) =>
+    app.inject({ method: 'POST', url: `/api/v1/checks/${paper.attemptId}/answers`, headers, payload: { questionId, key } });
+
+  const right = await answer(q1!.id, 'a');
+  assert.equal(right.statusCode, 200, right.body);
+  assert.equal(right.json().correct, true);
+  assert.ok(right.json().rationale.length > 0);
+  const wrong = await answer(q2!.id, 'b');
+  assert.deepEqual([wrong.json().correct, wrong.json().correctKey], [false, 'a']);
+  assert.equal((await answer(q2!.id, 'b')).statusCode, 200, 'the same answer again is fine');
+  assert.equal((await answer(q2!.id, 'a')).json().error.code, 'already_answered', 'but it cannot be changed');
+  assert.equal((await answer(q1!.id, 'z')).statusCode, 422);
+
+  const submit = (answers: Record<string, string>) =>
+    app.inject({ method: 'POST', url: `/api/v1/checks/${paper.attemptId}/submission`, headers, payload: { answers } });
+  assert.equal((await submit({ [q1!.id]: 'a', [q2!.id]: 'a', [q3!.id]: 'a' })).json().error.code, 'answer_changed');
+  const graded = await submit({ [q1!.id]: 'a', [q2!.id]: 'b', [q3!.id]: 'a' });
+  assert.equal(graded.statusCode, 200, graded.body);
+  assert.deepEqual([graded.json().correct, graded.json().passed], [2, true]);
+
+  const week = (await app.inject({ method: 'GET', url: '/api/v1/me', headers })).json().week as { date: string; learned: boolean }[];
+  assert.equal(week.length, 7);
+  const today = new Date().toISOString().slice(0, 10);
+  assert.equal(week.find((d) => d.date === today)?.learned, true, 'today counts as a day learned');
+  assert.equal(new Date(`${week[0]!.date}T00:00:00Z`).getUTCDay(), 1, 'the week starts on Monday');
+});

@@ -16,7 +16,7 @@ Multi-tenant learning platform. Each broker gets a branded academy on one engine
 - A knowledge check passes at 2 of 3. That event is the North Star metric.
 
 ## Commands
-- `npm test` runs 171 tests. Run it before saying anything is done.
+- `npm test` runs 172 tests. Run it before saying anything is done.
 - `psql academy -U app_user -f db/tests/rls_proof.sql` proves isolation (51 PASS).
 - `npm run test:studio` proves the studio and console roles and the review workflow (75 PASS).
 - `npm run test:migrate` proves the migrations build a fresh database as the
@@ -24,7 +24,7 @@ Multi-tenant learning platform. Each broker gets a branded academy on one engine
 - `npm run test:demo-seed` proves db/seed/demo.sql loads twice cleanly and is complete.
 - `npm run demo` serves the three demo academies, their studios and the console
   from academy_demo, never academy (open :3100; Fastify is on :3000).
-- `npm run test:e2e` runs 56 Playwright tests on academy_e2e: every studio and
+- `npm run test:e2e` runs 68 Playwright tests on academy_e2e: every studio and
   console screen in GTL and Meridian, at 390px and desktop, with axe, keyboard
   and reduced motion. `npm run typecheck` covers the API, studio and e2e.
 - The studio UI follows .claude/skills/academy-design/SKILL.md. Components use
