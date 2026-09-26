@@ -335,3 +335,20 @@ test('publishing a lesson whose course is a draft says nothing reaches learners 
   const lessons = page.getByRole('heading', { level: 2, name: 'Lessons' });
   expect((await where.boundingBox())!.y).toBeLessThan((await lessons.boundingBox())!.y);
 });
+
+test('the course list gives the course\'s state and its lessons\' separately', async ({ page }) => {
+  const { courseId, lessonId } = await lessonAwaitingCompliance(page);
+  await signInStudio(page, GTL, 'compliance');
+  const versions = (await api<{ versions: { id: string }[] }>(page, `/api/studio/entities/lesson/${lessonId}/versions`)).body.versions;
+  expect((await api(page, `/api/studio/versions/${versions[0]!.id}/publish`, { method: 'POST' })).status).toBe(200);
+  await signInStudio(page, GTL, 'author');
+  expect((await api(page, `/api/studio/courses/${courseId}/lessons`, {
+    method: 'POST', data: { position: 2, title: unique('Second lesson'), minutes: 5, bodyMd: '' },
+  })).status).toBe(201);
+
+  await page.goto(at(GTL, '/studio'));
+  const title = (await api<{ course: { title: string } }>(page, `/api/studio/courses/${courseId}`)).body.course.title;
+  const row = page.getByRole('link', { name: new RegExp(title) });
+  await expect(row).toContainText('Draft');
+  await expect(row).toContainText('1 lesson published, 1 in draft');
+});

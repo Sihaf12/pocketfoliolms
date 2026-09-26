@@ -51,11 +51,28 @@ export async function contentRoutes(app: FastifyInstance, opts: { run: ContentRu
       const courses = await db.query(
         `SELECT c.id, c.slug, c.title, c.tier, c.review_state AS "liveState",
                 (c.owner_tenant_id IS NULL AND $1::uuid IS NOT NULL) AS "readOnly",
-                lv.id::text AS "versionId", lv.version AS "versionNumber", lv.review_state AS "versionState"
+                lv.id::text AS "versionId", lv.version AS "versionNumber", lv.review_state AS "versionState",
+                json_build_object('published', lc.published, 'inReview', lc.in_review, 'draft', lc.draft, 'sentBack', lc.sent_back) AS "lessonCounts"
            FROM platform.courses c
            LEFT JOIN LATERAL (
              SELECT id, version, review_state FROM platform.content_versions
               WHERE entity_type = 'course' AND entity_id = c.id ORDER BY version DESC LIMIT 1) lv ON true
+           -- Its lessons by where they stand: live ones are published, whatever
+           -- revision is under way; the rest by their latest version.
+           LEFT JOIN LATERAL (
+             SELECT count(*) FILTER (WHERE s.live)::int AS published,
+                    count(*) FILTER (WHERE NOT s.live AND s.state IN ('in_expert_review', 'in_compliance_review'))::int AS in_review,
+                    count(*) FILTER (WHERE NOT s.live AND s.state = 'draft')::int AS draft,
+                    count(*) FILTER (WHERE NOT s.live AND s.state = 'rejected')::int AS sent_back
+               FROM (
+                 SELECT EXISTS (SELECT 1 FROM platform.lessons l WHERE l.id = ids.id) AS live,
+                        (SELECT v.review_state::text FROM platform.content_versions v
+                          WHERE v.entity_type = 'lesson' AND v.entity_id = ids.id ORDER BY v.version DESC LIMIT 1) AS state
+                   FROM (SELECT id FROM platform.lessons WHERE course_id = c.id
+                         UNION
+                         SELECT entity_id FROM platform.content_versions
+                          WHERE entity_type = 'lesson' AND snapshot->>'courseId' = c.id::text) ids
+               ) s) lc ON true
           WHERE c.owner_tenant_id IS NOT DISTINCT FROM $1::uuid
              OR ($1::uuid IS NOT NULL AND c.owner_tenant_id IS NULL AND c.review_state = 'published')
           ORDER BY c.tier, c.title`,

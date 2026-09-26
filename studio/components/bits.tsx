@@ -8,7 +8,8 @@ import { Problem } from './Form';
 export function StateChip({ state }: { state: ReviewState | null | undefined }) {
   if (!state) return null;
   const s = STATE[state];
-  return <span className={`chip ${s.tone}`}>{s.label}</span>;
+  // The full stop is for screen readers, which read the chip and the words after it as one sentence.
+  return <span className={`chip ${s.tone}`}>{s.label}<span className="visually-hidden">.</span></span>;
 }
 
 export function TierChip({ tier }: { tier: Tier }) {

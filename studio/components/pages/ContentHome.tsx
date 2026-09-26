@@ -19,6 +19,15 @@ export interface CourseRow {
   readOnly: boolean;
   versionId: string | null;
   versionState: ReviewState | null;
+  lessonCounts: { published: number; inReview: number; draft: number; sentBack: number };
+}
+
+/** "1 lesson published, 2 in draft": the course's lessons by where they stand. */
+export function lessonSummary(c: CourseRow['lessonCounts']): string {
+  const parts = ([[c.published, 'published'], [c.inReview, 'in review'], [c.draft, 'in draft'], [c.sentBack, 'sent back']] as const)
+    .filter(([n]) => n > 0);
+  if (!parts.length) return 'No lessons yet';
+  return parts.map(([n, label], i) => (i === 0 ? `${n} ${n === 1 ? 'lesson' : 'lessons'} ${label}` : `${n} ${label}`)).join(', ');
 }
 
 function Rows({ courses }: { courses: CourseRow[] }) {
@@ -32,7 +41,12 @@ function Rows({ courses }: { courses: CourseRow[] }) {
               <span className="title">{c.title}</span>
               <span className="row tight">
                 <TierChip tier={c.tier} />
-                <StateChip state={c.versionState ?? c.liveState} />
+                {/* The course's own state, then its lessons', so neither is taken for the other. */}
+                <span className="course-state">
+                  <span className="visually-hidden">Course: </span>
+                  <StateChip state={c.versionState ?? c.liveState} />
+                  <span className="small">{lessonSummary(c.lessonCounts)}</span>
+                </span>
               </span>
             </span>
             <Icon name="next" />

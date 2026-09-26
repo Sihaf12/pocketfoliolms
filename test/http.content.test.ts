@@ -374,3 +374,21 @@ test('a draft may hold unfinished questions; sending it for review refuses them'
     'Question 4: option A needs a rationale.',
   ]);
 });
+
+test('the course list counts each course\'s lessons by where they stand', async () => {
+  const course = await newCourse();
+  const live = await newLesson(course.entityId, title('live'), 1);
+  await throughReview(live.id);
+  await newLesson(course.entityId, title('drafting'), 2);
+  const inReview = await newLesson(course.entityId, title('reviewing'), 3);
+  assert.equal((await studio('POST', `/versions/${inReview.id}/submit`, team.author)).statusCode, 200);
+  const sentBack = await newLesson(course.entityId, title('sent back'), 4);
+  await studio('POST', `/versions/${sentBack.id}/submit`, team.author);
+  await studio('POST', `/versions/${sentBack.id}/reject`, team.reviewer, { notes: 'Not yet.' });
+  // A revision of the live lesson is under way: it is still published.
+  await studio('POST', `/versions/${live.id}/revise`, team.author);
+
+  const row = (await studio('GET', '/courses', team.author)).json().courses.find((c: { id: string }) => c.id === course.entityId);
+  assert.equal(row.liveState, 'draft', 'the course itself is still a draft');
+  assert.deepEqual(row.lessonCounts, { published: 1, inReview: 1, draft: 1, sentBack: 1 });
+});
