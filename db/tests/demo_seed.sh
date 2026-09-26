@@ -22,9 +22,11 @@ if ! psql "$url" -v ON_ERROR_STOP=1 -q -f db/tests/demo_seed_checks.sql >"$out" 
 fi
 sed -n 's/^.*NOTICE:  //p' "$out"
 
-# Brand tokens go through the server's own sanitiser, not a copy of it.
+# Brand tokens go through the server's own sanitiser and contrast check,
+# not a copy of them.
 psql "$url" -tA -F '|' -c "SELECT slug, brand::text FROM app.tenants ORDER BY slug" | node --input-type=module -e "
-  import { sanitiseBrand } from './dist/src/http/brand.js';
+  import { sanitiseBrand } from './dist/packages/shared/brand.js';
+  import { checkPalette } from './dist/packages/shared/contrast.js';
   import { createInterface } from 'node:readline';
   let ok = 0;
   for await (const line of createInterface({ input: process.stdin })) {
@@ -33,12 +35,17 @@ psql "$url" -tA -F '|' -c "SELECT slug, brand::text FROM app.tenants ORDER BY sl
     const slug = line.slice(0, at);
     const raw = JSON.parse(line.slice(at + 1));
     const clean = sanitiseBrand(raw);
-    if (clean.refused.length > 0 || Object.keys(clean.tokens).length !== Object.keys(raw.tokens).length || clean.mode !== raw.mode) {
+    if (clean.refused.length > 0 || Object.keys(clean.tokens).length !== 10) {
       console.error('FAIL  ' + slug + ' brand refused: ' + clean.refused.join(', '));
+      process.exit(1);
+    }
+    const contrast = checkPalette(clean.tokens);
+    if (!contrast.ok) {
+      console.error('FAIL  ' + slug + ' contrast: ' + contrast.failures.map((f) => f.text + ' on ' + f.on + ' ' + f.ratio).join(', '));
       process.exit(1);
     }
     ok += 1;
   }
   if (ok !== 3) { console.error('FAIL  expected 3 brands, saw ' + ok); process.exit(1); }
-  console.log('PASS  all three brands pass the server sanitiser with every token kept');
+  console.log('PASS  all three brands keep all ten tokens and pass every contrast pair');
 "

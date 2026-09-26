@@ -36,13 +36,12 @@ test('each academy host gets the client with its own brand tokens and name', asy
   assert.match(String(north.headers['content-type']), /^text\/html/);
   assert.match(north.body, /<title>Pocketfolio Academy: solution prototype<\/title>/);
   assert.equal(tokensBlock(north.body), ':root{--brand:#1A6DC2;--accent:#F5C400}');
-  assert.deepEqual(academyJson(north.body), { name: 'Northgate Markets', sub: 'Northgate test academy', mode: 'light' });
-  assert.match(north.body, /<html data-mode="light"/);
+  assert.deepEqual(academyJson(north.body), { name: 'Northgate Markets', sub: 'Northgate test academy' });
+  assert.doesNotMatch(north.body, /data-mode/, 'a dark academy is a token set, not a mode');
 
   const sable = await page(SABLE);
-  assert.equal(tokensBlock(sable.body), ':root{--brand:#6B3F7A;--r:10px}');
+  assert.equal(tokensBlock(sable.body), ':root{--brand:#6B3F7A;--radius:10px}');
   assert.equal(academyJson(sable.body).name, 'Sable Wealth');
-  assert.match(sable.body, /<html data-mode="dark"/);
 });
 
 test('the academy page is private, uncacheable and locked down by CSP', async () => {
@@ -66,11 +65,11 @@ test('nothing in a brand can reach the page as markup', async () => {
     (await c.query<{ brand: unknown }>(`SELECT brand FROM app.tenants WHERE slug = 'northgate'`)).rows[0]!.brand);
   const hostile = {
     sub: '</script><script>alert(1)</script>',
-    mode: 'dark" onload="alert(3)',
     tokens: {
       '--brand': 'red;}</style><script>alert(2)</script>',
       '--evil': '#000000',
-      '--r': '10px;background:url(https://tracker.example)',
+      '--radius': '10px;background:url(https://tracker.example)',
+      '--ink-soft': '#5D6D8580',
       '--accent': '#FFFFFF',
     },
   };
@@ -82,7 +81,7 @@ test('nothing in a brand can reach the page as markup', async () => {
     assert.doesNotMatch(res.body, /<script>alert/, 'no injected script element');
     assert.doesNotMatch(res.body, /<\/style><script>/, 'no token closed the style element');
     assert.doesNotMatch(res.body, /tracker\.example/);
-    assert.match(res.body, /<html data-mode="light"/, 'an unrecognised mode falls back to light');
+    assert.doesNotMatch(res.body, /#5D6D8580/, 'a colour with alpha is refused: its contrast cannot be judged');
     assert.match(res.body, /\\u003c\/script\\u003e/, 'markup in the sub is escaped inside the JSON');
     assert.equal(academyJson(res.body).sub, hostile.sub, 'and still reads back as the text it was');
   } finally {
@@ -91,11 +90,10 @@ test('nothing in a brand can reach the page as markup', async () => {
 });
 
 test('the brand sanitiser keeps known tokens with valid values and reports the rest', () => {
-  const b = sanitiseBrand({ sub: 'Ok', mode: 'dark', tokens: { '--brand': '#abc', '--r-s': '7px', '--bg': 'blue', '--x': '#fff' } });
-  assert.deepEqual(b.tokens, { '--brand': '#abc', '--r-s': '7px' });
-  assert.deepEqual(b.refused.sort(), ['--bg', '--x']);
-  assert.equal(b.mode, 'dark');
-  assert.deepEqual(sanitiseBrand('not an object'), { sub: '', mode: 'light', tokens: {}, refused: [] });
+  const b = sanitiseBrand({ sub: 'Ok', tokens: { '--brand': '#abc', '--radius': '7px', '--surface': 'blue', '--r-s': '7px', '--x': '#fff' } });
+  assert.deepEqual(b.tokens, { '--brand': '#abc', '--radius': '7px' });
+  assert.deepEqual(b.refused.sort(), ['--r-s', '--surface', '--x'], 'legacy names, bad values and unknown names are all refused');
+  assert.deepEqual(sanitiseBrand('not an object'), { sub: '', tokens: {}, refused: [] });
   assert.equal(jsonForHtml({ s: '</script>&\u2028' }), '{"s":"\\u003c/script\\u003e\\u0026\\u2028"}');
 });
 

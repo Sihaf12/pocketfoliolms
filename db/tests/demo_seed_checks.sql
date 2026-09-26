@@ -24,11 +24,13 @@ DO $$
 BEGIN
   PERFORM pg_temp.expect(
     (SELECT count(*) FROM app.tenants
-      WHERE status = 'active' AND (slug, primary_domain, brand->>'mode') IN (
-        ('gtl-academy', 'gtl.academy.test', 'light'),
-        ('pocketfolio', 'pocketfolio.academy.test', 'light'),
-        ('meridian-inst', 'meridian.academy.test', 'dark'))) = 3,
-    'three active academies on their .test hosts, with their modes');
+      WHERE status = 'active' AND (slug, primary_domain) IN (
+        ('gtl-academy', 'gtl.academy.test'),
+        ('pocketfolio', 'pocketfolio.academy.test'),
+        ('meridian-inst', 'meridian.academy.test'))
+        AND (SELECT count(*) FROM jsonb_object_keys(brand->'tokens')) = 10
+        AND NOT brand ? 'mode') = 3,
+    'three active academies on their .test hosts, each setting all ten brand tokens');
 
   PERFORM pg_temp.expect(
     (SELECT count(*) FROM app.tenants) = 3,

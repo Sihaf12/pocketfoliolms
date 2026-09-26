@@ -12,9 +12,11 @@ the backend that enforces it.
     db/005_request_path.sql resolve_tenant(), verify_certificate(), sessions
     db/006_attempt_lessons.sql attempts record their lesson; one open paper at a time
     db/007_pathway_and_branding.sql lesson prerequisites, XP, onboarding answers, branding
+    db/008_studio.sql      studio and console roles, the review workflow, staff, brand contract
     db/tests/seed.sql      academies, courses and certificates for the proof tests
     db/tests/rls_proof.sql 51 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
+    db/tests/studio_proof.sql proves the studio and console roles and the review workflow
     db/seed/demo.sql       the demo: three academies, the eleven-lesson curriculum
     db/tests/demo_seed.sh  proves the demo seed loads twice cleanly and is complete
     scripts/demo.sh        npm run demo
@@ -28,6 +30,8 @@ the backend that enforces it.
     src/domain/papers.ts        server-drawn placement and check papers
     src/domain/serial.ts        random PA-XXXX-XXXX certificate serials
     src/domain/pathway.ts       lesson availability: the one rule behind every lock
+    src/domain/review.ts        the content review workflow and its separation rule
+    packages/shared/            brand contract, contrast checks, lesson Markdown: one copy for API and studio
     src/auth/                   scrypt passwords, RLS-backed sessions
     src/http/server.ts          Fastify: a public scope and a tenant scope
     src/http/tenantScope.ts     host -> academy, or 404; never a default
@@ -51,8 +55,9 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 93 tests
+    npm test                                             # 110 tests
     npm run test:migrate                                 # migrate a fresh database
+    npm run test:studio                                  # studio and console roles, review workflow
 
 ### Connections
 

@@ -6,7 +6,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Script } from 'node:vm';
+import { Script, createContext } from 'node:vm';
+import { BRAND_TOKENS } from '../packages/shared/brand.js';
+import { inline, parseLesson } from '../packages/shared/markdown.js';
+import { demoDocument } from './demoContent.js';
 
 const page = readFileSync('web/index.html', 'utf8');
 const scripts = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]!);
@@ -43,7 +46,55 @@ test('the client talks only to its own academy API', () => {
 });
 
 test('branding comes from the server, not from themes in the page', () => {
-  assert.doesNotMatch(page, /data-theme/);
+  assert.doesNotMatch(page, /data-theme|data-mode/, 'a dark academy is a token set, not a theme or a mode');
   assert.match(page, /<\/head>/, 'the head the server injects the academy into');
   assert.match(page, /document\.getElementById\('academy'\)/, 'the academy is read from the injected block');
+});
+
+test('the page uses the ten-token contract, and every variable it uses is defined', () => {
+  const root = page.slice(page.indexOf(':root{'), page.indexOf('}', page.indexOf(':root{')));
+  const defined = new Set([...root.matchAll(/(--[a-z0-9-]+):/g)].map((m) => m[1]!));
+  for (const { name } of BRAND_TOKENS) assert.ok(defined.has(name), `${name} has a default`);
+  const used = new Set([...page.matchAll(/var\((--[a-z0-9-]+)\)/g)].map((m) => m[1]!));
+  assert.deepEqual([...used].filter((v) => !defined.has(v)), [], 'no variable is used without a definition');
+  for (const legacy of ['--bg', '--muted', '--brandtext', '--r', '--r-s', '--r-l', '--ok', '--warn', '--bad']) {
+    assert.doesNotMatch(page, new RegExp(`${legacy}(?![\\w-])`), `${legacy} is gone`);
+  }
+});
+
+/** The page script, run in a sandbox with a do-nothing DOM, so its functions can be called. */
+function sandboxedClient(): Record<string, unknown> {
+  const inert: object = new Proxy(function inertFn() {}, {
+    get: (_t, key) => (key === Symbol.toPrimitive ? () => '' : inert),
+    set: () => true,
+    apply: () => inert,
+  });
+  const context = createContext({
+    document: inert, navigator: inert, getComputedStyle: inert,
+    location: { search: '', host: 'test.example', origin: 'http://test.example' },
+    URLSearchParams, JSON, Math, Date, console,
+    fetch: () => Promise.reject(Object.assign(new Error('offline'), { status: 401 })),
+    setTimeout: () => 0, clearTimeout: () => undefined, addEventListener: () => undefined,
+    requestAnimationFrame: () => 0,
+  });
+  new Script(scripts[0]!).runInContext(context);
+  return context as Record<string, unknown>;
+}
+
+test('the page renders lessons exactly as packages/shared does', () => {
+  const client = sandboxedClient();
+  const clientParse = client.parseLesson as (md: string) => unknown;
+  const clientInline = client.inline as (text: string) => string;
+  const plain = (v: unknown) => JSON.parse(JSON.stringify(v));
+  const bodies = demoDocument().lessons.map((l) => l.body).concat([
+    '## <script>alert(1)</script>\n**bold** and [[term|a "quoted" <def>]]\n\n> **In practice**\n> <img src=x onerror=alert(2)>',
+    'no steps at all', '> plain callout',
+  ]);
+  for (const md of bodies) {
+    const ours = parseLesson(md);
+    assert.deepEqual(plain(clientParse(md)), ours);
+    for (const s of [...ours.steps, ...(ours.callout ? [ours.callout] : [])]) {
+      assert.equal(clientInline(s.p), inline(s.p));
+    }
+  }
 });

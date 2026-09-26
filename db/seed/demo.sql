@@ -18,6 +18,9 @@
 --   ## Heading            a lesson step
 --   > **In practice**     the callout (following lines start with "> ")
 --   [[term|definition]]   a glossary term
+--
+-- Brands follow the academy-design skill's contract: the ten tokens an
+-- academy may set. Tier and status colours are fixed in every academy.
 -- =====================================================================
 \set ON_ERROR_STOP on
 BEGIN;
@@ -32,35 +35,17 @@ INSERT INTO demo VALUES ($demo$
       "domain": "gtl.academy.test",
       "brand": {
         "sub": "Global Tutoring Lab",
-        "mode": "light",
         "tokens": {
           "--brand": "#1A6DC2",
-          "--brand-d": "#12508F",
-          "--brand-t": "#E8F1FB",
+          "--brand-ink": "#FFFFFF",
           "--accent": "#F5C400",
           "--accent-ink": "#1F1A00",
-          "--brandtext": "#FFFFFF",
-          "--bg": "#F2F6FB",
-          "--surface": "#FFFFFF",
-          "--surface-2": "#F7FAFD",
-          "--line": "#DDE6F1",
-          "--line-2": "#EAF0F7",
+          "--surface": "#F4F7FB",
+          "--surface-raised": "#FFFFFF",
+          "--line": "#DCE4EE",
           "--ink": "#14203A",
-          "--muted": "#5D6D85",
-          "--faint": "#93A3B8",
-          "--ok": "#1E8E4E",
-          "--ok-t": "#E3F5EB",
-          "--warn": "#B4790E",
-          "--warn-t": "#FCF3DC",
-          "--bad": "#B23A3A",
-          "--bad-t": "#FBEAEA",
-          "--learn": "#2F7DD1",
-          "--safeguard": "#0F8A7E",
-          "--apply": "#B4790E",
-          "--specialise": "#7B3F98",
-          "--r": "16px",
-          "--r-s": "11px",
-          "--r-l": "22px"
+          "--ink-soft": "#5D6D85",
+          "--radius": "16px"
         }
       }
     },
@@ -70,35 +55,17 @@ INSERT INTO demo VALUES ($demo$
       "domain": "pocketfolio.academy.test",
       "brand": {
         "sub": "Zento Era",
-        "mode": "light",
         "tokens": {
           "--brand": "#3D6D67",
-          "--brand-d": "#2C524D",
-          "--brand-t": "#E6F0EE",
+          "--brand-ink": "#FFFFFF",
           "--accent": "#FACC15",
           "--accent-ink": "#231F00",
-          "--brandtext": "#FFFFFF",
-          "--bg": "#F3F7F6",
-          "--surface": "#FFFFFF",
-          "--surface-2": "#F7FBFA",
+          "--surface": "#F3F7F6",
+          "--surface-raised": "#FFFFFF",
           "--line": "#DCE7E5",
-          "--line-2": "#EAF2F1",
           "--ink": "#152624",
-          "--muted": "#5C6F6C",
-          "--faint": "#93A5A2",
-          "--ok": "#1E8E4E",
-          "--ok-t": "#E3F5EB",
-          "--warn": "#B4790E",
-          "--warn-t": "#FCF3DC",
-          "--bad": "#B23A3A",
-          "--bad-t": "#FBEAEA",
-          "--learn": "#3D6D67",
-          "--safeguard": "#2F8F84",
-          "--apply": "#C08A1E",
-          "--specialise": "#6E5AA8",
-          "--r": "20px",
-          "--r-s": "14px",
-          "--r-l": "26px"
+          "--ink-soft": "#5C6F6C",
+          "--radius": "20px"
         }
       }
     },
@@ -108,35 +75,17 @@ INSERT INTO demo VALUES ($demo$
       "domain": "meridian.academy.test",
       "brand": {
         "sub": "Institutional",
-        "mode": "dark",
         "tokens": {
           "--brand": "#C9A227",
-          "--brand-d": "#A8851B",
-          "--brand-t": "#22314B",
+          "--brand-ink": "#121E2F",
           "--accent": "#C9A227",
           "--accent-ink": "#121E2F",
-          "--brandtext": "#121E2F",
-          "--bg": "#0E1826",
-          "--surface": "#18263C",
-          "--surface-2": "#1E2F49",
+          "--surface": "#0E1826",
+          "--surface-raised": "#18263C",
           "--line": "#2A3C58",
-          "--line-2": "#22334E",
           "--ink": "#EEF3FA",
-          "--muted": "#A3B3CA",
-          "--faint": "#7B8DA8",
-          "--ok": "#4FC98A",
-          "--ok-t": "#16311F",
-          "--warn": "#E0B34C",
-          "--warn-t": "#332913",
-          "--bad": "#E38080",
-          "--bad-t": "#3A1E1E",
-          "--learn": "#5B9BE0",
-          "--safeguard": "#3FB5A6",
-          "--apply": "#DCAE4A",
-          "--specialise": "#A783D6",
-          "--r": "10px",
-          "--r-s": "7px",
-          "--r-l": "14px"
+          "--ink-soft": "#A3B3CA",
+          "--radius": "10px"
         }
       }
     }

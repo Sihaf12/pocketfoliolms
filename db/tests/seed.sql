@@ -5,9 +5,9 @@ ON CONFLICT (slug) DO NOTHING;
 
 INSERT INTO app.tenants (slug,name,primary_domain,brand)
 VALUES ('northgate','Northgate Markets','learn.northgate.ae',
-        '{"sub":"Northgate test academy","mode":"light","tokens":{"--brand":"#1A6DC2","--accent":"#F5C400"}}'),
+        '{"sub":"Northgate test academy","tokens":{"--brand":"#1A6DC2","--accent":"#F5C400"}}'),
        ('sable','Sable Wealth','training.sablewealth.io',
-        '{"sub":"Sable test academy","mode":"dark","tokens":{"--brand":"#6B3F7A","--r":"10px"}}')
+        '{"sub":"Sable test academy","tokens":{"--brand":"#6B3F7A","--radius":"10px"}}')
 ON CONFLICT (slug) DO UPDATE SET brand = EXCLUDED.brand;
 
 INSERT INTO app.users (tenant_id,email,display_name)
@@ -113,14 +113,14 @@ ON CONFLICT (tenant_id, course_id) DO NOTHING;
 
 -- Version snapshots of the private course and everything under it, plus
 -- one of the platform course, so the proof can show which ones sable reads.
-INSERT INTO platform.content_versions (entity_type,entity_id,version,review_state,snapshot)
-SELECT 'course', id, 1, 'published'::platform.review_state, jsonb_build_object('title', title) FROM platform.courses
+INSERT INTO platform.content_versions (entity_type,entity_id,version,review_state,snapshot,owner_tenant_id)
+SELECT 'course', id, 1, 'published'::platform.review_state, jsonb_build_object('title', title), owner_tenant_id FROM platform.courses
  WHERE slug IN ('northgate-desk-rules','how-markets-work')
 UNION ALL
-SELECT 'lesson', l.id, 1, 'published'::platform.review_state, jsonb_build_object('title', l.title)
+SELECT 'lesson', l.id, 1, 'published'::platform.review_state, jsonb_build_object('title', l.title), c.owner_tenant_id
   FROM platform.lessons l JOIN platform.courses c ON c.id = l.course_id WHERE c.slug='northgate-desk-rules'
 UNION ALL
-SELECT 'question', q.id, 1, 'published'::platform.review_state, jsonb_build_object('prompt', q.prompt)
+SELECT 'question', q.id, 1, 'published'::platform.review_state, jsonb_build_object('prompt', q.prompt), c.owner_tenant_id
   FROM platform.questions q JOIN platform.courses c ON c.id = q.course_id WHERE c.slug='northgate-desk-rules'
 ON CONFLICT (entity_type, entity_id, version) DO NOTHING;
 
