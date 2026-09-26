@@ -58,6 +58,9 @@ async function academy(): Promise<Academy> {
     `INSERT INTO app.tenants (slug, name, primary_domain, brand) VALUES ($1, 'Harbour Trading', $2, '{}') RETURNING id`, [slug, domain])).rows[0]!.id;
   await ownerPool.query('INSERT INTO app.tenant_settings (tenant_id) VALUES ($1)', [id]);
   await ownerPool.query(
+    `INSERT INTO app.tenant_entitlements (tenant_id, course_id, granted_by)
+     SELECT $1, id, 'test' FROM platform.courses WHERE owner_tenant_id IS NULL AND review_state = 'published'`, [id]);
+  await ownerPool.query(
     `INSERT INTO app.tenant_catalogues (tenant_id, course_id, enabled, position)
      SELECT $1, id, true, row_number() OVER (ORDER BY tier, title) FROM platform.courses
       WHERE owner_tenant_id IS NULL AND review_state = 'published'`, [id]);
@@ -353,4 +356,34 @@ test('a CRM delivery never reaches a loopback, private or metadata address', asy
   for (const url of ['https://127.0.0.1:9/hook', 'https://[::1]:9/hook', 'https://localhost:9/hook', 'http://crm.example.com/hook']) {
     await assert.rejects(dispatcher.send({ url, secret: null }, row), /refused/, url);
   }
+});
+
+test('the platform decides which of its courses an academy may offer; taking one away switches it off', async () => {
+  const a = await academy();
+  const owner = await staffToken('platform_owner');
+  const allowed = (await consoleCall('GET', `/tenants/${a.id}/courses`, owner)).json().courses as { id: string; title: string; allowed: boolean; offered: boolean }[];
+  assert.ok(allowed.length > 1 && allowed.every((c) => c.allowed && c.offered), 'by default: every published platform course, on');
+  const [taken, ...kept] = allowed;
+
+  const put = await consoleCall('PUT', `/tenants/${a.id}/courses`, owner, { courseIds: kept.map((c) => c.id) });
+  assert.equal(put.statusCode, 200, put.body);
+  const after = put.json().courses.find((c: { id: string }) => c.id === taken!.id);
+  assert.deepEqual([after.allowed, after.offered], [false, false], 'taken away, and so switched off');
+
+  const catalogue = (await studio(a, a.admin, 'GET', '/catalogue')).json().courses as { courseId: string }[];
+  assert.ok(!catalogue.some((c) => c.courseId === taken!.id), 'the academy no longer sees it to switch on');
+  const refused = await studio(a, a.admin, 'PUT', `/catalogue/${taken!.id}`, { enabled: true, position: 1 });
+  assert.equal(refused.statusCode, 403);
+  assert.equal(refused.json().error.code, 'not_allowed');
+
+  const northgatePrivate = (await ownerPool.query<{ id: string }>(`SELECT id FROM platform.courses WHERE title = 'Northgate desk rules'`)).rows[0]!.id;
+  assert.equal((await consoleCall('PUT', `/tenants/${a.id}/courses`, owner, { courseIds: [northgatePrivate] })).statusCode, 422, 'only platform courses');
+
+  assert.equal((await consoleCall('PUT', `/tenants/${a.id}/courses`, owner, { courseIds: allowed.map((c) => c.id) })).statusCode, 200);
+  assert.equal((await studio(a, a.admin, 'PUT', `/catalogue/${taken!.id}`, { enabled: true, position: 1 })).statusCode, 200, 'allowed again, the admin can switch it on');
+
+  const audit = await ownerPool.query<{ payload: { added: string[]; removed: string[] } }>(
+    `SELECT payload FROM platform.audit_log WHERE entity_id = $1 AND action = 'tenant.courses_allowed' ORDER BY seq`, [a.id]);
+  assert.deepEqual(audit.rows.map((r) => [r.payload.added, r.payload.removed]), [[[], [taken!.id]], [[taken!.id], []]]);
+  assert.equal((await consoleCall('GET', `/tenants/${a.id}/courses`, await staffToken('platform_author'))).statusCode, 403);
 });

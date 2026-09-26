@@ -432,5 +432,63 @@ BEGIN
     'Sable''s domain and its change are untouched');
 END $$;
 
+-- =====================================================================
+-- 10. Course entitlements: the platform's list, which the catalogue obeys
+-- =====================================================================
+DO $$
+BEGIN
+  PERFORM pg_temp.expect((SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid = 'app.tenant_entitlements'::regclass),
+    'app.tenant_entitlements has RLS enabled and forced');
+  PERFORM pg_temp.expect(NOT has_table_privilege('app_studio', 'app.tenant_entitlements', 'INSERT')
+    AND NOT has_table_privilege('app_studio', 'app.tenant_entitlements', 'DELETE')
+    AND NOT has_table_privilege('app_user', 'app.tenant_entitlements', 'INSERT'),
+    'an academy cannot change its own entitlements');
+END $$;
+
+INSERT INTO ids SELECT 'risk', id FROM platform.courses WHERE slug = 'risk-basics';
+
+SET LOCAL ROLE app_studio;
+DO $$
+BEGIN
+  PERFORM set_config('app.tenant_id', pg_temp.id('northgate')::text, true);
+  PERFORM pg_temp.expect((SELECT count(*) FROM app.tenant_entitlements) > 0
+    AND NOT EXISTS (SELECT 1 FROM app.tenant_entitlements WHERE tenant_id <> pg_temp.id('northgate')),
+    'an academy reads its own entitlements and no other academy''s');
+  PERFORM set_config('app.tenant_id', pg_temp.id('sable')::text, true);
+  PERFORM pg_temp.expect(NOT EXISTS (SELECT 1 FROM app.tenant_entitlements WHERE tenant_id = pg_temp.id('northgate')),
+    'another academy cannot read Northgate''s');
+END $$;
+RESET ROLE;
+
+SET LOCAL ROLE app_console;
+DO $$
+BEGIN
+  DELETE FROM app.tenant_entitlements WHERE tenant_id = pg_temp.id('northgate') AND course_id = pg_temp.id('risk');
+  PERFORM pg_temp.expect(pg_temp.refused(format(
+    $q$INSERT INTO app.tenant_entitlements (tenant_id, course_id) VALUES (%L, %L)$q$, pg_temp.id('northgate'), pg_temp.id('n_course'))),
+    'only a platform course can be an entitlement');
+END $$;
+RESET ROLE;
+
+SET LOCAL ROLE app_studio;
+DO $$
+BEGIN
+  PERFORM set_config('app.tenant_id', pg_temp.id('northgate')::text, true);
+  PERFORM pg_temp.expect(pg_temp.refused(format(
+    $q$INSERT INTO app.tenant_catalogues (tenant_id, course_id, enabled) VALUES (%L, %L, true)
+       ON CONFLICT (tenant_id, course_id) DO UPDATE SET enabled = true$q$, pg_temp.id('northgate'), pg_temp.id('risk'))),
+    'the studio cannot switch on a platform course its academy is not allowed');
+END $$;
+RESET ROLE;
+
+DO $$
+BEGIN
+  INSERT INTO app.tenant_entitlements (tenant_id, course_id) VALUES (pg_temp.id('northgate'), pg_temp.id('risk'));
+  UPDATE app.tenant_catalogues SET enabled = true WHERE tenant_id = pg_temp.id('northgate') AND course_id = pg_temp.id('risk');
+  DELETE FROM app.tenant_entitlements WHERE tenant_id = pg_temp.id('northgate') AND course_id = pg_temp.id('risk');
+  PERFORM pg_temp.expect(NOT (SELECT enabled FROM app.tenant_catalogues WHERE tenant_id = pg_temp.id('northgate') AND course_id = pg_temp.id('risk')),
+    'taking an entitlement away switches the course off in that academy''s catalogue');
+END $$;
+
 ROLLBACK;
 SELECT 'STUDIO PROOF PASSED' AS result;

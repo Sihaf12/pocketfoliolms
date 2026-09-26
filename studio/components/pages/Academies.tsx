@@ -1,12 +1,12 @@
 'use client';
 /** The console's academies, for the platform owner: list, create, and look after one. */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { HOSTNAME_FORMAT, SLUG_FORMAT, hostProblem, slugProblem } from '../../../packages/shared/names';
 import { call } from '@/lib/api';
-import { day } from '@/lib/format';
+import { day, type Tier } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
-import { Head, Loading } from '../bits';
+import { Head, Loading, TierChip } from '../bits';
 import { ErrorScope, Field } from '../Form';
 import { Icon } from '../Icon';
 import { useWorkspace } from '../Workspace';
@@ -153,6 +153,8 @@ export function AcademyPage({ tenantId }: { tenantId: string }) {
         </dl>
       </section>
 
+      <AllowedCourses tenantId={t.id} name={t.name} />
+
       <section aria-labelledby="first-admin">
         <h2 id="first-admin">First admin</h2>
         {data.firstAdmin ? (
@@ -199,5 +201,60 @@ export function AcademyPage({ tenantId }: { tenantId: string }) {
       </dialog>
       </ErrorScope>
     </>
+  );
+}
+
+interface Allowed { id: string; title: string; tier: Tier; allowed: boolean; offered: boolean }
+
+/**
+ * Which published platform courses this academy may offer. Its admin then
+ * switches each allowed one on or off in the catalogue. Taking one away
+ * switches it off there too.
+ */
+function AllowedCourses({ tenantId, name }: { tenantId: string; name: string }) {
+  const ws = useWorkspace();
+  const { data, error, setData } = useLoad<{ courses: Allowed[] }>(ws.api(`/tenants/${tenantId}/courses`));
+  const [picked, setPicked] = useState<string[] | null>(null);
+  const [problem, setProblem] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (data) setPicked(data.courses.filter((c) => c.allowed).map((c) => c.id)); }, [data]);
+
+  if (!data || !picked) return <section aria-labelledby="allowed"><h2 id="allowed">Courses it may offer</h2><Loading error={error} /></section>;
+  const before = data.courses.filter((c) => c.allowed).map((c) => c.id);
+  const changed = before.length !== picked.length || before.some((id) => !picked.includes(id));
+  const losing = data.courses.filter((c) => c.offered && !picked.includes(c.id));
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setProblem(null);
+    try {
+      setData(await call<{ courses: Allowed[] }>(ws.api(`/tenants/${tenantId}/courses`), { method: 'PUT', body: { courseIds: picked } }));
+      ws.say(`Courses allowed to ${name} saved`);
+    } catch (err) { ws.handle(err); setProblem(err); } finally { setBusy(false); }
+  }
+
+  return (
+    <section aria-labelledby="allowed">
+      <h2 id="allowed">Courses it may offer</h2>
+      <form className="card stack" onSubmit={save}>
+        <p className="soft">Published platform courses {name} is allowed. Its admin switches each allowed one on or off for learners in the catalogue.</p>
+        <ErrorScope error={problem}>
+          <fieldset data-field="courseIds" tabIndex={-1}>
+            <legend className="visually-hidden">Allowed platform courses</legend>
+            {data.courses.map((c) => (
+              <label className="check" key={c.id}>
+                <input type="checkbox" checked={picked.includes(c.id)}
+                  onChange={(e) => setPicked(e.target.checked ? [...picked, c.id] : picked.filter((id) => id !== c.id))} />
+                <span className="row tight"><span>{c.title}</span><TierChip tier={c.tier} />{c.offered ? <span className="chip success">On for learners</span> : null}</span>
+              </label>
+            ))}
+          </fieldset>
+        </ErrorScope>
+        {losing.length ? (
+          <div className="notice caution"><p>Saving takes {losing.map((c) => c.title).join(', ')} away from its learners at once: the catalogue switches {losing.length === 1 ? 'it' : 'them'} off.</p></div>
+        ) : null}
+        <div className="row"><button type="submit" className="btn" disabled={busy || !changed}>Save allowed courses</button></div>
+      </form>
+    </section>
   );
 }

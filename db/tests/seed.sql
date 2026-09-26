@@ -99,6 +99,14 @@ ON CONFLICT DO NOTHING;
 -- Catalogues. Northgate offers everything but has switched Risk basics
 -- off. Sable's catalogue even names northgate's private course, which
 -- RLS on platform.courses must still hide from sable.
+-- Both academies are allowed every published platform course (011): a
+-- platform course can only be switched on in a catalogue if it is allowed.
+INSERT INTO app.tenant_entitlements (tenant_id, course_id, granted_by)
+SELECT t.id, c.id, 'seed'
+  FROM app.tenants t CROSS JOIN platform.courses c
+ WHERE t.slug IN ('northgate', 'sable') AND c.owner_tenant_id IS NULL AND c.review_state = 'published'
+ON CONFLICT DO NOTHING;
+
 INSERT INTO app.tenant_catalogues (tenant_id,course_id,enabled,position)
 SELECT t.id, c.id, v.enabled, v.position
   FROM (VALUES ('northgate','how-markets-work',     true,  1),

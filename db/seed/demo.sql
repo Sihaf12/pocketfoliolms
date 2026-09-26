@@ -2039,8 +2039,15 @@ DELETE FROM platform.questions q
    AND q.id NOT IN (SELECT id FROM demo_question);
 
 -- ---------------------------------------------------------------------
--- Every academy offers all four courses, in tier order.
+-- Every academy is allowed all four courses, and offers them in tier order.
 -- ---------------------------------------------------------------------
+INSERT INTO app.tenant_entitlements (tenant_id, course_id, granted_by)
+SELECT t.id, dc.id, 'seed'
+  FROM demo CROSS JOIN LATERAL jsonb_array_elements(doc->'academies') a
+  JOIN app.tenants t ON t.slug = a->>'slug'
+  CROSS JOIN demo_course dc
+ON CONFLICT DO NOTHING;
+
 INSERT INTO app.tenant_catalogues (tenant_id, course_id, enabled, position)
 SELECT t.id, dc.id, true, array_position(ARRAY['learn','safeguard','apply','specialise'], dc.tier::text)
   FROM demo CROSS JOIN LATERAL jsonb_array_elements(doc->'academies') a

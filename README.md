@@ -16,6 +16,7 @@ platform console as a Next.js front end.
     db/008_studio.sql      studio and console roles, the review workflow, staff, brand contract
     db/009_studio_identity.sql studio roles as a set, staff invitations, TOTP replay guard
     db/010_academy_settings.sql the studio's five functions for brand, domain and CRM settings
+    db/011_entitlements.sql which platform courses each academy may offer, enforced on the catalogue
     db/tests/seed.sql      academies, courses and certificates for the proof tests
     db/tests/rls_proof.sql 51 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
@@ -74,12 +75,12 @@ platform console as a Next.js front end.
 
     npm install
     npm run build
-    npm test                                             # 158 tests
+    npm test                                             # 167 tests
     npm run test:migrate                                 # migrate a fresh database
-    npm run test:studio                                  # studio and console roles, review workflow (68)
+    npm run test:studio                                  # studio and console roles, review workflow (75)
     npm run typecheck                                    # the API, the studio and the end-to-end specs
     npx playwright install chromium                      # once
-    npm run test:e2e                                     # 18 browser tests, on academy_e2e
+    npm run test:e2e                                     # 42 browser tests, on academy_e2e
 
 ### Connections
 

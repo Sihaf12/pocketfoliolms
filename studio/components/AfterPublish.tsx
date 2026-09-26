@@ -24,7 +24,13 @@ export function AfterPublish({ kind, course }: { kind: EntityKind; course?: Cour
   if (kind === 'glossary_term') {
     body = <p>Lessons that use this term show its new definition now.</p>;
   } else if (kind === 'course' && ws.kind === 'console') {
-    body = <p>Each academy allowed this course sees it in its catalogue, switched off until its admin turns it on.</p>;
+    tone = 'caution';
+    body = ws.isAdmin ? (
+      <>
+        <p>No academy can offer it until you allow it, on each academy&apos;s page. Its admin then switches it on in the catalogue.</p>
+        <p><Link href={ws.href('/academies')}>Go to the academies</Link></p>
+      </>
+    ) : <p>No academy can offer it until the platform owner allows it; each academy&apos;s admin then switches it on in the catalogue.</p>;
   } else if (kind === 'course') {
     body = course?.course.offered
       ? <p>It is on in the catalogue, so learners see this version now.</p>

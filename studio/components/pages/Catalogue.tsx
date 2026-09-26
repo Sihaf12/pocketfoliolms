@@ -97,6 +97,7 @@ export function CataloguePage() {
   return (
     <>
       <Head title="Catalogue" lead="The courses your learners are offered, in the order they see them. Only published courses can be offered." />
+      <p className="soft lead">Your own courses are always here once published. Platform courses appear as the platform allows your academy; ask it if one you want is missing.</p>
       <Problem error={problem} />
       <section aria-labelledby="offered">
         <h2 id="offered">Offered to learners</h2>

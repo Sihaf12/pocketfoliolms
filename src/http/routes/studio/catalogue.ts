@@ -1,8 +1,8 @@
 /**
  * What the academy's learners are offered, for its tenant admins.
  *
- * Every published course the academy can see is listed: the platform's
- * and its own. The admin switches each on or off and orders them.
+ * Every published course the academy may offer is listed: its own, and
+ * the platform courses the platform allows it (011). The admin switches each on or off and orders them.
  * Platform courses stay read-only here; this changes only whether this
  * academy shows one, never the course. A draft or retired course cannot
  * be switched on, so a learner never meets unreviewed content.
@@ -33,7 +33,9 @@ const CATALOGUE_SQL = `
          (SELECT count(*)::int FROM platform.lessons l WHERE l.course_id = c.id) AS lessons
     FROM platform.courses c
     LEFT JOIN app.tenant_catalogues tc ON tc.course_id = c.id
-   WHERE c.review_state = 'published'`;
+   WHERE c.review_state = 'published'
+     -- Platform courses only as far as the platform allows this academy (011).
+     AND (c.owner_tenant_id IS NOT NULL OR EXISTS (SELECT 1 FROM app.tenant_entitlements e WHERE e.course_id = c.id))`;
 
 export async function studioCatalogueRoutes(app: FastifyInstance): Promise<void> {
   app.get('/catalogue', {
@@ -57,11 +59,17 @@ export async function studioCatalogueRoutes(app: FastifyInstance): Promise<void>
     inStudio(req, async (db) => {
       await requireStudio(db, req, ADMIN);
       // RLS already hides other academies' private courses: they are 404 like any unknown id.
-      const course = await db.maybeOne<{ state: string }>(
-        'SELECT review_state AS state FROM platform.courses WHERE id = $1', [req.params.courseId]);
+      const course = await db.maybeOne<{ state: string; allowed: boolean }>(
+        `SELECT review_state AS state,
+                owner_tenant_id IS NOT NULL OR EXISTS (SELECT 1 FROM app.tenant_entitlements e WHERE e.course_id = c.id) AS allowed
+           FROM platform.courses c WHERE id = $1`, [req.params.courseId]);
       if (!course) throw new HttpError(404, 'not_found', 'No course with that id.');
+
       if (course.state !== 'published') {
         throw new HttpError(409, 'not_published', 'Only a published course can be offered to learners.');
+      }
+      if (!course.allowed && req.body.enabled) {
+        throw new HttpError(403, 'not_allowed', 'Your academy is not allowed this course. The platform decides which of its courses each academy may offer.');
       }
       const before = await db.maybeOne<{ enabled: boolean; position: number }>(
         'SELECT enabled, position FROM app.tenant_catalogues WHERE course_id = $1 FOR UPDATE', [req.params.courseId]);

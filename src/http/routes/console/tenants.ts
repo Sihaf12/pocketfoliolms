@@ -94,6 +94,12 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
         [req.body.slug, req.body.name, domain],
       );
       await db.query('INSERT INTO app.tenant_settings (tenant_id) VALUES ($1)', [tenant.id]);
+      // Allowed every published platform course by default (011); the owner can narrow it.
+      await db.query(
+        `INSERT INTO app.tenant_entitlements (tenant_id, course_id, granted_by)
+         SELECT $1, c.id, $2 FROM platform.courses c WHERE c.owner_tenant_id IS NULL AND c.review_state = 'published'`,
+        [tenant.id, `staff:${owner.id}`],
+      );
       await db.query(
         `INSERT INTO app.tenant_catalogues (tenant_id, course_id, enabled, position)
          SELECT $1, c.id, true, row_number() OVER (ORDER BY c.tier, c.title)
@@ -190,6 +196,80 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
     forgetResolvedHosts();
     return { tenant: shape(tenant) };
   });
+
+  const allowedSchema = {
+    type: 'object', required: ['courses'],
+    properties: {
+      courses: {
+        type: 'array',
+        items: {
+          type: 'object', required: ['id', 'title', 'tier', 'allowed', 'offered'],
+          properties: { id: { type: 'string' }, title: { type: 'string' }, tier: { type: 'string' }, allowed: { type: 'boolean' }, offered: { type: 'boolean' } },
+        },
+      },
+    },
+  } as const;
+  const ALLOWED_SQL = `
+    SELECT c.id, c.title, c.tier,
+           EXISTS (SELECT 1 FROM app.tenant_entitlements e WHERE e.tenant_id = $1 AND e.course_id = c.id) AS allowed,
+           COALESCE((SELECT tc.enabled FROM app.tenant_catalogues tc WHERE tc.tenant_id = $1 AND tc.course_id = c.id), false) AS offered
+      FROM platform.courses c
+     WHERE c.owner_tenant_id IS NULL AND c.review_state = 'published'
+     ORDER BY c.tier, c.title`;
+
+  // Which published platform courses an academy may offer. Its admin then
+  // switches each allowed one on or off in the academy's catalogue.
+  app.get<{ Params: { id: string } }>('/tenants/:id/courses', {
+    schema: { params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } }, response: { 200: allowedSchema } },
+  }, async (req) =>
+    inConsole(async (db) => {
+      await requireStaff(db, req, OWNER);
+      if (!(await db.maybeOne('SELECT 1 FROM app.tenants WHERE id = $1', [req.params.id]))) throw new HttpError(404, 'not_found', 'No academy with that id.');
+      return { courses: await db.query(ALLOWED_SQL, [req.params.id]) };
+    }));
+
+  app.put<{ Params: { id: string }; Body: { courseIds: string[] } }>('/tenants/:id/courses', {
+    schema: {
+      params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } },
+      body: {
+        type: 'object', additionalProperties: false, required: ['courseIds'],
+        properties: { courseIds: { type: 'array', maxItems: 500, uniqueItems: true, items: uuid } },
+      },
+      response: { 200: allowedSchema },
+    },
+  }, async (req) =>
+    inConsole(async (db) => {
+      const owner = await requireStaff(db, req, OWNER);
+      if (!(await db.maybeOne('SELECT 1 FROM app.tenants WHERE id = $1 FOR UPDATE', [req.params.id]))) {
+        throw new HttpError(404, 'not_found', 'No academy with that id.');
+      }
+      const platform = new Set((await db.query<{ id: string }>(
+        `SELECT id FROM platform.courses WHERE owner_tenant_id IS NULL AND review_state = 'published'`)).map((r) => r.id));
+      const unknown = req.body.courseIds.filter((id) => !platform.has(id));
+      if (unknown.length) {
+        throw new HttpError(422, 'not_platform_courses', 'Only published platform courses can be allowed.', {
+          fields: [{ field: 'courseIds', message: 'Only published platform courses can be allowed.' }], courseIds: unknown,
+        });
+      }
+      const before = new Set((await db.query<{ id: string }>(
+        'SELECT course_id AS id FROM app.tenant_entitlements WHERE tenant_id = $1', [req.params.id])).map((r) => r.id));
+      const want = new Set(req.body.courseIds);
+      const added = [...want].filter((id) => !before.has(id));
+      const removed = [...before].filter((id) => !want.has(id));
+      if (added.length) {
+        await db.query(
+          `INSERT INTO app.tenant_entitlements (tenant_id, course_id, granted_by)
+           SELECT $1, unnest($2::uuid[]), $3 ON CONFLICT DO NOTHING`, [req.params.id, added, `staff:${owner.id}`]);
+      }
+      // Removing one switches it off in the academy's catalogue, in the database (011).
+      if (removed.length) {
+        await db.query('DELETE FROM app.tenant_entitlements WHERE tenant_id = $1 AND course_id = ANY($2::uuid[])', [req.params.id, removed]);
+      }
+      if (added.length || removed.length) {
+        await db.audit({ action: 'tenant.courses_allowed', entityType: 'tenant', entityId: req.params.id, payload: { added, removed } });
+      }
+      return { courses: await db.query(ALLOWED_SQL, [req.params.id]) };
+    }));
 
   // A new link for the first admin, while their invitation is unused. The
   // old token stops working in the same transaction; the link is shown once.
