@@ -17,7 +17,7 @@ import type { StudioRole } from '../../../auth/studioSession.js';
 import { BRAND_TOKENS, sanitiseBrand, type Tokens } from '../../../../packages/shared/brand.js';
 import { checkPalette } from '../../../../packages/shared/contrast.js';
 import { isObviouslyInternalHost } from '../../../net/address.js';
-import { HttpError } from '../../errors.js';
+import { HttpError, fieldError } from '../../errors.js';
 import { inStudio, requireStudio } from '../../studioScope.js';
 import { forgetResolvedHosts, normaliseHost } from '../../tenantScope.js';
 
@@ -109,18 +109,26 @@ export async function studioSettingsRoutes(app: FastifyInstance, opts: SettingsO
   }, async (req) => {
     const unknown = Object.keys(req.body.tokens).filter((k) => !tokenNames.includes(k as keyof Tokens));
     if (unknown.length) {
-      throw new HttpError(422, 'unknown_tokens', `An academy sets these ten tokens only: ${tokenNames.join(', ')}.`, { tokens: unknown });
+      throw new HttpError(422, 'unknown_tokens', `An academy sets these ten tokens only: ${tokenNames.join(', ')}.`, {
+        tokens: unknown, fields: unknown.map((t) => ({ field: `tokens.${t}`, message: 'This is not one of the ten tokens.' })),
+      });
     }
     const brand = sanitiseBrand(req.body);
     if (brand.refused.length) {
       throw new HttpError(422, 'invalid_tokens',
-        'Colours are #RGB or #RRGGBB, with no transparency; the radius is whole pixels, such as 12px.', { tokens: brand.refused });
+        'Colours are #RGB or #RRGGBB, with no transparency; the radius is whole pixels, such as 12px.', {
+          tokens: brand.refused,
+          fields: brand.refused.map((t) => ({ field: `tokens.${t}`, message: t === '--radius' ? 'Use whole pixels, such as 12px.' : 'Use #RGB or #RRGGBB.' })),
+        });
     }
     const palette = checkPalette(brand.tokens);
     if (!palette.ok) {
       const pairs = palette.failures.map((f) => `${f.text} on ${f.on} (${f.use}) is ${f.ratio}:1`).join('; ');
       throw new HttpError(422, 'insufficient_contrast',
-        `Text must reach ${palette.failures[0]!.minimum}:1 against what it sits on. ${pairs}.`, { failures: palette.failures });
+        `Text must reach ${palette.failures[0]!.minimum}:1 against what it sits on. ${pairs}.`, {
+          failures: palette.failures,
+          fields: palette.failures.map((f) => ({ field: `tokens.${f.text}`, message: `${f.ratio}:1 on ${f.on}, for ${f.use}. It needs ${f.minimum}:1.` })),
+        });
     }
     return inStudio(req, async (db) => {
       await requireStudio(db, req, ADMIN);
@@ -196,16 +204,16 @@ export async function studioSettingsRoutes(app: FastifyInstance, opts: SettingsO
   }, async (req, reply) => {
     const domain = normaliseHost(req.body.domain);
     if (!domain || domain !== req.body.domain.trim().toLowerCase()) {
-      throw new HttpError(400, 'invalid_domain', 'Give the domain as a plain host name, such as learn.example.com.');
+      throw fieldError(400, 'invalid_domain', 'domain', 'Give the domain as a plain host name, such as learn.example.com.');
     }
-    if (domain === opts.consoleHost) throw new HttpError(400, 'invalid_domain', 'That host is reserved.');
+    if (domain === opts.consoleHost) throw fieldError(400, 'invalid_domain', 'domain', 'That host is reserved.');
 
     const result = await inStudio(req, async (db) => {
       const admin = await requireStudio(db, req, ADMIN);
       const current = await db.one<Current>('SELECT * FROM app.current_tenant_settings()');
-      if (domain === current.primary_domain) throw new HttpError(409, 'same_domain', 'That is already the academy\'s domain.');
+      if (domain === current.primary_domain) throw fieldError(409, 'same_domain', 'domain', 'That is already the academy\'s domain.');
       if ((await db.one<{ taken: boolean }>('SELECT app.domain_in_use($1) AS taken', [domain])).taken) {
-        throw new HttpError(409, 'domain_taken', 'Another academy already uses that domain.');
+        throw fieldError(409, 'domain_taken', 'domain', 'Another academy already uses that domain.');
       }
       // One change at a time: a new request replaces the one before it.
       const replaced = await db.maybeOne<{ id: string; domain: string }>(
@@ -311,10 +319,10 @@ export async function studioSettingsRoutes(app: FastifyInstance, opts: SettingsO
     const { url, secret, clearSecret = false } = req.body;
     if (url !== null) {
       const problem = crmProblem(url);
-      if (problem) throw new HttpError(422, 'invalid_crm_url', problem);
+      if (problem) throw fieldError(422, 'invalid_crm_url', 'url', problem);
     }
     if (secret !== undefined && clearSecret) {
-      throw new HttpError(400, 'conflicting_secret', 'Either set a new secret or clear it, not both.');
+      throw fieldError(400, 'conflicting_secret', 'secret', 'Either set a new secret or clear it, not both.');
     }
     return inStudio(req, async (db) => {
       await requireStudio(db, req, ADMIN);

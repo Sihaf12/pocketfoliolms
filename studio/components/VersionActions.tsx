@@ -8,10 +8,10 @@ import { useRef, useState } from 'react';
 import { call } from '@/lib/api';
 import type { Version } from '@/lib/content';
 import { ACTION_LABEL, ACTION_ORDER, type Action } from '@/lib/format';
-import { Problem } from './Form';
+import { ErrorScope, Field, Problem } from './Form';
 import { useWorkspace } from './Workspace';
 
-export function VersionActions({ versionId, entityId, entityType, actions, status, before, secondary, onDone }: {
+export function VersionActions({ versionId, entityId, entityType, actions, status, before, secondary, onDone, onError }: {
   versionId: string;
   entityId: string;
   entityType: string;
@@ -23,6 +23,8 @@ export function VersionActions({ versionId, entityId, entityType, actions, statu
   /** Other buttons for the bar, such as saving a draft. Never a second primary. */
   secondary?: React.ReactNode;
   onDone(version: Version, action: Action): void;
+  /** Where refusals go when the page shows them in its own form. Otherwise they show here. */
+  onError?(err: unknown): void;
 }) {
   const ws = useWorkspace();
   const [busy, setBusy] = useState(false);
@@ -49,8 +51,9 @@ export function VersionActions({ versionId, entityId, entityType, actions, statu
       ws.say(DONE[action]);
       onDone(res.version, action);
     } catch (err) {
-      ws.handle(err);
-      setError(err);
+      // A refused note stays in its dialog; anything else goes to the page's form if it has one.
+      if (onError && !(action === 'reject' && rejectDialog.current?.open)) onError(err);
+      else { ws.handle(err); setError(err); }
     } finally {
       setBusy(false);
     }
@@ -59,7 +62,7 @@ export function VersionActions({ versionId, entityId, entityType, actions, statu
   if (!ordered.length && !status && !secondary) return null;
   return (
     <>
-      <Problem error={error} />
+      {rejectDialog.current?.open ? null : <Problem error={error} />}
       <div className="actions">
         {status ? <p className="status">{status}</p> : null}
         {secondary}
@@ -76,10 +79,11 @@ export function VersionActions({ versionId, entityId, entityType, actions, statu
         <form method="dialog" className="stack" onSubmit={(e) => { e.preventDefault(); void run('reject'); }}>
           <h2 id={`reject-${versionId}`}>Send back with notes</h2>
           <p className="soft">The author sees these notes and starts a revision from them. Say what to change and why.</p>
-          <div className="field">
-            <label htmlFor={`notes-${versionId}`}>Notes for the author</label>
-            <textarea id={`notes-${versionId}`} className="textarea" required maxLength={4000} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
+          <ErrorScope error={rejectDialog.current?.open ? error : null}>
+            <Field label="Notes for the author" name="notes">
+              {(p) => <textarea {...p} className="textarea" required maxLength={4000} value={notes} onChange={(e) => setNotes(e.target.value)} />}
+            </Field>
+          </ErrorScope>
           <div className="row end">
             <button type="button" className="btn" onClick={() => rejectDialog.current?.close()}>Keep reviewing</button>
             <button type="submit" className="btn primary" disabled={busy || !notes.trim()}>Send back with notes</button>

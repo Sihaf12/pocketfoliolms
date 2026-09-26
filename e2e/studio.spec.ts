@@ -5,7 +5,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { inline, parseLesson } from '../packages/shared/markdown';
-import { GTL, asAnother, at, expectAccessible, shot, signInStudio, unique } from './helpers';
+import { GTL, api, asAnother, at, expectAccessible, shot, signInStudio, unique } from './helpers';
 
 const BODY = [
   '## What a spread is',
@@ -30,7 +30,7 @@ async function showForm(page: Page) {
 
 async function addQuestion(page: Page, n: number) {
   await page.getByRole('button', { name: 'Add a check question' }).click();
-  await page.getByLabel('Question', { exact: true }).nth(n - 1).fill(`Question ${n} about spreads?`);
+  await page.getByLabel(`Question ${n}`, { exact: true }).fill(`Question ${n} about spreads?`);
   for (const k of ['A', 'B', 'C']) {
     await page.getByLabel(`Option ${k} of question ${n}`).fill(`Answer ${k}`);
     await page.getByLabel(`Why option ${k} is right or wrong`).nth(n - 1).fill(`Because ${k} is how it works.`);
@@ -181,4 +181,38 @@ test('learner search says when nobody matches', async ({ page }, info) => {
   await page.getByLabel('Find a learner').fill('zzzz-nobody');
   await expect(page.getByText('Nobody matches “zzzz-nobody”.')).toBeVisible();
   await shot(page, info, 'learners');
+});
+
+/** A course and one lesson draft, made through the API as the author signed in on this page. */
+async function draftLesson(page: Page, extra: Record<string, unknown> = {}) {
+  const course = (await api<{ version: { entityId: string } }>(page, '/api/studio/courses', {
+    method: 'POST', data: { title: unique('Fixes course'), summary: 'For the fixes.', tier: 'learn', estMinutes: 20 },
+  })).body;
+  const lesson = (await api<{ version: { entityId: string } }>(page, `/api/studio/courses/${course.version.entityId}/lessons`, {
+    method: 'POST', data: { position: 1, title: unique('Fixes lesson'), minutes: 8, bodyMd: '## A step\nSome text.', ...extra },
+  })).body;
+  return { courseId: course.version.entityId, lessonId: lesson.version.entityId };
+}
+
+test('a refused save shows its message beside the field it names, and takes the author there', async ({ page }) => {
+  await signInStudio(page, GTL, 'author');
+  const { lessonId } = await draftLesson(page);
+  await page.goto(at(GTL, `/studio/lessons/${lessonId}`));
+  await expect(page.getByText('Version 1')).toBeVisible();
+
+  const video = page.getByRole('textbox', { name: /^Video/ });
+  await video.fill('https://cdn.example.com/a video.mp4');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  const field = page.locator('.field').filter({ has: video });
+  await expect(field.locator('.error')).toBeVisible();
+  await expect(video).toHaveAttribute('aria-invalid', 'true');
+  await expect(video).toBeFocused();
+
+  // A refusal that names no field lands at the top of the form, in view.
+  await video.fill('');
+  await page.getByRole('button', { name: 'Send for review' }).click();
+  const top = page.locator('.editor-form .notice.danger');
+  await expect(top).toContainText('not ready for review');
+  await expect(top).toContainText('A lesson needs at least 5 check questions');
+  await expect(top).toBeInViewport();
 });

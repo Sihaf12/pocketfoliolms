@@ -7,7 +7,7 @@ import { checkPalette } from '../../../packages/shared/contrast';
 import { call } from '@/lib/api';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading } from '../bits';
-import { Field, Problem } from '../Form';
+import { ErrorScope, Field, useInvalid } from '../Form';
 import { Icon, type IconName } from '../Icon';
 import { useWorkspace } from '../Workspace';
 import { CopyLink } from './Team';
@@ -45,6 +45,26 @@ const back = (ws: ReturnType<typeof useWorkspace>) => ({ href: ws.href('/setting
 /* ---------- Brand ---------- */
 
 const expand = (hex: string) => (hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join('')}` : hex).toUpperCase();
+
+/** One token: the colour picker, its value, and what is wrong with it, from here or from the API. */
+function TokenField({ token, value, onChange }: { token: (typeof BRAND_TOKENS)[number]; value: string; onChange(v: string): void }) {
+  const ok = (token.kind === 'colour' ? COLOUR : RADIUS).test(value);
+  const bad = useInvalid(`tokens.${token.name}`);
+  const local = ok ? null : token.kind === 'colour' ? 'Use #RGB or #RRGGBB.' : 'Use whole pixels, such as 12px.';
+  return (
+    <div className="token">
+      <label htmlFor={`tok-${token.name}`}><span>{token.purpose}</span><span className="mono soft small">{token.name}</span></label>
+      <div className="row tight">
+        {token.kind === 'colour' ? (
+          <input type="color" aria-label={`Pick ${token.name}`} className="swatch" value={ok ? expand(value) : '#000000'} onChange={(e) => onChange(e.target.value.toUpperCase())} />
+        ) : null}
+        <input id={`tok-${token.name}`} {...bad.props} className="input mono token-value" value={value}
+          aria-invalid={!ok || bad.props['aria-invalid'] || undefined} onChange={(e) => onChange(e.target.value.trim())} />
+      </div>
+      {local ? <p className="error small">{local}</p> : bad.message}
+    </div>
+  );
+}
 
 export function BrandPage() {
   const ws = useWorkspace();
@@ -107,28 +127,13 @@ export function BrandPage() {
           </div>
         </div>
         <div className="stack">
-          <Problem error={problem} />
-          <Field label="Tagline" hint="A few words under the academy's name.">{(p) => <input {...p} className="input" maxLength={80} value={sub} onChange={(e) => setSub(e.target.value)} />}</Field>
+          <ErrorScope error={problem}>
+          <Field label="Tagline" name="sub" hint="A few words under the academy's name.">{(p) => <input {...p} className="input" maxLength={80} value={sub} onChange={(e) => setSub(e.target.value)} />}</Field>
           <fieldset className="tokens">
             <legend>Colours and corner radius</legend>
-            {BRAND_TOKENS.map((t) => {
-              const value = tokens[t.name];
-              const ok = (t.kind === 'colour' ? COLOUR : RADIUS).test(value);
-              return (
-                <div className="token" key={t.name}>
-                  <label htmlFor={`tok-${t.name}`}><span>{t.purpose}</span><span className="mono soft small">{t.name}</span></label>
-                  <div className="row tight">
-                    {t.kind === 'colour' ? (
-                      <input type="color" aria-label={`Pick ${t.name}`} className="swatch" value={ok ? expand(value) : '#000000'} onChange={(e) => set(t.name, e.target.value.toUpperCase())} />
-                    ) : null}
-                    <input id={`tok-${t.name}`} className="input mono token-value" value={value} aria-invalid={!ok || undefined}
-                      onChange={(e) => set(t.name, e.target.value.trim())} />
-                  </div>
-                  {!ok ? <p className="error small">{t.kind === 'colour' ? 'Use #RGB or #RRGGBB.' : 'Use whole pixels, such as 12px.'}</p> : null}
-                </div>
-              );
-            })}
+            {BRAND_TOKENS.map((t) => <TokenField key={t.name} token={t} value={tokens[t.name]} onChange={(v) => set(t.name, v)} />)}
           </fieldset>
+          </ErrorScope>
         </div>
 
       </div>
@@ -161,8 +166,8 @@ export function ReviewRulePage() {
   return (
     <>
       <Head title="Review rule" back={back(ws)} lead="The author never publishes their own work. Beyond that, choose how many different people sign off." />
-      <Problem error={problem} />
-      <fieldset className="card stack">
+      <ErrorScope error={problem}>
+      <fieldset className="card stack" data-field="signoffs" tabIndex={-1}>
         <legend className="visually-hidden">People who sign off a change</legend>
         <label className="check"><input type="radio" name="signoffs" checked={value === 2} onChange={() => setValue(2)} />
           <span><b>Two people.</b> The author, and someone else in compliance who publishes.</span></label>
@@ -172,6 +177,7 @@ export function ReviewRulePage() {
       <div className="actions">
         <button type="button" className="btn primary" disabled={value === data.signoffs} onClick={() => void save()}>Save review rule</button>
       </div>
+      </ErrorScope>
     </>
   );
 }
@@ -224,7 +230,7 @@ export function DomainPage() {
   return (
     <>
       <Head title="Domain" back={back(ws)} lead={<>Learners reach your academy at <b>{data.domain}</b>.</>} />
-      <Problem error={problem} />
+      <ErrorScope error={problem}>
       {data.pending ? (
         <section className="card stack" aria-labelledby="waiting">
           <h2 id="waiting">Waiting to move to {data.pending.domain}</h2>
@@ -238,12 +244,13 @@ export function DomainPage() {
         </section>
       ) : (
         <form className="stack narrow" onSubmit={(e) => { e.preventDefault(); void request(); }}>
-          <Field label="New domain" hint="A host name you control, such as learn.example.com. Nothing changes until you prove it with a DNS record.">
+          <Field label="New domain" name="domain" hint="A host name you control, such as learn.example.com. Nothing changes until you prove it with a DNS record.">
             {(p) => <input {...p} className="input" inputMode="url" autoCapitalize="none" spellCheck={false} value={domain} onChange={(e) => setDomain(e.target.value)} />}
           </Field>
           <div className="actions"><button type="submit" className="btn primary" disabled={busy || !domain.trim()}>Request this domain</button></div>
         </form>
       )}
+      </ErrorScope>
     </>
   );
 }
@@ -277,11 +284,11 @@ export function CrmPage() {
     <>
       <Head title="CRM endpoint" back={back(ws)} lead="New leads, verified lessons and certificates are posted here, signed with your secret." />
       <form className="stack narrow" onSubmit={save}>
-        <Problem error={problem} />
-        <Field label="Endpoint" hint="https only, on a public address. Leave it empty to stop sending.">
+        <ErrorScope error={problem}>
+        <Field label="Endpoint" name="url" hint="https only, on a public address. Leave it empty to stop sending.">
           {(p) => <input {...p} className="input" type="url" inputMode="url" spellCheck={false} value={url} onChange={(e) => setUrl(e.target.value)} />}
         </Field>
-        <Field label="Signing secret" hint={data.secretHint
+        <Field label="Signing secret" name="secret" hint={data.secretHint
           ? `A secret is set, ending in ${data.secretHint}. It is never shown; type a new one to replace it.`
           : 'At least 16 characters. It is never shown again after you save it.'}>
           {(p) => <input {...p} className="input" type="password" autoComplete="new-password" minLength={16} value={secret} disabled={clear} onChange={(e) => setSecret(e.target.value)} />}
@@ -290,6 +297,7 @@ export function CrmPage() {
           <label className="check"><input type="checkbox" checked={clear} onChange={(e) => { setClear(e.target.checked); if (e.target.checked) setSecret(''); }} />Remove the secret: send unsigned</label>
         ) : null}
         <div className="actions"><button type="submit" className="btn primary">Save CRM endpoint</button></div>
+        </ErrorScope>
       </form>
     </>
   );

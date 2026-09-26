@@ -340,3 +340,17 @@ test('platform content goes through three different staff, and academies then re
   const audit = await ownerPool.query('SELECT action FROM platform.audit_log WHERE entity_id = $1 ORDER BY seq', [course.entityId]);
   assert.deepEqual(audit.rows.map((r: { action: string }) => r.action), ['content.created', 'content.submit', 'content.approve', 'content.publish']);
 });
+
+test('a refused draft names each field it refused, in words a form can show beside it', async () => {
+  const course = await newCourse();
+  const lesson = await newLesson(course.entityId);
+  const body = { ...lessonBody(title('fields')), videoAsset: 'https://cdn.example.com/a video.mp4', minutes: 0 };
+  delete (body as Partial<typeof body>).title;
+  const res = await studio('PUT', `/lessons/${lesson.entityId}/draft`, team.author, body);
+  assert.equal(res.statusCode, 400);
+  const fields = new Map((res.json().error.fields as { field: string; message: string }[]).map((f) => [f.field, f.message]));
+  assert.equal(fields.get('videoAsset'), 'This is not in the accepted format.');
+  assert.equal(fields.get('title'), 'This is needed.');
+  assert.equal(fields.get('minutes'), 'Use 1 or more.');
+  assert.ok(![...fields.values()].some((m) => /must|pattern|\^/.test(m)), 'no schema jargon reaches a person');
+});

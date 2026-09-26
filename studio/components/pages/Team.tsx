@@ -9,7 +9,7 @@ import { call } from '@/lib/api';
 import { ROLE_NAME, day } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading } from '../bits';
-import { Field, Problem } from '../Form';
+import { ErrorScope, Field, Problem, useInvalid } from '../Form';
 import { Icon } from '../Icon';
 import { useWorkspace } from '../Workspace';
 
@@ -53,6 +53,12 @@ export function CopyLink({ link }: { link: string }) {
       <button type="button" className="btn" onClick={() => void copy()}><Icon name="copy" />{said ?? 'Copy link'}</button>
     </div>
   );
+}
+
+/** A set of role choices, which an API message about roles lands beneath. */
+function RoleGroup({ name, children }: { name: string; children: React.ReactNode }) {
+  const bad = useInvalid(name);
+  return <fieldset {...bad.props} tabIndex={-1}>{children}{bad.message}</fieldset>;
 }
 
 export function TeamPage() {
@@ -175,9 +181,9 @@ export function TeamPage() {
         ) : (
           <form className="stack" onSubmit={invite}>
             <h2 id="invite-title">Invite someone</h2>
-            <Problem error={problem} />
-            <Field label="Their email">{(p) => <input {...p} className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />}</Field>
-            <fieldset>
+            <ErrorScope error={problem}>
+            <Field label="Their email" name="email">{(p) => <input {...p} className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />}</Field>
+            <RoleGroup name={studio ? 'roles' : 'role'}>
               <legend>{studio ? 'Roles' : 'Role'}</legend>
               {choices.map((c) => (
                 <label className="check" key={c.role}>
@@ -186,11 +192,12 @@ export function TeamPage() {
                   <span><b>{ROLE_NAME[c.role]}</b>. {c.says}</span>
                 </label>
               ))}
-            </fieldset>
+            </RoleGroup>
             <div className="row end">
               <button type="button" className="btn" onClick={() => inviteDialog.current?.close()}>Not now</button>
               <button type="submit" className="btn primary" disabled={busy || !email || !picked.length}>Make the invitation link</button>
             </div>
+            </ErrorScope>
           </form>
         )}
       </dialog>
@@ -198,8 +205,8 @@ export function TeamPage() {
       <dialog className="sheet" ref={rolesDialog} aria-labelledby="roles-title">
         <form className="stack" onSubmit={saveRoles}>
           <h2 id="roles-title">Roles for {editing?.displayName}</h2>
-          <Problem error={problem} />
-          <fieldset>
+          <ErrorScope error={problem}>
+          <RoleGroup name="roles">
             <legend className="visually-hidden">Roles</legend>
             {STUDIO_ROLES.map((c) => (
               <label className="check" key={c.role}>
@@ -208,12 +215,13 @@ export function TeamPage() {
                 <span><b>{ROLE_NAME[c.role]}</b>. {c.says}</span>
               </label>
             ))}
-          </fieldset>
+          </RoleGroup>
           <p className="soft small">With no roles, they can no longer sign in to the studio.</p>
           <div className="row end">
             <button type="button" className="btn" onClick={() => rolesDialog.current?.close()}>Keep as it is</button>
             <button type="submit" className="btn primary" disabled={busy}>Save roles</button>
           </div>
+          </ErrorScope>
         </form>
       </dialog>
     </>

@@ -3,10 +3,14 @@
  * Check questions (and a course's placement questions): each one a
  * prompt, two to five options, the right one, and a rationale for every
  * option, because a learner reads the rationale for the one they chose.
+ *
+ * Each input carries its path in the request body, so an API message
+ * about it appears beneath it, and a folded question opens to show one.
  */
-import { useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { KEYS, blankQuestion, type Question } from '@/lib/content';
 import { TIER_NAME, TIERS, type Tier } from '@/lib/format';
+import { useErrorUnder, useInvalid } from './Form';
 import { Icon } from './Icon';
 
 type Q = Question & { tier?: Tier };
@@ -23,13 +27,58 @@ function rows(q: Q) {
   return q.options.map((o) => ({ text: o.text, rationale: q.rationales[o.key] ?? '', correct: o.key === q.correctKey }));
 }
 
-function QuestionCard({ q, n, onChange, onRemove, withTier, readOnly }: {
-  q: Q; n: number; onChange(q: Q): void; onRemove(): void; withTier: boolean; readOnly: boolean;
+function Prompt({ path, n, value, onChange }: { path: string; n: number; value: string; onChange(v: string): void }) {
+  const id = useId();
+  const bad = useInvalid(path);
+  return (
+    <div className="field">
+      <label htmlFor={id}>Question</label>
+      <textarea id={id} {...bad.props} className="textarea short-text" value={value} maxLength={500}
+        aria-label={`Question ${n}`} onChange={(e) => onChange(e.target.value)} />
+      {bad.message}
+    </div>
+  );
+}
+
+function OptionRow({ path, n, index, row, removable, readOnly, onSet, onRemove }: {
+  path: string; n: number; index: number; row: { text: string; rationale: string; correct: boolean };
+  removable: boolean; readOnly: boolean; onSet(patch: Partial<typeof row>): void; onRemove(): void;
 }) {
-  const name = `q${n}`;
+  const key = KEYS[index]!;
+  const upper = key.toUpperCase();
+  const text = useInvalid(`${path}.options.${index}.text`);
+  const why = useInvalid(`${path}.rationales.${key}`);
+  return (
+    <div className={`opt ${row.correct ? 'right' : ''}`}>
+      <span className="letter" aria-hidden="true">{upper}</span>
+      <div className="stack-sm">
+        <input {...text.props} className="input" aria-label={`Option ${upper} of question ${n}`} value={row.text} maxLength={300}
+          placeholder={`Option ${upper}`} onChange={(e) => onSet({ text: e.target.value })} />
+        {text.message}
+        <textarea {...why.props} className="textarea short-text" aria-label={`Why option ${upper} is right or wrong`} value={row.rationale} maxLength={600}
+          placeholder={`Why ${upper} is ${row.correct ? 'right' : 'wrong'}, in a sentence a learner can use`}
+          onChange={(e) => onSet({ rationale: e.target.value })} />
+        {why.message}
+        <div className="row">
+          <label className="check">
+            <input type="radio" name={`${path}-correct`} checked={row.correct} onChange={() => onSet({ correct: true })} />
+            The right answer
+          </label>
+          {removable && !readOnly ? <button type="button" className="btn ghost" onClick={onRemove}>Remove option {upper}</button> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuestionCard({ q, n, path, onChange, onRemove, withTier, readOnly }: {
+  q: Q; n: number; path: string; onChange(q: Q): void; onRemove(): void; withTier: boolean; readOnly: boolean;
+}) {
   const complete = !!q.prompt.trim() && q.options.every((o) => o.text.trim() && (q.rationales[o.key] ?? '').trim());
-  // A finished question folds away; one still being written stays open.
+  // A finished question folds away; one still being written stays open, and so does one with a problem.
   const [open, setOpen] = useState(!complete);
+  const troubled = useErrorUnder(path);
+  useEffect(() => { if (troubled) setOpen(true); }, [troubled]);
   const set = (i: number, patch: Partial<{ text: string; rationale: string; correct: boolean }>) => {
     const next = rows(q).map((r, j) => (patch.correct ? { ...r, correct: j === i } : j === i ? { ...r, ...patch } : r));
     onChange(relabel(q, next));
@@ -41,66 +90,42 @@ function QuestionCard({ q, n, onChange, onRemove, withTier, readOnly }: {
           <span className="title">Question {n}</span>
           <span className="excerpt">{q.prompt.trim() || 'Not written yet'}</span>
         </span>
-        <span className={`chip ${complete ? 'success' : 'caution'}`}>{complete ? 'Complete' : 'Unfinished'}</span>
+        <span className={`chip ${troubled ? 'danger' : complete ? 'success' : 'caution'}`}>{troubled ? 'Needs changing' : complete ? 'Complete' : 'Unfinished'}</span>
         <Icon name="next" />
       </summary>
-    <fieldset className="qbody" disabled={readOnly}>
-      <legend className="visually-hidden">Question {n}</legend>
-      {readOnly ? null : <div className="row end"><button type="button" className="btn ghost" onClick={onRemove}><Icon name="trash" />Remove question {n}</button></div>}
-      {withTier ? (
-        <div className="field">
-          <label htmlFor={`${name}-tier`}>Tier it measures</label>
-          <select id={`${name}-tier`} className="select" value={q.tier ?? 'learn'} onChange={(e) => onChange({ ...q, tier: e.target.value as Tier })}>
-            {TIERS.map((t) => <option key={t} value={t}>{TIER_NAME[t]}</option>)}
-          </select>
+      <fieldset className="qbody" disabled={readOnly}>
+        <legend className="visually-hidden">Question {n}</legend>
+        {readOnly ? null : <div className="row end"><button type="button" className="btn ghost" onClick={onRemove}><Icon name="trash" />Remove question {n}</button></div>}
+        {withTier ? (
+          <div className="field">
+            <label htmlFor={`${path}-tier`}>Tier it measures</label>
+            <select id={`${path}-tier`} className="select" value={q.tier ?? 'learn'} onChange={(e) => onChange({ ...q, tier: e.target.value as Tier })}>
+              {TIERS.map((t) => <option key={t} value={t}>{TIER_NAME[t]}</option>)}
+            </select>
+          </div>
+        ) : null}
+        <Prompt path={`${path}.prompt`} n={n} value={q.prompt} onChange={(prompt) => onChange({ ...q, prompt })} />
+        <div className="options">
+          {rows(q).map((r, i) => (
+            <OptionRow key={KEYS[i]} path={path} n={n} index={i} row={r} removable={q.options.length > 2} readOnly={readOnly}
+              onSet={(patch) => set(i, patch)} onRemove={() => onChange(relabel(q, rows(q).filter((_, j) => j !== i)))} />
+          ))}
         </div>
-      ) : null}
-      <div className="field">
-        <label htmlFor={`${name}-prompt`}>Question</label>
-        <textarea id={`${name}-prompt`} className="textarea short-text" value={q.prompt} maxLength={500} onChange={(e) => onChange({ ...q, prompt: e.target.value })} />
-      </div>
-      <div className="options">
-        {rows(q).map((r, i) => {
-          const key = KEYS[i]!;
-          const upper = key.toUpperCase();
-          return (
-            <div className={`opt ${r.correct ? 'right' : ''}`} key={key}>
-              <span className="letter" aria-hidden="true">{upper}</span>
-              <div className="stack-sm">
-                <input className="input" aria-label={`Option ${upper} of question ${n}`} value={r.text} maxLength={300}
-                  placeholder={`Option ${upper}`} onChange={(e) => set(i, { text: e.target.value })} />
-                <textarea className="textarea short-text" aria-label={`Why option ${upper} is right or wrong`} value={r.rationale} maxLength={600}
-                  placeholder={`Why ${upper} is ${r.correct ? 'right' : 'wrong'}, in a sentence a learner can use`}
-                  onChange={(e) => set(i, { rationale: e.target.value })} />
-                <div className="row">
-                  <label className="check">
-                    <input type="radio" name={`${name}-correct`} checked={r.correct} onChange={() => set(i, { correct: true })} />
-                    The right answer
-                  </label>
-                  {q.options.length > 2 && !readOnly ? (
-                    <button type="button" className="btn ghost" onClick={() => onChange(relabel(q, rows(q).filter((_, j) => j !== i)))}>
-                      Remove option {upper}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {q.options.length < KEYS.length && !readOnly ? (
-        <button type="button" className="btn" onClick={() => onChange(relabel(q, [...rows(q), { text: '', rationale: '', correct: false }]))}>
-          <Icon name="plus" />Add an option
-        </button>
-      ) : null}
-    </fieldset>
+        {q.options.length < KEYS.length && !readOnly ? (
+          <button type="button" className="btn" onClick={() => onChange(relabel(q, [...rows(q), { text: '', rationale: '', correct: false }]))}>
+            <Icon name="plus" />Add an option
+          </button>
+        ) : null}
+      </fieldset>
     </details>
   );
 }
 
-export function QuestionsEditor({ questions, onChange, min, withTier = false, readOnly = false, noun = 'check question' }: {
+export function QuestionsEditor({ questions, onChange, path = 'questions', min, withTier = false, readOnly = false, noun = 'check question' }: {
   questions: Q[];
   onChange(questions: Q[]): void;
+  /** Where the questions sit in the request body: questions, or placementQuestions. */
+  path?: string;
   min?: number;
   withTier?: boolean;
   readOnly?: boolean;
@@ -116,7 +141,7 @@ export function QuestionsEditor({ questions, onChange, min, withTier = false, re
         </p>
       ) : null}
       {questions.map((q, i) => (
-        <QuestionCard key={q.id ?? `new-${i}`} q={q} n={i + 1} withTier={withTier} readOnly={readOnly}
+        <QuestionCard key={q.id ?? `new-${i}`} q={q} n={i + 1} path={`${path}.${i}`} withTier={withTier} readOnly={readOnly}
           onChange={(next) => onChange(questions.map((x, j) => (j === i ? next : x)))}
           onRemove={() => onChange(questions.filter((_, j) => j !== i))} />
       ))}
@@ -129,19 +154,33 @@ export function QuestionsEditor({ questions, onChange, min, withTier = false, re
   );
 }
 
-export function TranscriptEditor({ lines, onChange }: { lines: { at: string; text: string }[]; onChange(lines: { at: string; text: string }[]): void }) {
+function TranscriptLine({ path, i, line, onChange, onRemove }: {
+  path: string; i: number; line: { at: string; text: string }; onChange(l: { at: string; text: string }): void; onRemove(): void;
+}) {
+  const at = useInvalid(`${path}.${i}.at`);
+  const text = useInvalid(`${path}.${i}.text`);
+  return (
+    <div className="stack-sm">
+      <div className="transcript-row">
+        <input {...at.props} className="input short" aria-label={`Time of line ${i + 1}, as minutes:seconds`} placeholder="0:00" value={line.at}
+          onChange={(e) => onChange({ ...line, at: e.target.value })} />
+        <input {...text.props} className="input" aria-label={`Words of line ${i + 1}`} value={line.text} maxLength={500}
+          onChange={(e) => onChange({ ...line, text: e.target.value })} />
+        <button type="button" className="btn ghost" aria-label={`Remove line ${i + 1}`} onClick={onRemove}><Icon name="trash" /></button>
+      </div>
+      {at.message}{text.message}
+    </div>
+  );
+}
+
+export function TranscriptEditor({ lines, path = 'transcript', onChange }: {
+  lines: { at: string; text: string }[]; path?: string; onChange(lines: { at: string; text: string }[]): void;
+}) {
   return (
     <div className="stack-sm">
       {lines.map((l, i) => (
-        <div className="transcript-row" key={i}>
-          <input className="input short" aria-label={`Time of line ${i + 1}, as minutes:seconds`} placeholder="0:00" value={l.at}
-            pattern="[0-9]{1,2}:[0-5][0-9]" onChange={(e) => onChange(lines.map((x, j) => (j === i ? { ...x, at: e.target.value } : x)))} />
-          <input className="input" aria-label={`Words of line ${i + 1}`} value={l.text} maxLength={500}
-            onChange={(e) => onChange(lines.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))} />
-          <button type="button" className="btn ghost" aria-label={`Remove line ${i + 1}`} onClick={() => onChange(lines.filter((_, j) => j !== i))}>
-            <Icon name="trash" />
-          </button>
-        </div>
+        <TranscriptLine key={i} path={path} i={i} line={l}
+          onChange={(next) => onChange(lines.map((x, j) => (j === i ? next : x)))} onRemove={() => onChange(lines.filter((_, j) => j !== i))} />
       ))}
       <button type="button" className="btn" onClick={() => onChange([...lines, { at: '', text: '' }])}><Icon name="plus" />Add a transcript line</button>
     </div>

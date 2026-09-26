@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { call } from '@/lib/api';
-import { Field, Problem } from '../Form';
+import { ErrorScope, Field } from '../Form';
 import { useWorkspace } from '../Workspace';
 
 export function InvitePage({ token }: { token: string }) {
@@ -42,9 +42,9 @@ export function InvitePage({ token }: { token: string }) {
         <p>Choose the name your colleagues will see beside your work, and a password.</p>
       </div></div>
       <form className="card stack" onSubmit={accept} noValidate>
-        <Problem error={error} />
-        <Field label="Your name">{(p) => <input {...p} className="input" autoComplete="name" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
-        <Field label="Password" hint={console
+        <ErrorScope error={error}>
+        <Field label="Your name" name="displayName">{(p) => <input {...p} className="input" autoComplete="name" maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
+        <Field label="Password" name="password" hint={console
           ? `At least ${min} characters.`
           : `At least ${min} characters. If you already learn at this academy, use the password you have.`}>
           {(p) => <input {...p} className="input" type="password" autoComplete="new-password" minLength={min} value={password} onChange={(e) => setPassword(e.target.value)} />}
@@ -52,6 +52,7 @@ export function InvitePage({ token }: { token: string }) {
         <button className="btn primary block" type="submit" disabled={busy || !password || (console && (!name.trim() || password.length < min))}>
           {console ? 'Join the console' : 'Join the studio'}
         </button>
+        </ErrorScope>
       </form>
     </div>
   );

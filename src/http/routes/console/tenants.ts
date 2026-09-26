@@ -10,7 +10,7 @@
 import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { hashToken } from '../../../auth/studioSession.js';
-import { HttpError } from '../../errors.js';
+import { HttpError, fieldError } from '../../errors.js';
 import { inConsole, requireStaff } from '../../consoleScope.js';
 import { publicOrigin } from '../../sameOrigin.js';
 import { forgetResolvedHosts, normaliseHost } from '../../tenantScope.js';
@@ -68,10 +68,10 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
   }, async (req, reply) => {
     const domain = normaliseHost(req.body.primaryDomain);
     if (!domain || domain !== req.body.primaryDomain.trim().toLowerCase()) {
-      throw new HttpError(400, 'invalid_domain', 'Give the academy\'s domain as a plain host name, such as learn.example.com.');
+      throw fieldError(400, 'invalid_domain', 'primaryDomain', 'Give the academy\'s domain as a plain host name, such as learn.example.com.');
     }
     if (domain === opts.consoleHost) {
-      throw new HttpError(400, 'invalid_domain', 'That is the console\'s own host and can never be an academy.');
+      throw fieldError(400, 'invalid_domain', 'primaryDomain', 'That is the console\'s own host and can never be an academy.');
     }
     const adminEmail = req.body.adminEmail.trim().toLowerCase();
     const token = randomBytes(32).toString('base64url');
@@ -84,8 +84,8 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
       );
       if (clash) {
         throw clash.slug === req.body.slug
-          ? new HttpError(409, 'slug_taken', 'Another academy already uses that slug.')
-          : new HttpError(409, 'domain_taken', 'Another academy already uses that domain.');
+          ? fieldError(409, 'slug_taken', 'slug', 'Another academy already uses that short name.')
+          : fieldError(409, 'domain_taken', 'primaryDomain', 'Another academy already uses that domain.');
       }
 
       const tenant = await db.one<TenantRow>(

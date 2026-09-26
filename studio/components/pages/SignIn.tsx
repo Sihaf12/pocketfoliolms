@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { call } from '@/lib/api';
-import { Field, Problem } from '../Form';
+import { ErrorScope, Field } from '../Form';
 import { useWorkspace } from '../Workspace';
 
 /** A page link from ?next=, only ever within this workspace. */
@@ -45,15 +45,16 @@ export function SignIn() {
         </div>
       </div>
       <form className="card stack" onSubmit={submit} noValidate>
-        <Problem error={error} />
-        <Field label="Email">{(p) => <input {...p} className="input" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />}</Field>
-        <Field label="Password">{(p) => <input {...p} className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}</Field>
+        <ErrorScope error={error}>
+        <Field label="Email" name="email">{(p) => <input {...p} className="input" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />}</Field>
+        <Field label="Password" name="password">{(p) => <input {...p} className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}</Field>
         {console ? (
-          <Field label="Code from your authenticator" hint="Six digits. Owners always need one; other staff only once they have set it up.">
+          <Field label="Code from your authenticator" name="code" hint="Six digits. Owners always need one; other staff only once they have set it up.">
             {(p) => <input {...p} className="input code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />}
           </Field>
         ) : null}
         <button className="btn primary block" type="submit" disabled={busy}>{console ? 'Sign in to the console' : 'Sign in to the studio'}</button>
+        </ErrorScope>
       </form>
     </div>
   );

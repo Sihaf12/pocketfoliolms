@@ -6,7 +6,7 @@ import { call } from '@/lib/api';
 import { day } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading } from '../bits';
-import { Field, Problem } from '../Form';
+import { ErrorScope, Field } from '../Form';
 import { Icon } from '../Icon';
 import { useWorkspace } from '../Workspace';
 import { CopyLink } from './Team';
@@ -76,12 +76,13 @@ export function NewAcademyPage() {
     <>
       <Head title="Add an academy" back={back} />
       <form className="stack narrow" onSubmit={create}>
-        <Problem error={problem} />
-        <Field label="Name" hint="As learners will see it.">{(p) => <input {...p} className="input" required maxLength={100} value={form.name} onChange={set('name')} />}</Field>
-        <Field label="Short name" hint="Lowercase letters, numbers and hyphens. Used in internal references.">{(p) => <input {...p} className="input mono" required pattern="[a-z0-9-]+" maxLength={40} value={form.slug} onChange={set('slug')} />}</Field>
-        <Field label="Domain" hint="Where learners reach it, such as learn.broker.com.">{(p) => <input {...p} className="input" required spellCheck={false} value={form.primaryDomain} onChange={set('primaryDomain')} />}</Field>
-        <Field label="First admin's email">{(p) => <input {...p} className="input" type="email" required value={form.adminEmail} onChange={set('adminEmail')} />}</Field>
+        <ErrorScope error={problem}>
+        <Field label="Name" name="name" hint="As learners will see it.">{(p) => <input {...p} className="input" required maxLength={100} value={form.name} onChange={set('name')} />}</Field>
+        <Field label="Short name" name="slug" hint="Lowercase letters, numbers and hyphens. Used in internal references.">{(p) => <input {...p} className="input mono" required pattern="[a-z0-9-]+" maxLength={40} value={form.slug} onChange={set('slug')} />}</Field>
+        <Field label="Domain" name="primaryDomain" hint="Where learners reach it, such as learn.broker.com.">{(p) => <input {...p} className="input" required spellCheck={false} value={form.primaryDomain} onChange={set('primaryDomain')} />}</Field>
+        <Field label="First admin's email" name="adminEmail">{(p) => <input {...p} className="input" type="email" required value={form.adminEmail} onChange={set('adminEmail')} />}</Field>
         <div className="actions"><button className="btn primary" type="submit" disabled={busy}>Create academy</button></div>
+        </ErrorScope>
       </form>
     </>
   );
@@ -120,7 +121,7 @@ export function AcademyPage({ tenantId }: { tenantId: string }) {
   return (
     <>
       <Head title={t.name} back={back} lead={<span className="row tight"><StatusChip status={t.status} /><span>Since {day(t.createdAt)}</span></span>} />
-      <Problem error={problem} />
+      <ErrorScope error={problem}>
       <section aria-labelledby="facts">
         <h2 id="facts">At a glance</h2>
         <dl className="dl card">
@@ -136,7 +137,7 @@ export function AcademyPage({ tenantId }: { tenantId: string }) {
         {data.pendingDomain ? (
           <form className="card stack" onSubmit={(e) => { e.preventDefault(); void override(); }}>
             <p>The academy asked to move to <b>{data.pendingDomain}</b> and has not proved it with its DNS record yet. You can apply it without the record. The reason goes in the platform&apos;s audit log.</p>
-            <Field label="Why the record is being skipped">{(p) => <textarea {...p} className="textarea short-text" minLength={5} maxLength={500} required value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
+            <Field label="Why the record is being skipped" name="reason">{(p) => <textarea {...p} className="textarea short-text" minLength={5} maxLength={500} required value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
             <div className="row end"><button type="submit" className="btn" disabled={busy || reason.trim().length < 5}>Apply {data.pendingDomain} without the record</button></div>
           </form>
         ) : <div className="card"><p>No change waiting. Academies ask for a new domain from their studio settings.</p></div>}
@@ -158,6 +159,7 @@ export function AcademyPage({ tenantId }: { tenantId: string }) {
           </div>
         </div>
       </dialog>
+      </ErrorScope>
     </>
   );
 }

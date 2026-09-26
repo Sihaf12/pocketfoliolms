@@ -12,7 +12,7 @@ import type { GlossarySnapshot, Version, VersionView as View } from '@/lib/conte
 import { moment, type ReviewState } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading, StateChip } from '../bits';
-import { Field, Problem } from '../Form';
+import { ErrorScope, Field } from '../Form';
 import { Icon } from '../Icon';
 import { VersionActions } from '../VersionActions';
 import { useWorkspace } from '../Workspace';
@@ -65,11 +65,11 @@ export function GlossaryPage() {
 function TermFields({ value, onChange }: { value: GlossarySnapshot; onChange(v: GlossarySnapshot): void }) {
   return (
     <>
-      <Field label="Term">{(p) => <input {...p} className="input" maxLength={80} value={value.term} onChange={(e) => onChange({ ...value, term: e.target.value })} />}</Field>
-      <Field label="Definition" hint="One or two plain sentences. This is what a learner sees beside the term.">
+      <Field label="Term" name="term">{(p) => <input {...p} className="input" maxLength={80} value={value.term} onChange={(e) => onChange({ ...value, term: e.target.value })} />}</Field>
+      <Field label="Definition" name="definition" hint="One or two plain sentences. This is what a learner sees beside the term.">
         {(p) => <textarea {...p} className="textarea short-text" maxLength={600} value={value.definition} onChange={(e) => onChange({ ...value, definition: e.target.value })} />}
       </Field>
-      <Field label="Related terms" hint="Separate them with commas.">
+      <Field label="Related terms" name="related" hint="Separate them with commas.">
         {(p) => <input {...p} className="input" value={value.related.join(', ')}
           onChange={(e) => onChange({ ...value, related: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} />}
       </Field>
@@ -96,9 +96,10 @@ export function NewTermPage() {
     <>
       <Head title="Add a term" back={{ href: ws.href('/glossary'), label: 'Glossary' }} />
       <form className="stack narrow" onSubmit={create}>
-        <Problem error={problem} />
+        <ErrorScope error={problem}>
         <TermFields value={value} onChange={setValue} />
         <div className="actions"><button type="submit" className="btn primary" disabled={busy || !value.term.trim() || !value.definition.trim()}>Create term draft</button></div>
+        </ErrorScope>
       </form>
     </>
   );
@@ -136,11 +137,12 @@ function TermEditor({ version, actions, onChanged }: { version: Version<Glossary
       <Head title={value.term || 'Term'} back={{ href: ws.href('/glossary'), label: 'Glossary' }}
         lead={<span className="row tight"><StateChip state={version.state} /><span>Version {version.number}</span></span>} />
       <div className="stack narrow">
-        <Problem error={problem} />
+        <ErrorScope error={problem}>
         <TermFields value={value} onChange={setValue} />
+        </ErrorScope>
       </div>
       <VersionActions versionId={version.id} entityId={version.entityId} entityType="glossary_term" actions={actions.filter((a) => a === 'submit')}
-        status={dirty ? 'Unsaved changes.' : `Saved ${moment(version.createdAt)}.`} before={save} onDone={() => onChanged()}
+        status={dirty ? 'Unsaved changes.' : `Saved ${moment(version.createdAt)}.`} before={save} onDone={() => onChanged()} onError={(err) => { ws.handle(err); setProblem(err); }}
         secondary={<button type="button" className="btn" disabled={!dirty} onClick={() => void save().then((ok) => ok && ws.say('Draft saved'))}>Save draft</button>} />
     </>
   );

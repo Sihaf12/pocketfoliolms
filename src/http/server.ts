@@ -147,7 +147,9 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
     bodyLimit: 64 * 1024,
     // Fastify's default strips unknown fields silently. A client sending
     // a field we do not accept, tenant_id above all, gets a 400 instead.
-    ajv: { customOptions: { removeAdditional: false } },
+    // allErrors: a refused form hears about every field at once, not one per try.
+    // Bodies are capped at 64 KB above, which bounds the work.
+    ajv: { customOptions: { removeAdditional: false, allErrors: true } },
   });
 
   const routes: { method: string; url: string }[] = [];

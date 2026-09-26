@@ -191,6 +191,7 @@ test('the brand takes the ten tokens only, refuses unreadable pairs by name, and
   assert.equal(invalid.statusCode, 422);
   assert.deepEqual(invalid.json().error.tokens.sort(), ['--brand', '--radius']);
 
+  assert.deepEqual(invalid.json().error.fields.map((f: { field: string }) => f.field).sort(), ['tokens.--brand', 'tokens.--radius']);
   const faint = await put({ '--ink-soft': '#BBBBBB' });
   assert.equal(faint.statusCode, 422);
   assert.equal(faint.json().error.code, 'insufficient_contrast');
@@ -224,6 +225,7 @@ test('the CRM endpoint is https to a public host, and its secret is write-only',
     'https://[::1]/hook', 'https://crm/hook', 'https://user:pw@crm.example.com/hook', 'not a url']) {
     const res = await put({ url });
     assert.equal(res.statusCode, 422, url);
+    assert.deepEqual(res.json().error.fields.map((f: { field: string }) => f.field), ['url'], `${url}: the refusal names the field`);
   }
 
   const secret = 'whsec-0123456789abcdefWXYZ';

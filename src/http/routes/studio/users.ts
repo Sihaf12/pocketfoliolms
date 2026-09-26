@@ -11,7 +11,7 @@ import type { FastifyInstance } from 'fastify';
 import {
   hashToken, revokeAllStudioSessions, STUDIO_ROLES, type StudioRole,
 } from '../../../auth/studioSession.js';
-import { HttpError } from '../../errors.js';
+import { HttpError, fieldError } from '../../errors.js';
 import { publicOrigin } from '../../sameOrigin.js';
 import { inStudio, requireStudio } from '../../studioScope.js';
 import { studioUserSchema } from './account.js';
@@ -79,7 +79,7 @@ export async function studioUserRoutes(app: FastifyInstance): Promise<void> {
       const holder = await db.maybeOne<{ roles: string[] }>(
         'SELECT studio_roles AS roles FROM app.users WHERE email = $1', [email]);
       if (holder && req.body.roles.every((r) => holder.roles.includes(r))) {
-        throw new HttpError(409, 'already_has_roles', 'This person already holds those roles.');
+        throw fieldError(409, 'already_has_roles', 'roles', 'This person already holds those roles.');
       }
       const row = await db.one<{ id: string; createdAt: Date; expiresAt: Date }>(
         `INSERT INTO app.studio_invitations (tenant_id, email, roles, token_hash, invited_by, invited_by_kind)

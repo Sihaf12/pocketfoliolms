@@ -7,7 +7,7 @@
 import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { hashToken } from '../../../auth/studioSession.js';
-import { HttpError } from '../../errors.js';
+import { HttpError, fieldError } from '../../errors.js';
 import { inConsole, requireStaff } from '../../consoleScope.js';
 import { publicOrigin } from '../../sameOrigin.js';
 import { staffSchema } from './account.js';
@@ -64,7 +64,7 @@ export async function consoleStaffRoutes(app: FastifyInstance): Promise<void> {
     const invitation = await inConsole(async (db) => {
       const owner = await requireStaff(db, req, ['platform_owner']);
       const existing = await db.maybeOne('SELECT 1 FROM platform.staff WHERE email = $1', [email]);
-      if (existing) throw new HttpError(409, 'already_staff', 'This email already belongs to a staff account.');
+      if (existing) throw fieldError(409, 'already_staff', 'email', 'This email already belongs to a staff account.');
       const row = await db.one<{ id: string; createdAt: Date; expiresAt: Date }>(
         `INSERT INTO platform.staff_invitations (email, role, token_hash, invited_by) VALUES ($1, $2, $3, $4)
          RETURNING id, created_at AS "createdAt", expires_at AS "expiresAt"`,

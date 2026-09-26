@@ -15,7 +15,7 @@ import {
 import { moment } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading, StateChip } from '../bits';
-import { Field, Problem } from '../Form';
+import { ErrorScope, Field } from '../Form';
 import { LessonPreview } from '../LessonPreview';
 import { QuestionsEditor, TranscriptEditor } from '../QuestionsEditor';
 import { VersionActions } from '../VersionActions';
@@ -54,6 +54,12 @@ function Editor({ course, initial, version, actions, onChanged }: {
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const dirty = JSON.stringify(draft) !== saved;
+  /** Every refusal lands in the form, and on a phone the form comes back into view to show it. */
+  const fail = useCallback((err: unknown) => {
+    ws.handle(err);
+    setError(err);
+    setView('write');
+  }, [ws]);
   const problems = useMemo(() => readiness(draft), [draft]);
   const set = <K extends keyof LessonSnapshot>(key: K, value: LessonSnapshot[K]) => setDraft((d) => ({ ...d, [key]: value }));
 
@@ -66,8 +72,8 @@ function Editor({ course, initial, version, actions, onChanged }: {
 
   const save = useCallback(async (): Promise<boolean> => {
     if (!version) return false;
-    if (!dirty) return true;
     setError(null);
+    if (!dirty) return true;
     try {
       const res = await call<{ version: Version<LessonSnapshot> }>(ws.content(`/lessons/${version.entityId}/draft`), {
         method: 'PUT', body: lessonDraftBody(draft),
@@ -78,11 +84,10 @@ function Editor({ course, initial, version, actions, onChanged }: {
       setSavedAt(new Date().toISOString());
       return true;
     } catch (err) {
-      ws.handle(err);
-      setError(err);
+      fail(err);
       return false;
     }
-  }, [version, dirty, draft, ws]);
+  }, [version, dirty, draft, fail]);
 
   async function create() {
     setBusy(true);
@@ -95,8 +100,7 @@ function Editor({ course, initial, version, actions, onChanged }: {
       ws.say('Lesson draft created');
       router.replace(ws.href(`/lessons/${res.version.entityId}`));
     } catch (err) {
-      ws.handle(err);
-      setError(err);
+      fail(err);
       setBusy(false);
     }
   }
@@ -119,7 +123,7 @@ function Editor({ course, initial, version, actions, onChanged }: {
 
       <div className="editor" data-view={view}>
         <div className="editor-form stack form-width">
-          <Problem error={error} />
+          <ErrorScope error={error}>
           {problems.length ? (
             <div className="notice caution" aria-live="polite">
               <p><b>Before it can go to review</b></p>
@@ -129,8 +133,8 @@ function Editor({ course, initial, version, actions, onChanged }: {
 
           <section className="stack" aria-labelledby="the-lesson">
             <h2 id="the-lesson">The lesson</h2>
-            <Field label="Title">{(p) => <input {...p} className="input" maxLength={120} value={draft.title} onChange={(e) => set('title', e.target.value)} />}</Field>
-            <Field label="Lesson text" hint={<>Start each step with <code>## </code> and its heading. One callout: a paragraph starting <code>&gt; **In practice**</code>. <code>**bold**</code> for emphasis, <code>[[term|definition]]</code> for a glossary term.</>}>
+            <Field label="Title" name="title">{(p) => <input {...p} className="input" maxLength={120} value={draft.title} onChange={(e) => set('title', e.target.value)} />}</Field>
+            <Field label="Lesson text" name="bodyMd" hint={<>Start each step with <code>## </code> and its heading. One callout: a paragraph starting <code>&gt; **In practice**</code>. <code>**bold**</code> for emphasis, <code>[[term|definition]]</code> for a glossary term.</>}>
               {(p) => <textarea {...p} className="textarea body" maxLength={20000} value={draft.bodyMd} onChange={(e) => set('bodyMd', e.target.value)} />}
             </Field>
           </section>
@@ -138,16 +142,16 @@ function Editor({ course, initial, version, actions, onChanged }: {
           <section className="stack" aria-labelledby="details">
             <h2 id="details">Details</h2>
             <div className="grid-2">
-              <Field label="Position in the course">{(p) => <input {...p} className="input short" type="number" min={1} max={200} value={draft.position} onChange={(e) => set('position', Number(e.target.value))} />}</Field>
-              <Field label="Minutes to read and watch">{(p) => <input {...p} className="input short" type="number" min={1} max={60} value={draft.minutes} onChange={(e) => set('minutes', Number(e.target.value))} />}</Field>
-              <Field label="XP for passing its check">{(p) => <input {...p} className="input short" type="number" min={0} max={1000} value={draft.xp} onChange={(e) => set('xp', Number(e.target.value))} />}</Field>
-              <Field label="Video" hint="Its name in the media store, not a web address.">{(p) => <input {...p} className="input" value={draft.videoAsset ?? ''} onChange={(e) => set('videoAsset', e.target.value.trim() ? e.target.value : null)} />}</Field>
+              <Field label="Position in the course" name="position">{(p) => <input {...p} className="input short" type="number" min={1} max={200} value={draft.position} onChange={(e) => set('position', Number(e.target.value))} />}</Field>
+              <Field label="Minutes to read and watch" name="minutes">{(p) => <input {...p} className="input short" type="number" min={1} max={60} value={draft.minutes} onChange={(e) => set('minutes', Number(e.target.value))} />}</Field>
+              <Field label="XP for passing its check" name="xp">{(p) => <input {...p} className="input short" type="number" min={0} max={1000} value={draft.xp} onChange={(e) => set('xp', Number(e.target.value))} />}</Field>
+              <Field label="Video" name="videoAsset" hint="Its name in the media store, not a web address.">{(p) => <input {...p} className="input" value={draft.videoAsset ?? ''} onChange={(e) => set('videoAsset', e.target.value.trim() ? e.target.value : null)} />}</Field>
             </div>
           </section>
 
           <section className="stack" aria-labelledby="transcript">
             <h2 id="transcript">Video transcript</h2>
-            <TranscriptEditor lines={draft.transcript} onChange={(lines) => set('transcript', lines)} />
+            <TranscriptEditor lines={draft.transcript} path="transcript" onChange={(lines) => set('transcript', lines)} />
           </section>
 
           {siblings.length ? (
@@ -168,8 +172,9 @@ function Editor({ course, initial, version, actions, onChanged }: {
 
           <section className="stack" aria-labelledby="questions">
             <h2 id="questions">Check questions</h2>
-            <QuestionsEditor questions={draft.questions} min={MIN_CHECK_QUESTIONS} onChange={(q) => set('questions', q)} />
+            <QuestionsEditor questions={draft.questions} path="questions" min={MIN_CHECK_QUESTIONS} onChange={(q) => set('questions', q)} />
           </section>
+          </ErrorScope>
         </div>
 
         {/* It scrolls on its own beside the form, so the keyboard can reach it. */}
@@ -181,7 +186,7 @@ function Editor({ course, initial, version, actions, onChanged }: {
       {version ? (
         <VersionActions
           versionId={version.id} entityId={version.entityId} entityType="lesson" actions={actions.filter((a) => a === 'submit')}
-          status={status} before={save} onDone={() => onChanged()}
+          status={status} before={save} onDone={() => onChanged()} onError={fail}
           secondary={<button type="button" className="btn" disabled={!dirty} onClick={() => void save().then((ok) => ok && ws.say('Draft saved'))}>Save draft</button>}
         />
       ) : (

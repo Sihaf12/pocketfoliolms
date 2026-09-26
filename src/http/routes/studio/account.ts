@@ -14,7 +14,7 @@ import { hashPassword, verifyPassword } from '../../../auth/password.js';
 import {
   hashToken, issueStudioSession, revokeStudioSession, STUDIO_COOKIE, type StudioRole,
 } from '../../../auth/studioSession.js';
-import { HttpError } from '../../errors.js';
+import { HttpError, fieldError } from '../../errors.js';
 import { clearStudioCookie, inStudio, requireStudio, setStudioCookie } from '../../studioScope.js';
 import type { RouteLimit } from '../../server.js';
 import { sanitiseBrand } from '../../brand.js';
@@ -163,8 +163,8 @@ export async function studioAccountRoutes(app: FastifyInstance, opts: { loginLim
         );
         userId = existing.id;
       } else {
-        if (!newHash) throw new HttpError(400, 'invalid_request', 'Choose a password of at least 12 characters.');
-        if (!displayName) throw new HttpError(400, 'invalid_request', 'Tell us the name to show on your work.');
+        if (!newHash) throw fieldError(400, 'invalid_request', 'password', 'Choose a password of at least 12 characters.');
+        if (!displayName) throw fieldError(400, 'invalid_request', 'displayName', 'Tell us the name to show on your work.');
         const created = await db.one<{ id: string }>(
           `INSERT INTO app.users (tenant_id, email, display_name, password_hash, studio_roles)
            VALUES (app.current_tenant(), $1, $2, $3, $4::text[]) RETURNING id`,

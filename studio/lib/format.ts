@@ -31,6 +31,12 @@ export const FIELD_NAME: Record<string, string> = {
   position: 'Position', bodyMd: 'Lesson text', videoAsset: 'Video', transcript: 'Transcript', minutes: 'Minutes',
   xp: 'XP', requires: 'Required lessons', questions: 'Check questions', courseId: 'Course',
   term: 'Term', definition: 'Definition', related: 'Related terms',
+  prompt: 'question text', text: 'text', correctKey: 'right answer', at: 'time',
+  email: 'Email', password: 'Password', displayName: 'Name', roles: 'Roles', role: 'Role',
+  name: 'Name', slug: 'Short name', primaryDomain: 'Domain', adminEmail: 'First admin\'s email',
+  domain: 'Domain', url: 'Endpoint', secret: 'Signing secret', clearSecret: 'Remove the secret',
+  notes: 'Notes', reason: 'Reason', sub: 'Tagline', signoffs: 'Review rule', code: 'Code',
+  enabled: 'Offered', status: 'Status',
 };
 
 export const ROLE_NAME: Record<string, string> = {

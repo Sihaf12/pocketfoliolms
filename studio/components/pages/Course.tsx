@@ -12,7 +12,7 @@ import type { CourseDetail, CourseSnapshot, Version, VersionView as View } from 
 import { TIER_NAME, TIERS, moment, type Tier } from '@/lib/format';
 import { useLoad } from '@/lib/useLoad';
 import { Head, Loading, StateChip, TierChip } from '../bits';
-import { Field, Problem } from '../Form';
+import { ErrorScope, Field } from '../Form';
 import { Icon } from '../Icon';
 import { QuestionsEditor } from '../QuestionsEditor';
 import { VersionActions } from '../VersionActions';
@@ -23,19 +23,19 @@ type Details = Pick<CourseSnapshot, 'title' | 'summary' | 'tier' | 'estMinutes'>
 function DetailsFields({ value, onChange }: { value: Details; onChange(v: Details): void }) {
   return (
     <>
-      <Field label="Title">{(p) => <input {...p} className="input" maxLength={120} value={value.title} onChange={(e) => onChange({ ...value, title: e.target.value })} />}</Field>
-      <Field label="Summary" hint="One line learners read before they start.">
+      <Field label="Title" name="title">{(p) => <input {...p} className="input" maxLength={120} value={value.title} onChange={(e) => onChange({ ...value, title: e.target.value })} />}</Field>
+      <Field label="Summary" name="summary" hint="One line learners read before they start.">
         {(p) => <textarea {...p} className="textarea short-text" maxLength={300} value={value.summary} onChange={(e) => onChange({ ...value, summary: e.target.value })} />}
       </Field>
       <div className="grid-2">
-        <Field label="Tier">
+        <Field label="Tier" name="tier">
           {(p) => (
             <select {...p} className="select" value={value.tier} onChange={(e) => onChange({ ...value, tier: e.target.value as Tier })}>
               {TIERS.map((t) => <option key={t} value={t}>{TIER_NAME[t]}</option>)}
             </select>
           )}
         </Field>
-        <Field label="Minutes, all lessons together">
+        <Field label="Minutes, all lessons together" name="estMinutes">
           {(p) => <input {...p} className="input short" type="number" min={1} max={600} value={value.estMinutes} onChange={(e) => onChange({ ...value, estMinutes: Number(e.target.value) })} />}
         </Field>
       </div>
@@ -145,15 +145,16 @@ function CourseEditor({ version, actions, onChanged }: { version: Version<Course
   return (
     <section className="stack form-width" aria-labelledby="about">
       <h2 id="about">About this course</h2>
-      <Problem error={error} />
+      <ErrorScope error={error}>
       <DetailsFields value={draft} onChange={(v) => setDraft({ ...draft, ...v })} />
       <h3>Placement questions</h3>
       <p className="soft">Optional. They help place a new learner on the path; each one measures one tier.</p>
-      <QuestionsEditor questions={draft.placementQuestions} withTier noun="placement question"
+      <QuestionsEditor questions={draft.placementQuestions} path="placementQuestions" withTier noun="placement question"
         onChange={(q) => setDraft({ ...draft, placementQuestions: q.map((x) => ({ ...x, tier: x.tier ?? 'learn' })) })} />
       <VersionActions versionId={version.id} entityId={version.entityId} entityType="course" actions={actions.filter((a) => a === 'submit')}
-        status={dirty ? 'Unsaved changes.' : `Saved ${moment(savedAt)}.`} before={save} onDone={() => onChanged()}
+        status={dirty ? 'Unsaved changes.' : `Saved ${moment(savedAt)}.`} before={save} onDone={() => onChanged()} onError={(err) => { ws.handle(err); setError(err); }}
         secondary={<button type="button" className="btn" disabled={!dirty} onClick={() => void save().then((ok) => ok && ws.say('Draft saved'))}>Save draft</button>} />
+      </ErrorScope>
     </section>
   );
 }
@@ -185,11 +186,12 @@ export function NewCoursePage() {
       <Head title="Start a new course" back={{ href: ws.href('/'), label: 'Content' }}
         lead="A draft nobody outside the studio sees until compliance publishes it." />
       <form className="stack narrow" onSubmit={create}>
-        <Problem error={error} />
+        <ErrorScope error={error}>
         <DetailsFields value={value} onChange={setValue} />
         <div className="actions">
           <button className="btn primary" type="submit" disabled={busy || !value.title.trim()}>Create course draft</button>
         </div>
+        </ErrorScope>
       </form>
     </>
   );

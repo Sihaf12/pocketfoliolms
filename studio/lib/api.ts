@@ -14,6 +14,18 @@ export class ApiError extends Error {
     this.name = 'ApiError';
   }
 
+  /** Messages about particular fields, by their dotted path in the request body. */
+  get fields(): Map<string, string> {
+    const raw = this.details.fields;
+    const out = new Map<string, string>();
+    if (Array.isArray(raw)) {
+      for (const f of raw) {
+        if (f && typeof f.field === 'string' && typeof f.message === 'string' && !out.has(f.field)) out.set(f.field, f.message);
+      }
+    }
+    return out;
+  }
+
   /** The list of things to fix, when the API sent one. */
   get problems(): string[] {
     const p = this.details.problems;
