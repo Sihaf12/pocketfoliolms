@@ -82,6 +82,13 @@ export async function removeConsoleFixtures(): Promise<void> {
   await ownerPool.query(`DELETE FROM platform.staff WHERE email LIKE 'http-%@example.com'`);
 }
 
+/** Removes content the content tests made: everything titled or termed "http-…". */
+export async function removeContentFixtures(): Promise<void> {
+  await ownerPool.query(`DELETE FROM platform.content_versions WHERE snapshot->>'title' LIKE 'http-%' OR snapshot->>'term' LIKE 'http-%'`);
+  await ownerPool.query(`DELETE FROM platform.courses WHERE title LIKE 'http-%' OR slug LIKE 'http-%'`);
+  await ownerPool.query(`DELETE FROM platform.glossary_terms WHERE term LIKE 'http-%'`);
+}
+
 /** A studio member made directly, as a seed would, so tests start from a known team. */
 export async function studioMember(tenantSlug: string, roles: string[], label = 'studio') {
   const email = uniqueEmail(label);

@@ -34,9 +34,27 @@ import { studioUserRoutes } from './routes/studio/users.js';
 import { consoleAccountRoutes } from './routes/console/account.js';
 import { consoleStaffRoutes } from './routes/console/staff.js';
 import { consoleTenantRoutes } from './routes/console/tenants.js';
+import { contentRoutes, type ContentRunner } from './routes/content.js';
+import { inStudio, requireStudio } from './studioScope.js';
+import { inConsole, requireStaff } from './consoleScope.js';
+import { dutiesOf } from '../domain/review.js';
 import { forwarding } from './forwarding.js';
 import { studioScope } from './studioScope.js';
 import { consoleScope } from './consoleScope.js';
+
+/** Studio content: this academy's private courses, as the signed-in studio user. */
+const studioContent: ContentRunner = (req, fn) =>
+  inStudio(req, async (db) => {
+    const user = await requireStudio(db, req);
+    return fn({ db, scope: { owner: req.tenantId, people: 'users' }, actor: { id: user.id, duties: dutiesOf(user.roles) } });
+  });
+
+/** Console content: platform courses and the glossary, as the signed-in staff member. */
+const consoleContent: ContentRunner = (req, fn) =>
+  inConsole(async (db) => {
+    const staff = await requireStaff(db, req);
+    return fn({ db, scope: { owner: null, people: 'staff' }, actor: { id: staff.id, duties: dutiesOf([staff.role]) } });
+  });
 import { normaliseHost } from './tenantScope.js';
 import { keyFrom } from '../auth/secretBox.js';
 import { resolveTenantByHost } from '../db/unitOfWork.js';
@@ -164,6 +182,7 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
       studioScope(studio);
       await studio.register(studioAccountRoutes, { loginLimit: limits.login });
       await studio.register(studioUserRoutes);
+      await studio.register(contentRoutes, { run: studioContent, platform: false });
     }, { prefix: '/api/studio' });
     await scope.register(async (api) => {
       await api.register(authRoutes, { loginLimit: limits.login });
@@ -183,6 +202,7 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
       await console.register(consoleAccountRoutes, { loginLimit: limits.login });
       await console.register(consoleStaffRoutes);
       await console.register(consoleTenantRoutes, { consoleHost });
+      await console.register(contentRoutes, { prefix: '/content', run: consoleContent, platform: true });
     }, { prefix: '/api/console' });
   }
 

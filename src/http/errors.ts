@@ -11,6 +11,8 @@ export class HttpError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** Extra fields for the client, such as the problems that stop a submission. */
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'HttpError';
@@ -18,10 +20,11 @@ export class HttpError extends Error {
 }
 
 export interface ErrorBody {
-  error: { code: string; message: string };
+  error: { code: string; message: string } & Record<string, unknown>;
 }
 
-export const errorBody = (code: string, message: string): ErrorBody => ({ error: { code, message } });
+export const errorBody = (code: string, message: string, details: Record<string, unknown> = {}): ErrorBody =>
+  ({ error: { ...details, code, message } });
 
 const CLIENT_CODES: Record<number, string> = {
   400: 'invalid_request',
@@ -33,7 +36,7 @@ const CLIENT_CODES: Record<number, string> = {
 
 export function handleError(err: FastifyError | Error, req: FastifyRequest, reply: FastifyReply) {
   if (err instanceof HttpError) {
-    return reply.status(err.status).send(errorBody(err.code, err.message));
+    return reply.status(err.status).send(errorBody(err.code, err.message, err.details));
   }
   const status = 'statusCode' in err && typeof err.statusCode === 'number' ? err.statusCode : 500;
   if (status >= 400 && status < 500) {

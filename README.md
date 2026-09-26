@@ -44,6 +44,8 @@ the backend that enforces it.
     src/http/consoleScope.ts    /api/console: its own host only, staff sessions, app_console
     src/auth/                   passwords, sessions, TOTP (RFC 6238), secrets sealed at rest
     src/cli/createOwner.ts      npm run console:create-owner
+    src/content/                the content workflow: drafts, review, publishing into live rows
+    src/http/routes/content.ts  content routes, registered in the studio and the console
 
     web/index.html              the academy client, served per host at /
     web/verify.html             the public, unbranded verification page
@@ -60,7 +62,7 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 134 tests
+    npm test                                             # 146 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow
 
