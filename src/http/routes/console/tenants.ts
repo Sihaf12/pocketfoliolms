@@ -167,4 +167,41 @@ export async function consoleTenantRoutes(app: FastifyInstance, opts: { consoleH
     forgetResolvedHosts();
     return { tenant: shape(tenant) };
   });
+
+  // The owner's way past the DNS check, for an academy that cannot add a
+  // TXT record. Only a change the academy itself asked for can be applied.
+  app.post<{ Params: { id: string }; Body: { reason: string } }>('/tenants/:id/domain/override', {
+    schema: {
+      params: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: uuid } },
+      body: {
+        type: 'object', additionalProperties: false, required: ['reason'],
+        properties: { reason: { type: 'string', minLength: 5, maxLength: 500 } },
+      },
+      response: { 200: { type: 'object', required: ['tenant'], properties: { tenant: tenantSchema } } },
+    },
+  }, async (req) => {
+    const tenant = await inConsole(async (db) => {
+      const owner = await requireStaff(db, req, OWNER);
+      const before = await db.maybeOne<{ domain: string }>(
+        'SELECT primary_domain AS domain FROM app.tenants WHERE id = $1 FOR UPDATE', [req.params.id]);
+      if (!before) throw new HttpError(404, 'not_found', 'No academy with that id.');
+      const change = await db.maybeOne<{ id: string; domain: string }>(
+        `UPDATE app.domain_changes SET status = 'overridden', resolved_by = $2, resolved_at = now()
+          WHERE tenant_id = $1 AND status = 'pending' RETURNING id, requested_domain AS domain`,
+        [req.params.id, owner.id]);
+      if (!change) throw new HttpError(404, 'no_pending_change', 'This academy has not asked for a domain change.');
+      if (change.domain === opts.consoleHost) throw new HttpError(400, 'invalid_domain', 'That is the console\'s own host.');
+      const clash = await db.maybeOne('SELECT 1 FROM app.tenants WHERE primary_domain = $1', [change.domain]);
+      if (clash) throw new HttpError(409, 'domain_taken', 'Another academy already uses that domain.');
+      const after = await db.one<TenantRow>(
+        `UPDATE app.tenants SET primary_domain = $2 WHERE id = $1 RETURNING ${TENANT_COLUMNS}`, [req.params.id, change.domain]);
+      await db.audit({
+        action: 'tenant.domain_overridden', entityType: 'domain_change', entityId: change.id,
+        payload: { tenant_id: req.params.id, from: before.domain, to: change.domain, reason: req.body.reason },
+      });
+      return after;
+    });
+    forgetResolvedHosts();
+    return { tenant: shape(tenant) };
+  });
 }

@@ -362,5 +362,75 @@ BEGIN
     'every academy brand uses only the ten contract tokens, with no mode');
 END $$;
 
+-- =====================================================================
+-- 9. Academy settings: five functions, the studio's only way to app.tenants
+-- =====================================================================
+DO $$
+DECLARE f text; r record;
+BEGIN
+  FOREACH f IN ARRAY ARRAY['app.current_tenant_settings()', 'app.set_current_tenant_brand(jsonb)',
+                           'app.set_current_tenant_crm(text, text, boolean)', 'app.domain_in_use(text)',
+                           'app.apply_domain_change(uuid, uuid)'] LOOP
+    SELECT p.prosecdef, p.proconfig INTO r FROM pg_proc p WHERE p.oid = f::regprocedure;
+    PERFORM pg_temp.expect(r.prosecdef AND 'search_path=pg_catalog, pg_temp' = ANY(r.proconfig)
+      AND has_function_privilege('app_studio', f, 'EXECUTE')
+      AND NOT has_function_privilege('app_user', f, 'EXECUTE')
+      AND NOT has_function_privilege('app_console', f, 'EXECUTE')
+      AND NOT has_function_privilege('app_control', f, 'EXECUTE'),
+      f || ' is SECURITY DEFINER, pins its search_path, and only app_studio may run it');
+  END LOOP;
+END $$;
+
+-- A change Sable asked for, which Northgate must not be able to apply.
+INSERT INTO ids VALUES ('s_change', gen_random_uuid());
+INSERT INTO app.domain_changes (id, tenant_id, requested_domain, txt_token, requested_by)
+VALUES (pg_temp.id('s_change'), pg_temp.id('sable'), 'proof.sable.example', 'proof-token', gen_random_uuid());
+CREATE TEMP TABLE brand_before AS SELECT id, brand, crm_secret FROM app.tenants;
+GRANT SELECT ON brand_before TO app_studio;
+
+SET LOCAL ROLE app_studio;
+DO $$
+DECLARE s record;
+BEGIN
+  PERFORM set_config('app.tenant_id', pg_temp.id('northgate')::text, true);
+  PERFORM pg_temp.expect(pg_temp.refused('SELECT 1 FROM app.tenants'), 'the studio still cannot read app.tenants itself');
+
+  SELECT * INTO s FROM app.current_tenant_settings();
+  PERFORM pg_temp.expect(s.primary_domain = 'learn.northgate.ae' AND (SELECT count(*) FROM app.current_tenant_settings()) = 1,
+    'settings are the academy in scope, one row');
+
+  PERFORM app.set_current_tenant_crm('https://crm.proof.example/hook', 'proof-secret-value-ABCD', false);
+  SELECT * INTO s FROM app.current_tenant_settings();
+  PERFORM pg_temp.expect(s.crm_secret_hint = 'ABCD' AND position('proof-secret-value' IN s::text) = 0,
+    'the CRM secret is written, and only its last four characters come back');
+  PERFORM pg_temp.expect(pg_temp.refused($q$SELECT app.set_current_tenant_crm('http://crm.proof.example/hook', NULL, false)$q$),
+    'a CRM endpoint without https is refused');
+
+  PERFORM app.set_current_tenant_brand('{"sub": "Proof", "tokens": {"--brand": "#123456"}}');
+  PERFORM pg_temp.expect((SELECT brand->'tokens'->>'--brand' FROM app.current_tenant_settings()) = '#123456', 'the brand is written');
+  PERFORM pg_temp.expect(pg_temp.refused($q$SELECT app.set_current_tenant_brand('[1, 2]')$q$), 'a brand that is not an object is refused');
+
+  PERFORM pg_temp.expect(app.domain_in_use('training.sablewealth.io') AND NOT app.domain_in_use('nobody.example'),
+    'domain_in_use answers yes or no, and nothing more');
+  PERFORM pg_temp.expect(pg_temp.refused(format('SELECT app.apply_domain_change(%L, %L)', pg_temp.id('s_change'), gen_random_uuid()), ARRAY['P0002']),
+    'one academy cannot apply another academy''s domain change');
+
+  PERFORM set_config('app.tenant_id', '', true);
+  PERFORM pg_temp.expect(pg_temp.refused($q$SELECT app.set_current_tenant_brand('{}')$q$, ARRAY['P0001']),
+    'with no academy in scope, nothing is written');
+END $$;
+RESET ROLE;
+
+DO $$
+BEGIN
+  PERFORM pg_temp.expect(NOT EXISTS (
+    SELECT 1 FROM app.tenants t JOIN brand_before b USING (id)
+     WHERE t.id <> pg_temp.id('northgate') AND (t.brand IS DISTINCT FROM b.brand OR t.crm_secret IS DISTINCT FROM b.crm_secret)),
+    'every other academy''s brand and CRM secret are untouched');
+  PERFORM pg_temp.expect((SELECT status FROM app.domain_changes WHERE id = pg_temp.id('s_change')) = 'pending'
+    AND (SELECT primary_domain FROM app.tenants WHERE id = pg_temp.id('sable')) = 'training.sablewealth.io',
+    'Sable''s domain and its change are untouched');
+END $$;
+
 ROLLBACK;
 SELECT 'STUDIO PROOF PASSED' AS result;

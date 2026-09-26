@@ -11,10 +11,14 @@
  * and holding connections is capped the same way.
  */
 import { createHmac, randomUUID } from 'node:crypto';
+import { lookup as dnsLookup, type LookupAddress } from 'node:dns';
+import { request as httpsRequest } from 'node:https';
+import { isIP, type LookupFunction } from 'node:net';
 import type { PoolClient } from 'pg';
 import { withControl } from '../db/unitOfWork.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
+import { isBlockedAddress } from '../net/address.js';
 
 export interface OutboxRow {
   id: string;
@@ -68,25 +72,62 @@ export class HttpDispatcher implements Dispatcher {
         'sha256=' + createHmac('sha256', target.secret).update(`${ts}.${body}`).digest('hex');
     }
 
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
-    try {
-      const res = await fetch(target.url, {
-        method: 'POST',
-        headers,
-        body,
-        signal: ctrl.signal,
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status} ${text.slice(0, 200)}`);
-      }
-    } finally {
-      clearTimeout(timer);
-    }
+    await post(target.url, headers, body, this.timeoutMs);
   }
 }
 
+/**
+ * One POST over https, to a public address only. The address is checked
+ * inside the connection's own DNS lookup, so the check and the connect
+ * see the same answer: a name that resolves to a public address when the
+ * admin saves it and to 169.254.169.254 at delivery is refused then.
+ * Redirects are not followed, for the same reason.
+ */
+function post(url: string, headers: Record<string, string>, body: string, timeoutMs: number): Promise<void> {
+  const target = new URL(url);
+  if (target.protocol !== 'https:') return Promise.reject(new Error('refused: the CRM endpoint must use https'));
+  const literal = target.hostname.replace(/^\[|\]$/g, '');
+  if (isIP(literal) && isBlockedAddress(literal)) {
+    return Promise.reject(new Error(`refused: ${literal} is not a public address`));
+  }
+
+  const lookup: LookupFunction = (hostname, options, callback) => {
+    dnsLookup(hostname, { ...options, all: true }, (err, addresses) => {
+      if (err) return callback(err, '', 0);
+      const list = addresses as LookupAddress[];
+      const blocked = list.find((a) => isBlockedAddress(a.address));
+      if (blocked || list.length === 0) {
+        const refusal = Object.assign(new Error(`refused: ${hostname} resolves to ${blocked?.address ?? 'nothing'}, not a public address`), { code: 'EADDRNOTPUBLIC' });
+        return callback(refusal, '', 0);
+      }
+      if (options.all) return (callback as unknown as (e: null, a: LookupAddress[]) => void)(null, list);
+      const first = list[0]!;
+      callback(null, first.address, first.family);
+    });
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest(target, {
+      method: 'POST',
+      headers: { ...headers, 'content-length': String(Buffer.byteLength(body)) },
+      lookup,
+      timeout: timeoutMs,
+    }, (res) => {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      res.on('data', (c: Buffer) => { if (size < 4096) { chunks.push(c); size += c.length; } });
+      res.on('end', () => {
+        const status = res.statusCode ?? 0;
+        if (status >= 200 && status < 300) return resolve();
+        reject(new Error(`HTTP ${status} ${Buffer.concat(chunks).toString('utf8').slice(0, 200)}`));
+      });
+      res.on('error', reject);
+    });
+    req.on('timeout', () => req.destroy(new Error(`timed out after ${timeoutMs}ms`)));
+    req.on('error', reject);
+    req.end(body);
+  });
+}
 /* ------------------------------------------------------------------ */
 /* Relay                                                               */
 /* ------------------------------------------------------------------ */

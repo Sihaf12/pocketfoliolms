@@ -34,6 +34,11 @@ import { studioUserRoutes } from './routes/studio/users.js';
 import { consoleAccountRoutes } from './routes/console/account.js';
 import { consoleStaffRoutes } from './routes/console/staff.js';
 import { consoleTenantRoutes } from './routes/console/tenants.js';
+import { consoleOutboxRoutes } from './routes/console/outbox.js';
+import { studioCatalogueRoutes } from './routes/studio/catalogue.js';
+import { studioLearnerRoutes } from './routes/studio/learners.js';
+import { studioOutboxRoutes } from './routes/studio/outbox.js';
+import { studioSettingsRoutes, type ResolveTxt } from './routes/studio/settings.js';
 import { contentRoutes, type ContentRunner } from './routes/content.js';
 import { inStudio, requireStudio } from './studioScope.js';
 import { inConsole, requireStaff } from './consoleScope.js';
@@ -89,6 +94,8 @@ export interface ServerOptions {
    * outright when NODE_ENV is production.
    */
   insecureDevCookie?: boolean;
+  /** How a domain change's TXT record is looked up. DNS unless a test supplies one. */
+  resolveTxt?: ResolveTxt;
 }
 
 export class ConsoleHostIsAnAcademyError extends Error {
@@ -183,6 +190,10 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
       await studio.register(studioAccountRoutes, { loginLimit: limits.login });
       await studio.register(studioUserRoutes);
       await studio.register(contentRoutes, { run: studioContent, platform: false });
+      await studio.register(studioCatalogueRoutes);
+      await studio.register(studioLearnerRoutes);
+      await studio.register(studioSettingsRoutes, { consoleHost, ...(opts.resolveTxt ? { resolveTxt: opts.resolveTxt } : {}) });
+      await studio.register(studioOutboxRoutes);
     }, { prefix: '/api/studio' });
     await scope.register(async (api) => {
       await api.register(authRoutes, { loginLimit: limits.login });
@@ -202,6 +213,7 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
       await console.register(consoleAccountRoutes, { loginLimit: limits.login });
       await console.register(consoleStaffRoutes);
       await console.register(consoleTenantRoutes, { consoleHost });
+      await console.register(consoleOutboxRoutes);
       await console.register(contentRoutes, { prefix: '/content', run: consoleContent, platform: true });
     }, { prefix: '/api/console' });
   }

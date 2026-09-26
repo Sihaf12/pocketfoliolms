@@ -14,6 +14,7 @@ the backend that enforces it.
     db/007_pathway_and_branding.sql lesson prerequisites, XP, onboarding answers, branding
     db/008_studio.sql      studio and console roles, the review workflow, staff, brand contract
     db/009_studio_identity.sql studio roles as a set, staff invitations, TOTP replay guard
+    db/010_academy_settings.sql the studio's five functions for brand, domain and CRM settings
     db/tests/seed.sql      academies, courses and certificates for the proof tests
     db/tests/rls_proof.sql 51 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
@@ -26,6 +27,8 @@ the backend that enforces it.
     src/logger.ts               structured logging
     src/db/unitOfWork.ts        scoped unit of work, pinned client, SET LOCAL
     src/outbox/relay.ts         fair-share relay, backoff, dead letter queue
+    src/outbox/health.ts        queue health and dead-letter replay, for the studio and the console
+    src/net/address.ts          which addresses a CRM delivery may never reach
     src/ai/guardrails.ts        dual-layer ingress and egress guardrails
     src/domain/placement.ts     60/40 baseline, gates, check grading
     src/domain/papers.ts        server-drawn placement and check papers
@@ -62,9 +65,9 @@ the backend that enforces it.
 
     npm install
     npm run build
-    npm test                                             # 147 tests
+    npm test                                             # 157 tests
     npm run test:migrate                                 # migrate a fresh database
-    npm run test:studio                                  # studio and console roles, review workflow
+    npm run test:studio                                  # studio and console roles, review workflow (68)
 
 ### Connections
 
@@ -101,6 +104,17 @@ The HTTP server (`npm start`) reads `HTTP_HOST`, `HTTP_PORT`,
 - **The first platform owner** is made with
   `npm run console:create-owner -- --email … --name …`, which prints the
   password and TOTP secret once. The owner role cannot be invited.
+- **A domain change needs a DNS TXT record.** The academy asks for a new
+  domain in the studio and is given a record to add at
+  `_academy-challenge.<domain>`; the domain moves when the record is
+  found. The platform owner can apply a waiting change without it from
+  the console, with a reason. Both are audited.
+- **CRM deliveries go to public addresses only.** The endpoint must be
+  https. Loopback, private, link-local (cloud metadata), carrier-grade
+  NAT and multicast addresses are refused when the endpoint is saved
+  and again at delivery, inside the connection's own DNS lookup, so a
+  name that later resolves somewhere internal is still refused.
+  Redirects are not followed.
 
 Every tenant route is rate limited per client IP (300 a minute),
 counted before the host is resolved, and login and certificate
@@ -135,7 +149,7 @@ browser award them. Coins are left out altogether.
 
 ## Deployment
 
-**The two SECURITY DEFINER functions must be owned by a role that
+**Every SECURITY DEFINER function must be owned by a role that
 bypasses RLS.** `app.resolve_tenant()` and `app.verify_certificate()`
 read `app.tenants` and `app.certificates`, which have RLS forced. A
 function runs as its owner, and under `FORCE ROW LEVEL SECURITY` an
