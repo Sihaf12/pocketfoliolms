@@ -609,7 +609,7 @@ INSERT INTO demo VALUES ($demo$
           "rationales": {
             "a": "Correct. An unfilled limit order has no fill to pay for.",
             "b": "The spread is paid only when you actually trade.",
-            "c": "Venues do not penalise you for an order that did not fill."
+            "c": "Most venues do not charge for an order that did not fill."
           }
         }
       ]
@@ -925,7 +925,7 @@ INSERT INTO demo VALUES ($demo$
         "S1"
       ],
       "experience": null,
-      "body": "## Guaranteed returns are the signal\nNo legitimate investment guarantees returns, least of all high monthly ones. A promise of fixed profit with no risk is the most reliable sign of a scheme, whatever story comes with it.\n\n## Check the regulator yourself\nBefore sending money, find the firm on the [[regulator's register|The public list a financial regulator keeps of the firms it authorises.]] yourself, starting from the regulator's own website. Do not use a link, phone number or certificate the firm gave you. Those can be forged.\n\n## Pressure is part of the method\nUrgency, secrecy and stories of friends getting rich are tools. A real opportunity survives a day's delay and a conversation with someone you trust. [[Recovery scams|Offers to recover money already lost to a scam, for an upfront fee. They are often run by the same people.]] target people who have already been caught once.\n\n> **In practice**\n> Adopt one rule: never send money on the same day you first hear about an opportunity. Most schemes cannot survive the wait.",
+      "body": "## Guaranteed returns are the signal\nNo legitimate investment guarantees returns, least of all high monthly ones. A promise of fixed profit with no risk is the most reliable sign of a scheme, whatever story comes with it.\n\n## Check the regulator yourself\nBefore sending money, find the firm on the [[regulator's register|The public list a financial regulator keeps of the firms it authorises.]] yourself, starting from the regulator's own website. Do not use a link, phone number or certificate the firm gave you. Those can be forged.\n\n## Pressure is part of the method\nUrgency, secrecy and stories of friends getting rich are tools. A real opportunity survives a day's delay and a conversation with someone you trust. [[Recovery scams|Offers to recover money already lost to a scam, for an upfront fee. They are sometimes run by the same people.]] target people who have already been caught once.\n\n> **In practice**\n> Adopt one rule: never send money on the same day you first hear about an opportunity. Most schemes cannot survive the wait.",
       "transcript": [
         {
           "at": "0:00",
@@ -1019,7 +1019,7 @@ INSERT INTO demo VALUES ($demo$
           "options": [
             {
               "key": "a",
-              "text": "A recovery scam, often run by the same people"
+              "text": "A recovery scam, sometimes run by the same people"
             },
             {
               "key": "b",

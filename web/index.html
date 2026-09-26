@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="gtl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -19,22 +19,8 @@
   --sh-1:0 1px 2px rgba(20,32,58,.06); --sh-2:0 6px 20px -6px rgba(20,32,58,.16); --sh-3:0 20px 48px -16px rgba(20,32,58,.32);
   --brandtext:#fff;
 }
-html[data-theme="pocketfolio"]{
-  --brand:#3D6D67; --brand-d:#2C524D; --brand-t:#E6F0EE; --accent:#FACC15; --accent-ink:#231F00;
-  --bg:#F3F7F6; --surface:#FFFFFF; --surface-2:#F7FBFA; --line:#DCE7E5; --line-2:#EAF2F1;
-  --ink:#152624; --muted:#5C6F6C; --faint:#93A5A2;
-  --r:20px; --r-s:14px; --r-l:26px;
-  --learn:#3D6D67; --safeguard:#2F8F84; --apply:#C08A1E; --specialise:#6E5AA8;
-}
-html[data-theme="institutional"]{
-  --brand:#C9A227; --brand-d:#A8851B; --brand-t:#22314B; --accent:#C9A227; --accent-ink:#121E2F;
-  --bg:#0E1826; --surface:#18263C; --surface-2:#1E2F49; --line:#2A3C58; --line-2:#22334E;
-  --ink:#EEF3FA; --muted:#A3B3CA; --faint:#7B8DA8;
-  --ok:#4FC98A; --ok-t:#16311F; --warn:#E0B34C; --warn-t:#332913; --bad:#E38080; --bad-t:#3A1E1E;
-  --r:10px; --r-s:7px; --r-l:14px;
-  --learn:#5B9BE0; --safeguard:#3FB5A6; --apply:#DCAE4A; --specialise:#A783D6;
-  --brandtext:#121E2F;
-}
+/* Each academy's tokens are injected by the server after this sheet;
+   the values above are only a fallback. */
 
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -138,7 +124,7 @@ a{color:var(--brand)}
 
 /* ============ WELCOME ============ */
 .hero{background:linear-gradient(140deg,var(--brand),var(--brand-d));color:#fff;border-radius:var(--r-l);padding:30px;position:relative;overflow:hidden}
-html[data-theme="institutional"] .hero{color:var(--accent-ink)}
+html[data-mode="dark"] .hero{color:var(--accent-ink)}
 .hero::after{content:"";position:absolute;right:-70px;top:-90px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.12)}
 .hero h1{font-size:28px;font-weight:800;line-height:1.16;margin-bottom:10px;position:relative}
 .hero p{opacity:.92;font-size:15px;line-height:1.55;position:relative;max-width:46ch}
@@ -235,7 +221,7 @@ html[data-theme="institutional"] .hero{color:var(--accent-ink)}
 .term{border-bottom:2px dotted var(--brand);color:var(--brand);font-weight:700;cursor:help;position:relative}
 .term:hover::after{content:attr(data-def);position:absolute;left:0;bottom:130%;width:230px;background:var(--ink);color:var(--surface);
   font-size:12px;font-weight:400;line-height:1.45;padding:10px 12px;border-radius:10px;z-index:30;box-shadow:var(--sh-3)}
-html[data-theme="institutional"] .term:hover::after{background:#050B14;color:#EEF3FA}
+html[data-mode="dark"] .term:hover::after{background:#050B14;color:#EEF3FA}
 
 /* experience */
 .sim{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:18px}
@@ -265,7 +251,7 @@ html[data-theme="institutional"] .term:hover::after{background:#050B14;color:#EE
 
 /* certificate */
 .cert{background:linear-gradient(150deg,var(--brand),var(--brand-d));border-radius:var(--r);padding:26px;color:#fff;position:relative;overflow:hidden}
-html[data-theme="institutional"] .cert{color:var(--accent-ink)}
+html[data-mode="dark"] .cert{color:var(--accent-ink)}
 .cert::after{content:"";position:absolute;inset:11px;border:1px solid rgba(255,255,255,.35);border-radius:calc(var(--r) - 5px);pointer-events:none}
 .cert .cap{font-family:Poppins;font-size:10.5px;letter-spacing:.2em;opacity:.85}
 .cert h3{font-size:25px;font-weight:800;margin:9px 0 3px}
@@ -291,7 +277,10 @@ html[data-theme="institutional"] .cert{color:var(--accent-ink)}
 .pri{font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px;font-family:Poppins;letter-spacing:.04em}
 .pri.Must{background:#E3F2EF;color:#1F8A7E} .pri.Should{background:#E5EEFB;color:#2F6FD1}
 .pri.Could{background:#EEE9F8;color:#8A6FD6} .pri.TBC{background:#FBF0DF;color:#D98B2B}
-html[data-theme="institutional"] .pri{filter:brightness(.9)}
+body.busy{cursor:progress}
+body.busy .btn{pointer-events:none;opacity:.7}
+.ev code{font-family:ui-monospace,monospace;font-size:11px}
+html[data-mode="dark"] .pri{filter:brightness(.9)}
 .kv{display:grid;grid-template-columns:118px 1fr;gap:7px 12px;font-size:13px;margin-bottom:14px}
 .kv b{color:var(--faint);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
 
@@ -322,11 +311,10 @@ html[data-theme="institutional"] .pri{filter:brightness(.9)}
   <header class="topbar">
     <div class="brandmark">
       <span class="bm" id="bm"></span>
-      <span><b id="brandName">GTL Academy</b><small id="brandSub">Pocketfolio LXP</small></span>
+      <span><b id="brandName"></b><small id="brandSub"></small></span>
     </div>
     <div class="spacer"></div>
     <div class="hud" id="hud"></div>
-    <div class="themepick" id="themepick"></div>
     <button class="iconbtn" id="btnPhone" title="Toggle phone view"></button>
     <button class="iconbtn" id="btnSpec" title="Spec mode (D)"></button>
     <button class="iconbtn" id="btnOutbox" title="Enterprise outbox"></button>
@@ -345,9 +333,18 @@ html[data-theme="institutional"] .pri{filter:brightness(.9)}
 <div class="hintbar" id="hint">Press D for spec mode, E for the enterprise outbox</div>
 <script>
 /* =========================================================
-   Pocketfolio Academy: solution prototype
-   Single file. Vanilla JS. No build step.
+   Pocketfolio Academy client.
+
+   Every rule, score, lock, reason and number on screen comes from the
+   API. The browser holds no answer key, no baseline formula, no gate
+   and no grading: it draws what /pathway, /me and each check result
+   say, so it cannot drift from the server.
+
+   What stays here is presentation only: icons, tier names, where each
+   lesson sits on the tree, the spec notes, and the leverage simulator,
+   which is a teaching widget rather than a rule.
    ========================================================= */
+'use strict';
 
 /* ---------- ICONS ---------- */
 const I = {
@@ -358,7 +355,6 @@ const I = {
   user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
   bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
   flame:'<path d="M12 2s5 5 5 9a5 5 0 01-10 0c0-1.6.7-3 1.6-4.2C9.5 8.4 12 7 12 2z"/><path d="M12 22a4 4 0 004-4c0-2-2-3-4-6-2 3-4 4-4 6a4 4 0 004 4z"/>',
-  coin:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.8 1.8 0 010 3.6h-3a1.8 1.8 0 000 3.6h4"/>',
   play:'<path d="M8 5l12 7-12 7z"/>',
   book:'<path d="M4 4h7a3 3 0 013 3v13a2.5 2.5 0 00-2.5-2.5H4z"/><path d="M20 4h-3a3 3 0 00-3 3v13a2.5 2.5 0 012.5-2.5H20z"/>',
   flask:'<path d="M10 2v7L4 19a2 2 0 001.7 3h12.6A2 2 0 0020 19l-6-10V2"/><path d="M9 2h6M7.5 14h9"/>',
@@ -371,154 +367,43 @@ const I = {
   award:'<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5L7 22l5-3 5 3-1.5-8.5"/>',
   star:'<path d="M12 3l2.7 5.8 6.3.8-4.6 4.3 1.2 6.1L12 17l-5.6 3 1.2-6.1L3 9.6l6.3-.8z"/>',
   arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
-  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-4M8.6 13.4l6.8 4"/>',
   copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/>',
-  down:'<path d="M12 3v13M7 12l5 5 5-5M4 21h16"/>',
-  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
-  chev:'<path d="M6 9l6 6 6-6"/>',
-  zap:'<path d="M12 2v6M12 16v6M5 12H2M22 12h-3"/><circle cx="12" cy="12" r="4"/>'
+  out:'<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>',
+  chev:'<path d="M6 9l6 6 6-6"/>'
 };
 const svg=(n,cls='')=>`<svg class="${cls}" viewBox="0 0 24 24">${I[n]}</svg>`;
 
-/* ---------- THEMES ---------- */
-const THEMES = {
-  gtl:{name:'GTL Academy', sub:'Global Tutoring Lab', swatch:'#1A6DC2', accent:'#F5C400', tenant:'gtl-academy', host:'academy.globaltutoringlab.com'},
-  pocketfolio:{name:'Pocketfolio Academy', sub:'Zento Era', swatch:'#3D6D67', accent:'#FACC15', tenant:'pocketfolio', host:'academy.pocketfolio.app'},
-  institutional:{name:'Meridian Institute', sub:'Institutional', swatch:'#C9A227', accent:'#C9A227', tenant:'meridian-inst', host:'learn.meridian.institute'}
-};
+/* ---------- THE ACADEMY, AS THE SERVER NAMED IT ---------- */
+const ACADEMY = (() => {
+  try { return JSON.parse(document.getElementById('academy').textContent); }
+  catch { return { name: 'Academy', sub: '', mode: 'light' }; }
+})();
 
-/* ---------- TIERS ---------- */
+/* ---------- PRESENTATION ONLY ---------- */
 const TIERS = {
-  learn:{key:'learn',name:'Learn',blurb:'Fundamentals'},
-  safeguard:{key:'safeguard',name:'Safeguard',blurb:'Risk and protection'},
-  apply:{key:'apply',name:'Apply',blurb:'Practical execution'},
-  specialise:{key:'specialise',name:'Specialise',blurb:'Advanced and institutional'}
+  learn:{name:'Learn',blurb:'Fundamentals'},
+  safeguard:{name:'Safeguard',blurb:'Risk and protection'},
+  apply:{name:'Apply',blurb:'Practical execution'},
+  specialise:{name:'Specialise',blurb:'Advanced and institutional'}
 };
-
-/* ---------- PLACEMENT: 8 scenarios, 2 per tier ---------- */
-const PLACEMENT = [
- {tier:'learn', q:'A friend says a token "went up 8% today". Eight per cent of what exactly?',
-  opts:['Of its price at the start of the period being measured','Of the total money invested in it worldwide','Of the exchange\u2019s daily trading limit'],
-  a:0, why:'A percentage move is always measured against a starting price over a stated period. Without the period, the number means nothing.'},
- {tier:'learn', q:'What is actually being exchanged when you "buy" on an exchange?',
-  opts:['A promise from the exchange to pay you later','Your money for an asset at a price someone else agreed to sell at','A share of the exchange\u2019s reserves'],
-  a:1, why:'Every trade needs a willing seller at your price. That is why thin markets move sharply: there are fewer people on the other side.'},
- {tier:'safeguard', q:'You open a position with 10x leverage. The asset falls 10%. What has happened to your capital?',
-  opts:['You have lost about 10% of it','You have lost roughly all of it','Nothing until you close the position'],
-  a:1, why:'Leverage multiplies both directions. At 10x, a 10% adverse move wipes out roughly the whole position margin. This single idea prevents more losses than any other.'},
- {tier:'safeguard', q:'Someone offers guaranteed 5% monthly returns with no risk. The most useful response is:',
-  opts:['Ask which regulator authorises them and check the register yourself','Start small to test whether it pays','Ask for testimonials from existing members'],
-  a:0, why:'Guaranteed returns are the oldest signal there is. Testimonials and small test deposits are exactly what a scheme is designed to survive.'},
- {tier:'apply', q:'You have a 2% risk limit per trade and a stop 5% below entry. Roughly what position size fits?',
-  opts:['About 40% of your account','About 10% of your account','The full account, since the stop protects you'],
-  a:0, why:'Risk equals position size times distance to stop. 40% of the account moving 5% loses 2% of the account. Sizing is arithmetic, not instinct.'},
- {tier:'apply', q:'Your plan says exit at a 6% loss. You are down 7% and convinced it will recover. The disciplined action is:',
-  opts:['Hold, since you have new information','Exit as planned and review the rule afterwards','Add more to lower your average price'],
-  a:1, why:'Plans are written precisely for the moment they feel wrong. Review the rule when flat, never while carrying the position.'},
- {tier:'specialise', q:'What does a perpetual futures funding rate actually do?',
-  opts:['Pays the exchange for holding a position overnight','Transfers payments between long and short holders to keep price near spot','Sets the maximum leverage available that day'],
-  a:1, why:'Funding is a periodic payment between the two sides that anchors the perpetual to spot. Persistently high funding is a crowding signal.'},
- {tier:'specialise', q:'Two assets both returned 20% last year. What would most change how you weight them?',
-  opts:['Which had the larger single-day gain','How they moved relative to each other and to the rest of the portfolio','Which is more widely discussed'],
-  a:1, why:'Portfolio construction is about correlation and contribution to total risk, not about ranking returns side by side.'}
-];
-
-/* ---------- SKILL TREE ---------- */
-const NODES = [
- {id:'L1',tier:'learn',t:'How markets work',mod:'Module 1',x:120,y:300,pre:[],xp:120,coins:20,mins:9},
- {id:'L2',tier:'learn',t:'Assets and instruments',mod:'Module 2',x:290,y:190,pre:['L1'],xp:140,coins:25,mins:11},
- {id:'L3',tier:'learn',t:'Orders and execution',mod:'Module 3',x:290,y:410,pre:['L1'],xp:140,coins:25,mins:10},
- {id:'S1',tier:'safeguard',t:'Risk, plainly',mod:'Module 1',x:470,y:105,pre:['L2'],xp:160,coins:30,mins:8},
- {id:'S2',tier:'safeguard',t:'Leverage and margin',mod:'Module 2',x:640,y:190,pre:['S1'],xp:200,coins:40,mins:12},
- {id:'S3',tier:'safeguard',t:'Scams and protection',mod:'Module 3',x:470,y:300,pre:['S1'],xp:160,coins:30,mins:9},
- {id:'A1',tier:'apply',t:'Reading a chart',mod:'Module 1',x:470,y:500,pre:['L3'],xp:180,coins:35,mins:11},
- {id:'A2',tier:'apply',t:'Position sizing',mod:'Module 2',x:660,y:420,pre:['A1','S2'],xp:220,coins:45,mins:12},
- {id:'A3',tier:'apply',t:'Writing a plan',mod:'Module 3',x:840,y:340,pre:['A2'],xp:220,coins:45,mins:10},
- {id:'X1',tier:'specialise',t:'Derivatives basics',mod:'Module 1',x:1010,y:230,pre:['A3'],xp:260,coins:55,mins:13},
- {id:'X2',tier:'specialise',t:'Portfolio construction',mod:'Module 2',x:1010,y:450,pre:['A3'],xp:260,coins:55,mins:13}
-];
-const EDGES = NODES.flatMap(n=>n.pre.map(p=>[p,n.id]));
-
-/* ---------- LESSON CONTENT ---------- */
-const LESSONS = {
- S2:{
-  sections:['What leverage really is','The margin call','Sizing it sensibly','Check your understanding'],
-  transcript:[['0:00','Leverage is borrowed size. You put up part of the position and the venue lends the rest.'],
-    ['0:38','Here is the part people miss. Leverage multiplies the outcome in both directions, equally.'],
-    ['1:24','At ten times, a ten per cent move against you takes roughly all of your margin.'],
-    ['2:05','A margin call is not a warning. It is the venue closing your position for you.'],
-    ['2:51','So the question is never how much leverage is available. It is how much you can survive.']],
-  read:[
-   {h:'Leverage is borrowed size',p:'You put up part of the position value as <span class="term" data-def="The cash you put up to open and hold a leveraged position. It is not a fee, it is collateral.">margin</span>, and the venue lends the rest. Ten times leverage means you control ten dollars of exposure for every dollar you have posted.'},
-   {h:'It multiplies both directions',p:'A 10% favourable move at 10x roughly doubles your margin. A 10% adverse move at 10x roughly erases it. The mechanism has no preference for which way it works.'},
-   {h:'The margin call is not a warning',p:'When your equity falls below the venue\u2019s maintenance level, the position is closed for you, at whatever price the market offers. You do not get to wait for the recovery.'}],
-  callout:{h:'In practice',p:'Before opening any leveraged position, work out the percentage move that would take you to zero. If that number is smaller than a normal day for the asset, the size is wrong, not the market.'},
-  sim:true
- }
+const TIER_ORDER = ['learn','safeguard','apply','specialise'];
+// Where each lesson sits on the tree, by tier and position. Layout, not rules.
+const LAYOUT = {
+  'learn/1':{x:120,y:300}, 'learn/2':{x:290,y:190}, 'learn/3':{x:290,y:410},
+  'safeguard/1':{x:470,y:105}, 'safeguard/2':{x:640,y:190}, 'safeguard/3':{x:470,y:300},
+  'apply/1':{x:470,y:500}, 'apply/2':{x:660,y:420}, 'apply/3':{x:840,y:340},
+  'specialise/1':{x:1010,y:230}, 'specialise/2':{x:1010,y:450}
 };
-function lessonFor(node){
-  if(LESSONS[node.id]) return LESSONS[node.id];
-  return {
-    sections:['Why this matters','How it works','Applying it','Check your understanding'],
-    transcript:[['0:00','An introduction to '+node.t.toLowerCase()+' and why it matters before you risk anything.'],
-      ['0:42','The core mechanism, in plain language, with one worked example.'],
-      ['1:30','Two mistakes people make here, and the cheap way to avoid both.'],
-      ['2:18','A short recap, then the knowledge check.']],
-    read:[
-     {h:'Why this matters',p:'<b>'+node.t+'</b> sits in the '+TIERS[node.tier].name+' tier. Everything after it assumes you can do this without thinking about it.'},
-     {h:'How it works',p:'The mechanism in plain language, with one worked example using real numbers rather than abstractions.'},
-     {h:'Applying it',p:'Where this shows up in a live decision, and the one question to ask yourself before acting.'}],
-    callout:{h:'In practice',p:'Write the rule down before you need it. Decisions made while carrying a position are the ones people regret.'},
-    sim:false
-  };
-}
-
-/* ---------- KNOWLEDGE CHECKS ---------- */
-const CHECKS = {
- S2:[
-  {q:'You open a position at 10x. The asset moves 9% against you. What is the most accurate description of your position?',
-   opts:['Down about 9%','Down about 90% and close to being closed for you','Unchanged until you sell'],a:1,
-   why:{0:'That would be true without leverage. At 10x the move is multiplied by ten.',
-        1:'Correct. Roughly 90% of your margin is gone, and most venues would be at or near a margin call.',
-        2:'Unrealised losses are still losses when leverage is involved, because the venue acts on them.'}},
-  {q:'What does a margin call actually mean on most venues?',
-   opts:['A request to add funds within 24 hours','Your position is closed automatically at market','A temporary pause on the position'],a:1,
-   why:{0:'Some traditional brokers work that way. Most retail crypto and CFD venues do not wait.',
-        1:'Correct. Liquidation is automatic and happens at whatever price is available, not the one you hoped for.',
-        2:'Nothing is paused. The position is closed and the loss is realised.'}},
-  {q:'Which question is the useful one before choosing leverage?',
-   opts:['What is the maximum this venue offers?','What move would take me to zero, and is that a normal day for this asset?','What are other traders using?'],a:1,
-   why:{0:'Maximum available leverage tells you about the venue\u2019s risk appetite, not yours.',
-        1:'Correct. If the distance to zero is smaller than the asset\u2019s ordinary daily range, the size is wrong.',
-        2:'Other people\u2019s size tells you nothing about your own capital or plan.'}}
- ]
-};
-function checkFor(node){
-  if(CHECKS[node.id]) return CHECKS[node.id];
-  const T=TIERS[node.tier].name;
-  return [
-   {q:'What is the single idea "'+node.t+'" is built around?',
-    opts:['A rule you apply before you act','A prediction about what happens next','A signal to follow other traders'],a:0,
-    why:{0:'Correct. Everything in the '+T+' tier is a rule you set in advance, not a forecast.',
-         1:'Nothing in this course predicts prices. It teaches decisions you control.',
-         2:'Following others removes the one thing that protects you: your own plan.'}},
-   {q:'When should you decide the rule that applies here?',
-    opts:['While the position is open','Before you open anything','After reviewing the outcome'],a:1,
-    why:{0:'Decisions made while carrying risk are the ones people regret.',
-         1:'Correct. Write it down when you are flat and calm, then follow it.',
-         2:'Reviewing afterwards is useful, but too late to protect this decision.'}},
-   {q:'What would tell you that you have understood this properly?',
-    opts:['You can explain it to someone else in a minute','You memorised the terms','You feel confident'],a:0,
-    why:{0:'Correct. Explaining it simply is the only reliable test of understanding.',
-         1:'Terminology is the surface. The mechanism underneath is what matters.',
-         2:'Confidence is not knowledge. This is exactly what the placement check measures separately.'}}
-  ];
-}
+const GOALS = [['new','I am completely new'],['some_experience','I have traded a little'],
+  ['stop_losing','I want to stop losing money'],['go_deeper','I want to go deeper']];
+const MINUTES = [[10,'10 minutes'],[20,'20 minutes'],[30,'30 minutes or more']];
+const LIFECYCLE = {registered:'Registered',onboarded:'Onboarded',placed:'Placed',activated:'Activated',
+  active:'Active',certified:'Certified',dormant:'Dormant'};
+const LEVEL = {explorer:'Explorer',learner:'Learner',practitioner:'Practitioner',specialist:'Specialist'};
 
 /* ---------- MoSCoW SPEC (from the Zento journey model) ---------- */
 const FEAT = {
  'E01-F01':['Learner sign-up and login','Must','Identity and access'],
- 'E01-F02':['Social login','Should','Identity and access'],
  'E03-F01':['Consent, terms and privacy capture','Must','Security, privacy and compliance'],
  'E04-F01':['Tenant branding and domain','Must','Multi-tenancy'],
  'E05-F01':['Learner profile','Must','Learner profile'],
@@ -537,6 +422,7 @@ const FEAT = {
  'E11-F03':['Transcript and captions','Should','Lesson experience'],
  'E11-F05':['Named author and reviewer','Must','Lesson experience'],
  'E14-F01':['In-lesson knowledge check','Must','Assessment'],
+ 'E14-F02':['Course assessments (will replace the completion trigger)','Must','Assessment'],
  'E14-F03':['Rationale on every option','Must','Assessment'],
  'E14-F04':['Randomised question bank','Must','Assessment'],
  'E15-F01':['Verified progression event','Must','Progression'],
@@ -544,23 +430,18 @@ const FEAT = {
  'E16-F01':['Certificate issuance','Must','Certification'],
  'E16-F02':['Public verification page','Must','Certification'],
  'E17-F01':['Streaks and XP','Should','Engagement'],
- 'E17-F02':['Badges on verified knowledge only','Should','Engagement'],
- 'E17-F03':['Leaderboard','Could','Engagement'],
+ 'E17-F02':['Badges on verified knowledge only (deferred from the demo)','Should','Engagement'],
  'E20-F04':['Accessibility and reduced motion','Should','Quality'],
  'E22-F01':['CRM outbox events','Must','Integrations'],
- 'E22-F02':['Introducing broker attribution','Must','Integrations'],
- 'E25-F02':['Plans and entitlements','TBC','Monetisation']
+ 'E22-F02':['Introducing broker attribution','Must','Integrations']
 };
 const SPEC = {
  welcome:{title:'Welcome and sign-up',phase:'Discover and join',state:'Registered',goal:'Is this worth my time? Can I trust it?',
-   principle:'No deposit, no trading. Say it first.',metric:'Sign-up conversion',
-   feats:['E01-F01','E01-F02','E03-F01','E04-F01','E22-F02']},
+   principle:'No deposit, no trading. Say it first.',metric:'Sign-up conversion',feats:['E01-F01','E03-F01','E04-F01','E22-F02']},
  about:{title:'About you',phase:'Get to know you',state:'Onboarded',goal:'Get to something relevant, fast',
-   principle:'Ask only what changes the path. About 90 seconds.',metric:'Profile completion',
-   feats:['E05-F02','E06-F02']},
+   principle:'Ask only what changes the path. About 90 seconds.',metric:'Profile completion',feats:['E05-F02','E06-F02']},
  placement:{title:'Placement check',phase:'Get placed',state:'Onboarded',goal:'Show what I already know',
-   principle:'Placement, not an exam. Randomised bank, skipping allowed.',metric:'Assessment completion',
-   feats:['E06-F03','E06-F05','E14-F04']},
+   principle:'Placement, not an exam. Randomised bank, skipping allowed.',metric:'Assessment completion',feats:['E06-F03','E06-F05','E14-F04']},
  baseline:{title:'Your baseline',phase:'Get placed',state:'Placed',goal:'Where do I stand?',
    principle:'Knowledge gates only, with published thresholds. Framed by what is unlocked.',metric:'Continue-to-pathway rate',
    feats:['E06-F04','E05-F03','E15-F02','E22-F01']},
@@ -568,95 +449,34 @@ const SPEC = {
    principle:'Level, duration and reason on every node. Safeguard always available.',metric:'Pathway acceptance',
    feats:['E07-F01','E07-F02','E07-F03','E10-F01','E10-F03']},
  lesson:{title:'Lesson',phase:'Learn',state:'Activated learner',goal:'Learn something real in the time I have',
-   principle:'Named author and reviewer. Twelve minutes or less.',metric:'Lesson completion',
-   feats:['E11-F01','E11-F03','E11-F05','E20-F04']},
+   principle:'Named author and reviewer. Twelve minutes or less.',metric:'Lesson completion',feats:['E11-F01','E11-F03','E11-F05','E20-F04']},
  check:{title:'Knowledge check',phase:'Prove and progress',state:'Activated learner',goal:'Did I get it?',
    principle:'Cannot be gamed. An explanation on every option. Two of three to pass.',metric:'Verified progressions (North Star)',
    feats:['E14-F01','E14-F03','E15-F01','E22-F01']},
  progress:{title:'Progress',phase:'Prove and progress',state:'Active',goal:'Is my time adding up?',
    principle:'Progress is knowledge-based and earned. Never bought.',metric:'North Star, 30-day retention',
-   feats:['E05-F03','E17-F01','E17-F02','E17-F03']},
- certify:{title:'Certificate',phase:'Certify and continue',state:'Certified',goal:'Show it, and keep going',
-   principle:'Public verification for every certificate.',metric:'Certification rate',
-   feats:['E16-F01','E16-F02','E22-F01']}
+   feats:['E05-F03','E17-F01','E17-F02','E16-F01','E16-F02','E14-F02']}
 };
 
-/* ---------- STATE ---------- */
+/* ---------- STATE: what the server last said ---------- */
 const S = {
-  theme:'gtl', route:'welcome', phone:false, spec:false, outbox:false,
-  name:'Amara', goal:null, exp:null, minutes:null,
-  confidence:{learn:50,safeguard:50,apply:50,specialise:50},
-  qi:0, answers:[], baseline:null, level:null,
-  lifecycle:'Visitor', node:null, tab:'watch', section:0,
-  completed:[], xp:0, coins:0, streak:1, badges:[], events:[], fails:{},
-  certSerial:null, ibRef:'IB-4417'
+  route:'welcome', phone:false, spec:false, outbox:false, busy:false,
+  authMode:'signup', authError:'',
+  me:null, pathway:null, events:[],
+  onboarding:{ goal:null, dailyMinutes:null, selfRating:{learn:50,safeguard:50,apply:50,specialise:50} },
+  paper:null, qi:0, answers:{}, placement:null,
+  lesson:null, tab:'watch'
 };
+const IB_REF = (() => { const v = new URLSearchParams(location.search).get('ib'); return v && /^[A-Za-z0-9_-]{1,64}$/.test(v) ? v : null; })();
+
+/* ---------- HELPERS ---------- */
 const $ = s=>document.querySelector(s);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-/* ---------- BUSINESS RULES ---------- */
-function computeBaseline(){
-  const out={};
-  for(const t of Object.keys(TIERS)){
-    const qs=PLACEMENT.map((q,i)=>({q,i})).filter(x=>x.q.tier===t);
-    let correct=0;
-    qs.forEach(x=>{ if(S.answers[x.i]!=null && S.answers[x.i]===x.q.a) correct++; });
-    const test=(correct/qs.length)*100;
-    out[t]=Math.round(test*0.60 + S.confidence[t]*0.40);
-  }
-  return out;
-}
-function levelFor(b){
-  const avg=(b.learn+b.safeguard+b.apply+b.specialise)/4;
-  if(avg<35) return 'Explorer'; if(avg<55) return 'Learner';
-  if(avg<75) return 'Practitioner'; return 'Specialist';
-}
-function tierUnlocked(t){
-  if(!S.baseline) return t==='learn'||t==='safeguard';
-  if(t==='learn'||t==='safeguard') return true;
-  if(t==='apply') return S.baseline.learn>=50;
-  if(t==='specialise') return S.baseline.learn>=70 && S.baseline.safeguard>=50;
-  return false;
-}
-function tierGateText(t){
-  if(t==='apply') return 'Unlocks at Learn 50 or above. You are at '+(S.baseline?S.baseline.learn:0)+'.';
-  if(t==='specialise') return 'Unlocks at Learn 70 and Safeguard 50. You are at '+(S.baseline?S.baseline.learn:0)+' and '+(S.baseline?S.baseline.safeguard:0)+'.';
-  return 'Open from the start.';
-}
-function nodeState(n){
-  if(S.completed.includes(n.id)) return 'done';
-  if(!tierUnlocked(n.tier)) return 'locked';
-  if(n.pre.some(p=>!S.completed.includes(p))) return 'locked';
-  return 'open';
-}
-function nodeGate(n){
-  if(!tierUnlocked(n.tier)) return tierGateText(n.tier);
-  const missing=n.pre.filter(p=>!S.completed.includes(p)).map(p=>NODES.find(x=>x.id===p).t);
-  return missing.length? 'Requires: '+missing.join(' and ') : '';
-}
-function nextNode(){ return NODES.find(n=>nodeState(n)==='open') || null; }
-</script>
-<script>
-/* ---------- EVENTS (enterprise outbox) ---------- */
-function emit(type, payload){
-  const ev={type, at:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}),
-    body:Object.assign({tenant_id:THEMES[S.theme].tenant, learner_id:'lnr_8f21c4', ib_ref_code:S.ibRef}, payload)};
-  S.events.unshift(ev);
-  renderOutbox();
-  const b=$('#btnOutbox'); if(b && !S.outbox){ b.classList.add('on'); setTimeout(()=>b.classList.remove('on'),900); }
-}
-function jsonHTML(o){
-  return JSON.stringify(o,null,2)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
-    .replace(/: "([^"]*)"/g,': <span class="s">"$1"</span>')
-    .replace(/: (\d+\.?\d*)/g,': <span class="n">$1</span>');
-}
-function setLifecycle(s){ if(S.lifecycle!==s){ S.lifecycle=s; } }
-
-/* ---------- FEEDBACK ---------- */
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2300); }
+const esc=s=>String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate=iso=>new Date(iso).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+const fmtTime=iso=>new Date(iso).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const placed=()=>!!(S.me && S.me.placement);
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
 function burst(){
   const wrap=document.createElement('div'); wrap.className='burst';
   const cs=[getComputedStyle(document.documentElement).getPropertyValue('--brand'),
@@ -667,24 +487,100 @@ function burst(){
     p.style.animationDuration=(1.1+Math.random()*.7)+'s'; wrap.appendChild(p); }
   document.body.appendChild(wrap); setTimeout(()=>wrap.remove(),2100);
 }
-function award(xp,coins,why){
-  S.xp+=xp; S.coins+=coins; renderHud();
-  toast('+'+xp+' XP  ·  +'+coins+' coins  ·  '+why);
+
+/* ---------- API ---------- */
+async function api(method, path, body){
+  const init = { method, credentials:'same-origin', headers:{ accept:'application/json' } };
+  if (body !== undefined) { init.headers['content-type']='application/json'; init.body=JSON.stringify(body); }
+  const res = await fetch('/api/v1'+path, init);
+  const data = res.status===204 ? null : await res.json().catch(()=>null);
+  if (!res.ok) {
+    const err = new Error(data && data.error ? data.error.message : 'Something went wrong. Try again.');
+    err.status = res.status; err.code = data && data.error ? data.error.code : 'unknown';
+    throw err;
+  }
+  return data;
+}
+// One action at a time, and every failure explained the way the server put it.
+async function run(fn){
+  if (S.busy) return;
+  S.busy = true; document.body.classList.add('busy');
+  try { await fn(); }
+  catch (e) {
+    if (e.status === 401) { S.me=null; S.pathway=null; S.events=[]; renderOutbox(); go('welcome'); toast('Please sign in to continue'); }
+    else toast(e.message);
+  }
+  finally { S.busy = false; document.body.classList.remove('busy'); }
 }
 
-/* ---------- SHELL RENDER ---------- */
+/* ---------- LOADERS ---------- */
+async function loadMe(){ S.me = await api('GET','/me'); }
+async function loadPathway(){ S.pathway = placed() ? await api('GET','/pathway') : null; }
+async function loadEvents(){
+  if (!S.me) { S.events=[]; renderOutbox(); return; }
+  const before = S.events.length ? S.events[0].idempotencyKey : null;
+  S.events = (await api('GET','/me/events')).events;
+  renderOutbox();
+  if (S.events.length && S.events[0].idempotencyKey !== before && !S.outbox) {
+    const b=$('#btnOutbox'); b.classList.add('on'); setTimeout(()=>b.classList.remove('on'),900);
+  }
+}
+async function refreshAll(){ await loadMe(); await loadPathway(); await loadEvents(); }
+
+async function resume(){
+  const lc = S.me.user.lifecycle;
+  if (lc==='registered') return go('about');
+  if (lc==='onboarded') return startPlacement();
+  go('path');
+}
+async function startPlacement(){
+  S.paper = await api('POST','/placement'); S.qi=0; S.answers={};
+  go('placement');
+}
+
+/* ---------- LESSON TEXT ----------
+   The lesson body is a small Markdown subset, rendered with every piece
+   of text escaped: ## steps, a "> **In practice**" callout, **bold**,
+   and [[term|definition]] glossary terms. No HTML from the database is
+   ever inserted as markup. */
+function inline(text){
+  const re=/\*\*([^*]+)\*\*|\[\[([^\]|]+)\|([^\]]+)\]\]/g;
+  let out='', last=0, m;
+  while ((m=re.exec(text))) {
+    out += esc(text.slice(last, m.index));
+    out += m[1]!==undefined ? `<b>${esc(m[1])}</b>` : `<span class="term" data-def="${esc(m[3])}">${esc(m[2])}</span>`;
+    last = re.lastIndex;
+  }
+  return out + esc(text.slice(last));
+}
+function parseLesson(md){
+  const steps=[]; let callout=null;
+  for (const block of String(md||'').split(/\n{2,}/)) {
+    const lines = block.split('\n');
+    if (lines[0].startsWith('## ')) steps.push({h:lines[0].slice(3), p:lines.slice(1).join(' ')});
+    else if (lines[0].startsWith('> ')) {
+      const body = lines.map(l=>l.replace(/^>\s?/,''));
+      const title = /^\*\*(.+)\*\*$/.exec(body[0]);
+      callout = title ? {h:title[1], p:body.slice(1).join(' ')} : {h:'Note', p:body.join(' ')};
+    }
+    else if (steps.length) steps[steps.length-1].p += ' ' + lines.join(' ');
+  }
+  return {steps, callout};
+}
+
+/* ---------- PATHWAY, AS THE SERVER DECIDED IT ---------- */
+function allLessons(){
+  if (!S.pathway) return [];
+  return S.pathway.tiers.flatMap(t=>t.courses.flatMap(c=>c.lessons.map(l=>({...l, tier:t.tier, course:c.title, courseId:c.id}))));
+}
+const lessonById = id => allLessons().find(l=>l.id===id);
+const layoutFor = l => LAYOUT[l.tier+'/'+l.position] || {x:120+TIER_ORDER.indexOf(l.tier)*300, y:80+l.position*130};
+
+/* ---------- SHELL ---------- */
 function renderChrome(){
-  const t=THEMES[S.theme];
-  document.documentElement.dataset.theme=S.theme;
+  document.title = ACADEMY.name;
   $('#bm').innerHTML=svg('logo');
-  $('#brandName').textContent=t.name; $('#brandSub').textContent=t.sub;
-  $('#themepick').innerHTML=Object.entries(THEMES).map(([k,v])=>
-    `<button data-theme="${k}" class="${S.theme===k?'on':''}" title="${esc(v.name)}"
-      style="background:linear-gradient(135deg,${v.swatch} 55%,${v.accent} 55%)"></button>`).join('');
-  $('#themepick').querySelectorAll('button').forEach(b=>b.onclick=()=>{
-    S.theme=b.dataset.theme; renderChrome(); renderTree();
-    toast('Tenant theme: '+THEMES[S.theme].name+'  ·  tokens swapped at runtime');
-  });
+  $('#brandName').textContent=ACADEMY.name; $('#brandSub').textContent=ACADEMY.sub||'Pocketfolio LXP';
   $('#btnPhone').innerHTML=svg('phone'); $('#btnSpec').innerHTML=svg('layers'); $('#btnOutbox').innerHTML=svg('code');
   $('#btnPhone').classList.toggle('on',S.phone);
   $('#btnSpec').classList.toggle('on',S.spec);
@@ -692,16 +588,13 @@ function renderChrome(){
   renderHud(); renderTabs();
 }
 function renderHud(){
-  const on=['path','lesson','progress','certify','me'].includes(S.route)||S.completed.length>0;
-  $('#hud').innerHTML = on ? `
-    <span class="chip xp">${svg('bolt')}${S.xp} XP</span>
-    <span class="chip streak hideSm">${svg('flame')}${S.streak}</span>
-    <span class="chip coin hideSm">${svg('coin')}${S.coins}</span>` : '';
+  $('#hud').innerHTML = placed() ? `
+    <span class="chip xp" title="Experience points from verified lessons">${svg('bolt')}${S.me.stats.xp} XP</span>
+    <span class="chip streak hideSm" title="Days in a row with a newly verified lesson">${svg('flame')}${S.me.stats.streakDays}</span>` : '';
 }
 function renderTabs(){
-  const live=['path','lesson','progress','me','certify'].includes(S.route);
   const bar=$('#tabbar');
-  if(!S.baseline){ bar.style.display='none'; return; }
+  if(!placed()){ bar.style.display='none'; return; }
   bar.style.display='flex';
   const items=[['path','home','Path'],['catalogue','map','Explore'],['progress','chart','Progress'],['me','user','Me']];
   bar.innerHTML=items.map(([r,ic,label])=>
@@ -713,7 +606,9 @@ function go(r){ S.route=r; render(); $('#scroll').scrollTop=0; }
 /* ---------- VIEWS ---------- */
 const V={};
 
-V.welcome=()=>`
+V.welcome=()=>{
+  const signup = S.authMode==='signup';
+  return `
 <div class="fade">
   <div class="hero">
     <span class="promise">${svg('check')} No deposit. No trading. Ever.</span>
@@ -721,24 +616,26 @@ V.welcome=()=>`
     <p>We find out what you already know, teach only what you need next, and give you a credential anyone can verify. Progress is earned through knowledge checks, never through deposits.</p>
   </div>
   <div class="grid g2" style="margin-top:14px">
-    <div class="card">
-      <div class="eyebrow">Create your account</div>
-      <div class="field" style="margin-top:12px"><label>Name</label><input id="inName" value="${esc(S.name)}"></div>
-      <div class="field"><label>Email</label><input value="amara@example.com"></div>
-      <div class="field"><label>Password</label><input type="password" value="••••••••••"></div>
-      <label class="muted" style="display:flex;gap:9px;align-items:flex-start;margin:6px 0 14px">
-        <input type="checkbox" checked style="margin-top:3px"> I agree to the terms and privacy policy</label>
-      <div class="row">
-        <button class="btn" id="goAbout">Create account ${svg('arrow')}</button>
-        <button class="btn sec" id="goAbout2">Continue with Google</button>
+    <form class="card" id="authForm" novalidate>
+      <div class="tabs" style="margin-bottom:12px">
+        <button type="button" data-auth="signup" class="${signup?'on':''}">Create account</button>
+        <button type="button" data-auth="login" class="${signup?'':'on'}">Sign in</button>
       </div>
-      <p class="tiny" style="margin-top:12px">Referred by broker partner <b>${S.ibRef}</b>. That tag travels with every learning event.</p>
-    </div>
+      ${signup?`<div class="field"><label for="inName">Name</label><input id="inName" autocomplete="name" required maxlength="100"></div>`:''}
+      <div class="field"><label for="inEmail">Email</label><input id="inEmail" type="email" autocomplete="email" required></div>
+      <div class="field"><label for="inPass">Password</label><input id="inPass" type="password" autocomplete="${signup?'new-password':'current-password'}" required ${signup?'minlength="12"':''}></div>
+      ${signup?`<p class="tiny" style="margin:-6px 0 12px">At least 12 characters.</p>
+      <label class="muted" style="display:flex;gap:9px;align-items:flex-start;margin:6px 0 14px">
+        <input type="checkbox" id="inConsent" style="margin-top:3px"> I agree to the terms and privacy policy</label>`:''}
+      ${S.authError?`<div class="rationale wrong" style="margin:0 0 12px"><b>${signup?'COULD NOT CREATE ACCOUNT':'COULD NOT SIGN IN'}</b>${esc(S.authError)}</div>`:''}
+      <button class="btn" type="submit" id="authGo">${signup?'Create account':'Sign in'} ${svg('arrow')}</button>
+      ${IB_REF&&signup?`<p class="tiny" style="margin-top:12px">Referred by broker partner <b>${esc(IB_REF)}</b>. That tag travels with every learning event.</p>`:''}
+    </form>
     <div class="card">
       <div class="eyebrow">What you get</div>
       <div style="margin-top:14px">
-        ${[['bolt','A 3 minute placement check','Eight scenarios. Skip anything. We use it to remove lessons you do not need.'],
-           ['map','A path with reasons','Every step says why it is next, and what it unlocks.'],
+        ${[['bolt','A 3 minute placement check','Eight scenarios. Skip anything. It decides what opens for you first.'],
+           ['map','A path with reasons','Every lesson says why it is next, or exactly what opens it.'],
            ['award','A verifiable certificate','A public page anyone can check, without an account.']]
           .map(([ic,h,p])=>`<div style="display:flex;gap:13px;margin-bottom:15px">
             <span style="width:38px;height:38px;border-radius:11px;background:var(--brand-t);display:grid;place-items:center;flex:none">
@@ -746,81 +643,76 @@ V.welcome=()=>`
             <div><div class="h3">${h}</div><div class="muted">${p}</div></div></div>`).join('')}
       </div>
       <div class="sep"></div>
-      <p class="tiny">This academy is operated for you by your broker. Your learning record belongs to your academy, and is never shared with another.</p>
+      <p class="tiny">${esc(ACADEMY.name)} is operated for you by your broker. Your learning record belongs to this academy, and is never shared with another.</p>
     </div>
   </div>
 </div>`;
+};
 
 V.about=()=>{
-  const goals=['I am completely new','I have traded a little','I want to stop losing money','I want to go deeper'];
-  const mins=['10 minutes','20 minutes','30 minutes or more'];
+  const o=S.onboarding;
   return `<div class="fade">
   <div class="eyebrow">Step 1 of 2</div>
   <div class="h1">About you</div>
   <p class="lead">Three questions, about ninety seconds. We only ask what changes your path.</p>
   <div class="card" style="margin-top:16px">
     <div class="h3">What do you want from this?</div>
-    <div class="row" style="margin:12px 0 22px">${goals.map(g=>`<button class="pillbtn ${S.goal===g?'on':''}" data-goal="${esc(g)}">${g}</button>`).join('')}</div>
+    <div class="row" style="margin:12px 0 22px">${GOALS.map(([k,l])=>`<button class="pillbtn ${o.goal===k?'on':''}" data-goal="${k}">${l}</button>`).join('')}</div>
     <div class="h3">How much time on a typical day?</div>
-    <div class="row" style="margin:12px 0 22px">${mins.map(m=>`<button class="pillbtn ${S.minutes===m?'on':''}" data-min="${esc(m)}">${m}</button>`).join('')}</div>
+    <div class="row" style="margin:12px 0 22px">${MINUTES.map(([m,l])=>`<button class="pillbtn ${o.dailyMinutes===m?'on':''}" data-min="${m}">${l}</button>`).join('')}</div>
     <div class="h3">How confident do you feel in each area?</div>
-    <p class="muted" style="margin:4px 0 14px">This is your own read. It counts for 40% of your starting level, the check counts for 60%.</p>
-    ${Object.values(TIERS).map(t=>`
+    <p class="muted" style="margin:4px 0 14px">This is your own read. It counts for 40% of your starting level; the check counts for 60%.</p>
+    ${TIER_ORDER.map(t=>`
       <div style="margin-bottom:16px">
-        <div class="simrow"><span class="tag ${t.key}">${t.name}</span><b id="cf-${t.key}" style="font-family:Poppins">${S.confidence[t.key]}</b></div>
-        <input class="slider" type="range" min="0" max="100" step="5" value="${S.confidence[t.key]}" data-cf="${t.key}">
-        <div class="tiny" style="display:flex;justify-content:space-between;margin-top:3px"><span>New to this</span><span>${t.blurb}</span><span>Very confident</span></div>
+        <div class="simrow"><span class="tag ${t}">${TIERS[t].name}</span><b id="cf-${t}" style="font-family:Poppins">${o.selfRating[t]}</b></div>
+        <input class="slider" type="range" min="0" max="100" step="5" value="${o.selfRating[t]}" data-cf="${t}" aria-label="${TIERS[t].name} confidence">
+        <div class="tiny" style="display:flex;justify-content:space-between;margin-top:3px"><span>New to this</span><span>${TIERS[t].blurb}</span><span>Very confident</span></div>
       </div>`).join('')}
     <div class="row" style="margin-top:8px">
-      <button class="btn" id="goPlace" ${S.goal&&S.minutes?'':'disabled'}>Start the placement check ${svg('arrow')}</button>
+      <button class="btn" id="goPlace" ${o.goal&&o.dailyMinutes?'':'disabled'}>Start the placement check ${svg('arrow')}</button>
       <span class="tiny">About 3 minutes. Skipping allowed.</span>
     </div>
   </div></div>`;
 };
 
 V.placement=()=>{
-  const q=PLACEMENT[S.qi], n=PLACEMENT.length;
+  const qs=S.paper.questions, q=qs[S.qi];
   return `<div class="fade">
   <div class="qhead">
-    <div><span class="tag ${q.tier}">${TIERS[q.tier].name}</span>
-      <span class="tiny" style="margin-left:8px">Question ${S.qi+1} of ${n}</span></div>
-    <div class="qdots">${PLACEMENT.map((_,i)=>`<i class="${i<S.qi?'done':i===S.qi?'now':''}"></i>`).join('')}</div>
+    <div><span class="tag ${esc(q.tier)}">${esc(TIERS[q.tier]?TIERS[q.tier].name:q.tier)}</span>
+      <span class="tiny" style="margin-left:8px">Question ${S.qi+1} of ${qs.length}</span></div>
+    <div class="qdots">${qs.map((_,i)=>`<i class="${i<S.qi?'done':i===S.qi?'now':''}"></i>`).join('')}</div>
   </div>
   <div class="card">
-    <div class="h2" style="line-height:1.35">${q.q}</div>
-    <p class="tiny" style="margin:6px 0 16px">There is no penalty for a wrong answer. This decides what you skip, not whether you pass.</p>
-    ${q.opts.map((o,i)=>`<button class="opt" data-a="${i}"><span class="k">${'ABC'[i]}</span><span class="txt">${o}</span></button>`).join('')}
+    <div class="h2" style="line-height:1.35">${esc(q.prompt)}</div>
+    <p class="tiny" style="margin:6px 0 16px">There is no penalty for a wrong answer. This decides what opens first, not whether you pass.</p>
+    ${q.options.map((o,i)=>`<button class="opt" data-a="${esc(o.key)}"><span class="k">${'ABCDE'[i]}</span><span class="txt">${esc(o.text)}</span></button>`).join('')}
     <div class="row" style="margin-top:10px;justify-content:space-between">
       <button class="btn ghost" id="skipQ">Skip this one</button>
-      <span class="tiny">Skipped questions become lessons in your path</span>
+      <span class="tiny">A skip scores zero for its tier</span>
     </div>
   </div></div>`;
 };
 
 V.baseline=()=>{
-  const b=S.baseline, unlocked=Object.keys(TIERS).filter(tierUnlocked);
-  const skipped=NODES.filter(n=>n.tier==='learn'&&b.learn>=60).slice(0,1);
+  const p=S.me.placement, b=p.baseline;
+  const tiers=S.pathway?S.pathway.tiers:[];
+  const open=allLessons().filter(l=>l.state==='open').length;
   return `<div class="fade">
   <div class="eyebrow">Your starting point</div>
-  <div class="h1">You are starting as a ${S.level}</div>
-  <p class="lead">Here is what you already showed, and what that unlocks. Nothing here is a pass or a fail.</p>
+  <div class="h1">You are starting as ${/^[AEIOU]/.test(LEVEL[p.level])?'an':'a'} ${LEVEL[p.level]||esc(p.level)}</div>
+  <p class="lead">Here is what you showed, and what that opens. Nothing here is a pass or a fail.</p>
   <div class="card" style="margin-top:16px">
-    ${Object.values(TIERS).map(t=>{
-      const v=b[t.key], open=tierUnlocked(t.key);
-      return `<div style="margin-bottom:17px">
+    ${tiers.map(t=>`<div style="margin-bottom:17px">
         <div class="simrow">
-          <span><span class="tag ${t.key}">${t.name}</span> <span class="tiny">${t.blurb}</span></span>
-          <b style="font-family:Poppins;font-size:15px">${v}${open?'':' '+svg('lock')}</b></div>
-        <div class="bar"><i style="width:${v}%;background:var(--${t.key})"></i></div>
-        <div class="tiny" style="margin-top:5px">${open?'Open now':tierGateText(t.key)}</div>
-      </div>`;}).join('')}
+          <span><span class="tag ${t.tier}">${TIERS[t.tier].name}</span> <span class="tiny">${TIERS[t.tier].blurb}</span></span>
+          <b style="font-family:Poppins;font-size:15px">${b[t.tier]}${t.unlocked?'':' '+svg('lock')}</b></div>
+        <div class="bar"><i style="width:${b[t.tier]}%;background:var(--${t.tier})"></i></div>
+        <div class="tiny" style="margin-top:5px">${t.unlocked?'Open now':esc(t.gateReason)}</div>
+      </div>`).join('')}
     <div class="sep"></div>
-    <div class="grid g2">
-      <div><div class="eyebrow">Unlocked today</div>
-        <p class="muted" style="margin-top:6px">${unlocked.map(u=>TIERS[u].name).join(', ')}. That is ${NODES.filter(n=>tierUnlocked(n.tier)).length} lessons available right now.</p></div>
-      <div><div class="eyebrow">You can skip</div>
-        <p class="muted" style="margin-top:6px">${b.learn>=60?'Two introductory lessons, because you already answered their content correctly.':'Nothing yet. Your path starts at the beginning, which is the right place.'}</p></div>
-    </div>
+    <div><div class="eyebrow">Open today</div>
+      <p class="muted" style="margin-top:6px">${tiers.filter(t=>t.unlocked).map(t=>TIERS[t.tier].name).join(', ')}. ${open} ${open===1?'lesson is':'lessons are'} ready to start now; the rest open as you verify the lessons before them.</p></div>
   </div>
   <div class="row" style="margin-top:14px">
     <button class="btn" id="goPath">See my path ${svg('arrow')}</button>
@@ -829,97 +721,97 @@ V.baseline=()=>{
 };
 
 V.path=()=>{
-  const nx=nextNode();
+  const nx=S.pathway&&S.pathway.nextLessonId?lessonById(S.pathway.nextLessonId):null;
+  const started=S.me.stats.verifiedLessons>0;
   return `<div class="fade">
   <div class="row" style="justify-content:space-between;align-items:flex-end;margin-bottom:12px">
-    <div><div class="eyebrow">${S.level} · ${S.lifecycle}</div><div class="h1" style="margin:6px 0 0">Your path</div></div>
+    <div><div class="eyebrow">${LEVEL[S.me.placement.level]} · ${LIFECYCLE[S.me.user.lifecycle]}</div><div class="h1" style="margin:6px 0 0">Your path</div></div>
     <span class="tiny">Drag to pan · scroll to zoom</span>
   </div>
   ${nx?`<div class="card" style="display:flex;gap:16px;align-items:center;margin-bottom:14px;border-color:var(--brand)">
     <span style="width:46px;height:46px;border-radius:14px;background:var(--brand);display:grid;place-items:center;flex:none">
       <span style="filter:brightness(3)">${svg('play')}</span></span>
     <div style="flex:1;min-width:0">
-      <div class="tiny">${S.completed.length?'Continue where you stopped':'Start here'}</div>
-      <div class="h3">${nx.t}</div>
-      <div class="tiny">${TIERS[nx.tier].name} · ${nx.mod} · ${nx.mins} min</div>
+      <div class="tiny">${started?'Continue where you stopped':'Start here'}</div>
+      <div class="h3">${esc(nx.title)}</div>
+      <div class="tiny">${TIERS[nx.tier].name} · ${esc(nx.course)} · ${nx.minutes} min · ${nx.xp} XP</div>
     </div>
-    <button class="btn" data-open="${nx.id}">${S.completed.length?'Continue':'Start'} ${svg('arrow')}</button>
-  </div>`:''}
+    <button class="btn" data-open="${nx.id}">${started?'Continue':'Start'} ${svg('arrow')}</button>
+  </div>`:`<div class="card" style="margin-bottom:14px"><div class="h3">Nothing open right now</div>
+    <p class="muted">Every lesson you can reach is verified. Locked lessons say exactly what opens them.</p></div>`}
   <div class="treewrap">
     <div class="treelegend">
-      ${Object.values(TIERS).map(t=>`<span class="tag ${t.key}">${t.name}${tierUnlocked(t.key)?'':' '+svg('lock')}</span>`).join('')}
+      ${S.pathway.tiers.map(t=>`<span class="tag ${t.tier}">${TIERS[t.tier].name}${t.unlocked?'':' '+svg('lock')}</span>`).join('')}
     </div>
-    <svg id="tree" viewBox="0 0 1140 620" preserveAspectRatio="xMidYMid meet"></svg>
+    <svg id="tree" viewBox="0 0 1140 620" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Your learning path"></svg>
     <div class="treectl">
-      <button id="zin">+</button><button id="zout">−</button><button id="zfit" style="font-size:11px">fit</button>
+      <button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" style="font-size:11px">fit</button>
     </div>
   </div>
-  <p class="tiny" style="margin-top:10px">Locked nodes tell you exactly what opens them. Thresholds are published and identical for every learner.</p>
+  <p class="tiny" style="margin-top:10px">Locked lessons tell you exactly what opens them. Thresholds are published and identical for every learner.</p>
 </div>`;
 };
 
 V.catalogue=()=>`
 <div class="fade">
   <div class="eyebrow">Explore</div><div class="h1">All courses</div>
-  <p class="lead">Everything in the academy, including what is not on your path yet.</p>
-  ${Object.values(TIERS).map(t=>`
+  <p class="lead">Everything in ${esc(ACADEMY.name)}, including what is not open to you yet.</p>
+  ${S.pathway.tiers.map(t=>`
     <div class="card" style="margin-top:14px">
       <div class="row" style="justify-content:space-between">
-        <span><span class="tag ${t.key}">${t.name}</span> <span class="tiny">${t.blurb}</span></span>
-        <span class="tiny">${tierUnlocked(t.key)?'Open':tierGateText(t.key)}</span>
+        <span><span class="tag ${t.tier}">${TIERS[t.tier].name}</span> <span class="tiny">${TIERS[t.tier].blurb}</span></span>
+        <span class="tiny">${t.unlocked?'Open':esc(t.gateReason)}</span>
       </div>
-      <div class="grid g3" style="margin-top:12px">
-        ${NODES.filter(n=>n.tier===t.key).map(n=>{const st=nodeState(n);
-          return `<button class="card" style="padding:14px;text-align:left;${st==='locked'?'opacity:.6':''}" data-open="${n.id}">
-            <div class="tiny">${n.mod} · ${n.mins} min</div>
-            <div class="h3" style="margin:4px 0 8px">${n.t}</div>
-            <span class="tag ${st==='done'?'ok':st==='locked'?'lock':t.key}">${st==='done'?'Completed':st==='locked'?'Locked':'Available'}</span>
-          </button>`}).join('')}
-      </div>
+      ${t.courses.map(c=>`
+        <div class="row" style="justify-content:space-between;margin-top:14px">
+          <div><div class="h3">${esc(c.title)}</div><div class="tiny">${c.estMinutes} min · ${c.progressPct}% complete</div></div>
+          ${c.certificate?`<button class="btn sec sm" data-cert="${esc(c.certificate.serial)}">${svg('award')} Certificate</button>`:''}
+        </div>
+        <div class="bar" style="margin-top:8px"><i style="width:${c.progressPct}%;background:var(--${t.tier})"></i></div>
+        <div class="grid g3" style="margin-top:12px">
+          ${c.lessons.map(l=>`<button class="card" style="padding:14px;text-align:left;${l.state==='locked'?'opacity:.6':''}" data-open="${l.id}">
+            <div class="tiny">Module ${l.position} · ${l.minutes} min · ${l.xp} XP</div>
+            <div class="h3" style="margin:4px 0 8px">${esc(l.title)}</div>
+            <span class="tag ${l.state==='done'?'ok':l.state==='locked'?'lock':t.tier}">${l.state==='done'?'Verified':l.state==='locked'?'Locked':'Available'}</span>
+            ${l.gateReason?`<div class="tiny" style="margin-top:6px">${esc(l.gateReason)}</div>`:''}
+          </button>`).join('')}
+        </div>`).join('')}
     </div>`).join('')}
 </div>`;
 
 V.lesson=()=>{
-  const n=NODES.find(x=>x.id===S.node), L=lessonFor(n);
+  const L=S.lesson, doc=parseLesson(L.bodyMd), sections=[...doc.steps.map(s=>s.h),'Check your understanding'];
+  const tabs=[['watch','play','Watch'],['read','book','Read']].concat(L.experience?[['do','flask','Experience']]:[]);
+  if (!tabs.some(t=>t[0]===S.tab)) S.tab='watch';
+  const reviewed = L.reviewedAt ? `Reviewed by ${esc(L.reviewerName)}, ${fmtDate(L.reviewedAt)}` : esc(L.reviewerName||'Not yet reviewed');
   return `<div class="fade">
   <button class="btn ghost sm" id="backPath" style="margin-bottom:10px">← Back to path</button>
   <div class="lessongrid">
     <aside class="contents">
       <h5>Lesson contents</h5>
-      ${L.sections.map((s,i)=>`<a href="#" data-sec="${i}" class="${S.section===i?'on':''}"><i>${i+1}</i>${s}</a>`).join('')}
-      <div class="sep" style="margin:12px 0"></div>
-      <h5>Additional material</h5>
-      <a href="#" data-noop="1"><i>+</i>Glossary terms</a>
-      <a href="#" data-noop="1"><i>+</i>One-page summary</a>
+      ${sections.map((s,i)=>`<a href="#" data-sec="${i}" data-last="${i===sections.length-1?1:0}"><i>${i+1}</i>${esc(s)}</a>`).join('')}
     </aside>
     <div>
-      <span class="tag ${n.tier}">${TIERS[n.tier].name}</span>
-      <div class="h1" style="margin:8px 0 4px;font-size:26px">${n.t}</div>
-      <p class="tiny" style="margin-bottom:14px">${n.mod} · ${n.mins} minutes · Written by R. Fernando · Reviewed by the compliance team, 14 Sep 2026</p>
+      <span class="tag ${L.tier}">${TIERS[L.tier].name}</span>
+      <div class="h1" style="margin:8px 0 4px;font-size:26px">${esc(L.title)}</div>
+      <p class="tiny" style="margin-bottom:14px">${esc(L.courseTitle)} · Module ${L.position} · ${Math.max(1,Math.round(L.durationSecs/60))} minutes · ${L.xp} XP · Written by ${esc(L.authorName)} · ${reviewed}</p>
       <div class="tabs">
-        <button data-tab="watch" class="${S.tab==='watch'?'on':''}">${svg('play')}Watch</button>
-        <button data-tab="read" class="${S.tab==='read'?'on':''}">${svg('book')}Read</button>
-        <button data-tab="do" class="${S.tab==='do'?'on':''}">${svg('flask')}Experience</button>
+        ${tabs.map(([k,ic,label])=>`<button data-tab="${k}" class="${S.tab===k?'on':''}">${svg(ic)}${label}</button>`).join('')}
       </div>
       ${S.tab==='watch'?`
         <div class="player" id="player">
           <div class="play">${svg('play')}</div>
-          <div class="meta">${n.t} · ${n.mins}:00</div>
+          <div class="meta">${esc(L.title)}</div>
           <div class="track"><i></i></div>
         </div>
         <div class="drawer-t" id="tdraw">
           <button id="tdrawBtn"><span>Video transcript</span>${svg('chev')}</button>
-          <div class="body">${L.transcript.map(([t,x])=>`<div class="tline" data-jump="${t}"><b>${t}</b><span>${x}</span></div>`).join('')}</div>
+          <div class="body">${(L.transcript||[]).map(t=>`<div class="tline" data-jump="${esc(t.at)}"><b>${esc(t.at)}</b><span>${esc(t.text)}</span></div>`).join('')}</div>
         </div>`:''}
       ${S.tab==='read'?`
-        ${L.read.map((r,i)=>`<div class="step"><span class="n">${i+1}</span><div><h4>${r.h}</h4><p>${r.p}</p></div></div>`).join('')}
-        <div class="callout"><h5>${L.callout.h}</h5><p>${L.callout.p}</p></div>`:''}
-      ${S.tab==='do'?(L.sim?simHTML():`
-        <div class="sim"><div class="h3">Scenario</div>
-        <p class="muted" style="margin:8px 0 14px">A learner in your situation is about to act. What would you tell them to check first?</p>
-        ${['Their plan, written before today','The current price chart','What other people are doing'].map((o,i)=>
-          `<button class="opt" data-scn="${i}"><span class="k">${'ABC'[i]}</span><span class="txt">${o}</span></button>`).join('')}
-        </div>`):''}
+        ${doc.steps.map((r,i)=>`<div class="step"><span class="n">${i+1}</span><div><h4>${esc(r.h)}</h4><p>${inline(r.p)}</p></div></div>`).join('')}
+        ${doc.callout?`<div class="callout"><h5>${esc(doc.callout.h)}</h5><p>${inline(doc.callout.p)}</p></div>`:''}`:''}
+      ${S.tab==='do'&&L.experience==='leverage_simulator'?simHTML():''}
       <div class="row" style="margin-top:18px;justify-content:space-between">
         <span class="tiny">Two of three correct to earn a verified progression.</span>
         <button class="btn" id="startCheck">Check your understanding ${svg('arrow')}</button>
@@ -930,11 +822,11 @@ V.lesson=()=>{
 
 function simHTML(){
   return `<div class="sim">
-    <div class="h3">What a 5% move does to you</div>
+    <div class="h3">What a move against you does at leverage</div>
     <p class="muted" style="margin:6px 0 16px">Move the sliders. This is the arithmetic the lesson describes, live.</p>
-    <div class="simrow"><label class="tiny"><b>Leverage</b></label><b id="lvOut" style="font-family:Poppins">5x</b></div>
+    <div class="simrow"><label class="tiny" for="lv"><b>Leverage</b></label><b id="lvOut" style="font-family:Poppins">5x</b></div>
     <input class="slider" type="range" id="lv" min="1" max="25" value="5">
-    <div class="simrow" style="margin-top:16px"><label class="tiny"><b>Adverse move</b></label><b id="mvOut" style="font-family:Poppins">5%</b></div>
+    <div class="simrow" style="margin-top:16px"><label class="tiny" for="mv"><b>Adverse move</b></label><b id="mvOut" style="font-family:Poppins">5%</b></div>
     <input class="slider" type="range" id="mv" min="1" max="30" value="5">
     <div class="simout">
       <div><b id="o1">25%</b><span>OF MARGIN LOST</span></div>
@@ -952,12 +844,12 @@ function bindSim(){
     $('#lvOut').textContent=L+'x'; $('#mvOut').textContent=M+'%';
     $('#o1').textContent=Math.round(lost)+'%';
     $('#o2').textContent=toZero.toFixed(1)+'%';
-    const ok=lost<50, warn=lost>=50&&lost<100;
+    const ok=lost<50;
     $('#o3').textContent= lost>=100?'Liquidated':ok?'Survivable':'Critical';
     $('#o3').style.color= lost>=100?'var(--bad)':ok?'var(--ok)':'var(--warn)';
     const v=$('#verdict');
     v.style.background= lost>=100?'var(--bad-t)':ok?'var(--ok-t)':'var(--warn-t)';
-    v.innerHTML= lost>=100
+    v.textContent= lost>=100
       ? `At ${L}x, a ${M}% move erases your margin entirely. The position is closed for you, at whatever price the market offers.`
       : ok ? `At ${L}x you lose ${Math.round(lost)}% of your margin on a ${M}% move. You would need a ${toZero.toFixed(1)}% move to reach zero.`
       : `At ${L}x you are down ${Math.round(lost)}% of margin. Most venues would be issuing a margin call well before this point.`;
@@ -966,105 +858,106 @@ function bindSim(){
 }
 
 V.progress=()=>{
-  const done=S.completed.length, total=NODES.length;
-  const pct=Math.round(done/total*100);
+  const m=S.me, st=m.stats, b=m.placement.baseline;
+  const courses=S.pathway.tiers.flatMap(t=>t.courses.map(c=>({...c,tier:t.tier})));
   return `<div class="fade">
-  <div class="eyebrow">${S.lifecycle}</div><div class="h1">Your progress</div>
+  <div class="eyebrow">${LIFECYCLE[m.user.lifecycle]}</div><div class="h1">Your progress</div>
   <div class="grid g3" style="margin-top:14px">
-    ${[['bolt',S.xp,'XP earned'],['flame',S.streak+' day','Learning streak'],['award',done,'Verified progressions']]
+    ${[['bolt',st.xp,'XP from verified lessons'],['flame',st.streakDays+(st.streakDays===1?' day':' days'),'Learning streak'],['award',st.verifiedLessons+' of '+st.totalLessons,'Verified lessons']]
       .map(([ic,v,l])=>`<div class="card" style="text-align:center">
         <div style="display:grid;place-items:center;margin-bottom:6px"><span style="width:40px;height:40px;border-radius:12px;background:var(--brand-t);display:grid;place-items:center">${svg(ic)}</span></div>
         <div style="font-family:Poppins;font-size:26px;font-weight:800">${v}</div><div class="tiny">${l}</div></div>`).join('')}
   </div>
   <div class="card" style="margin-top:14px">
-    <div class="row" style="justify-content:space-between"><div class="h3">Course completion</div><b>${pct}%</b></div>
-    <div class="bar" style="margin-top:10px"><i style="width:${pct}%"></i></div>
+    <div class="h3" style="margin-bottom:12px">Courses</div>
+    ${courses.map(c=>`<div style="margin-bottom:14px"><div class="simrow"><span><span class="tag ${c.tier}">${TIERS[c.tier].name}</span> <b style="font-size:14px">${esc(c.title)}</b></span><b class="tiny">${c.progressPct}%</b></div>
+      <div class="bar"><i style="width:${c.progressPct}%;background:var(--${c.tier})"></i></div></div>`).join('')}
     <div class="sep"></div>
     <div class="h3" style="margin-bottom:12px">Knowledge by tier</div>
-    ${Object.values(TIERS).map(t=>{
-      const tot=NODES.filter(n=>n.tier===t.key).length, dn=NODES.filter(n=>n.tier===t.key&&S.completed.includes(n.id)).length;
-      const v=S.baseline?Math.min(100,S.baseline[t.key]+dn*12):0;
-      return `<div style="margin-bottom:14px"><div class="simrow"><span class="tag ${t.key}">${t.name}</span><b class="tiny">${dn} of ${tot} lessons · score ${v}</b></div>
-      <div class="bar"><i style="width:${v}%;background:var(--${t.key})"></i></div></div>`}).join('')}
+    ${m.tiers.map(t=>`<div style="margin-bottom:14px"><div class="simrow"><span class="tag ${t.tier}">${TIERS[t.tier].name}</span>
+      <b class="tiny">${t.verifiedLessons} of ${t.totalLessons} lessons verified · baseline ${b[t.tier]}</b></div>
+      <div class="bar"><i style="width:${t.totalLessons?Math.round(100*t.verifiedLessons/t.totalLessons):0}%;background:var(--${t.tier})"></i></div></div>`).join('')}
   </div>
   <div class="card">
-    <div class="h3">Badges</div>
-    <p class="tiny" style="margin:4px 0 12px">Earned only for verified knowledge. Never for deposits, trades or volume.</p>
-    <div class="row">
-      ${[['First progression',done>=1],['Risk aware',S.completed.includes('S2')],['Three in a row',done>=3],['Tier complete',NODES.filter(n=>n.tier==='learn').every(n=>S.completed.includes(n.id))]]
-        .map(([b,on])=>`<span class="tag ${on?'ok':'lock'}" style="padding:8px 12px">${on?svg('check'):svg('lock')} ${b}</span>`).join('')}
-    </div>
+    <div class="h3">Certificates</div>
+    ${m.certificates.length? m.certificates.map(c=>`<div class="row" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line-2)">
+        <div><b style="font-size:14px">${esc(c.courseTitle)}</b><div class="tiny">${esc(c.serial)} · issued ${fmtDate(c.issuedAt)}</div></div>
+        <button class="btn accent sm" data-cert="${esc(c.serial)}">${svg('award')} View</button></div>`).join('')
+      : '<p class="muted" style="margin-top:6px">Verify every lesson in a course to earn its certificate.</p>'}
   </div>
   <div class="card">
-    <div class="row" style="justify-content:space-between"><div class="h3">Recent activity</div><span class="tiny">This month</span></div>
-    ${S.completed.length? S.completed.slice().reverse().map(id=>{const n=NODES.find(x=>x.id===id);
-      return `<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-2)">
+    <div class="row" style="justify-content:space-between"><div class="h3">Recent verified lessons</div></div>
+    ${m.recent.length? m.recent.map(r=>`
+      <div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-2)">
         <span style="width:30px;height:30px;border-radius:9px;background:var(--ok-t);display:grid;place-items:center">
           <span style="color:var(--ok)">${svg('check')}</span></span>
-        <div style="flex:1"><b style="font-size:14px">${n.t}</b><div class="tiny">${TIERS[n.tier].name} · verified progression</div></div>
-        <span class="tiny">+${n.xp} XP</span></div>`}).join('')
-      : '<p class="muted">Nothing yet. Your first knowledge check will appear here.</p>'}
+        <div style="flex:1"><b style="font-size:14px">${esc(r.title)}</b><div class="tiny">${TIERS[r.tier].name} · verified ${fmtDate(r.verifiedAt)}</div></div>
+        <span class="tiny">+${r.xp} XP</span></div>`).join('')
+      : '<p class="muted">Nothing yet. Your first passed knowledge check will appear here.</p>'}
   </div>
-  ${S.completed.length>=2?`<div class="row" style="margin-top:14px"><button class="btn accent" id="openCert">${svg('award')} View your certificate</button></div>`:
-    `<p class="tiny" style="margin-top:14px">Complete two lessons to unlock your first certificate. You have ${S.completed.length}.</p>`}
+  <p class="tiny" style="margin-top:14px">Badges for verified knowledge (E17-F02) are planned for a later release.</p>
 </div>`;
 };
 
-V.me=()=>`
+V.me=()=>{
+  const u=S.me.user;
+  const goal=(GOALS.find(g=>g[0]===u.goal)||[])[1], mins=(MINUTES.find(m=>m[0]===u.dailyMinutes)||[])[1];
+  return `
 <div class="fade">
-  <div class="eyebrow">Profile</div><div class="h1">${esc(S.name)}</div>
+  <div class="eyebrow">Profile</div><div class="h1">${esc(u.displayName)}</div>
   <div class="card" style="margin-top:14px">
     <div class="kv">
-      <b>Level</b><span>${S.level||'Not placed yet'}</span>
-      <b>Lifecycle</b><span>${S.lifecycle}</span>
-      <b>Goal</b><span>${S.goal||'Not set'}</span>
-      <b>Time per day</b><span>${S.minutes||'Not set'}</span>
-      <b>Academy</b><span>${THEMES[S.theme].name} · ${THEMES[S.theme].host}</span>
-      <b>Referred by</b><span>${S.ibRef}</span>
+      <b>Email</b><span>${esc(u.email)}</span>
+      <b>Level</b><span>${S.me.placement?LEVEL[S.me.placement.level]:'Not placed yet'}</span>
+      <b>Lifecycle</b><span>${LIFECYCLE[u.lifecycle]}</span>
+      <b>Goal</b><span>${esc(goal||'Not set')}</span>
+      <b>Time per day</b><span>${esc(mins||'Not set')}</span>
+      <b>Academy</b><span>${esc(S.me.academy.name)} · ${esc(location.host)}</span>
+      <b>Referred by</b><span>${esc(u.ibRefCode||'Nobody')}</span>
     </div>
     <div class="sep"></div>
     <p class="tiny">Your learning record belongs to this academy only. Certificates are verifiable publicly, and carry no personal data beyond your name and the course.</p>
   </div>
-  <div class="card"><div class="h3">Retake the placement check</div>
-    <p class="muted" style="margin:6px 0 12px">Your baseline updates and your path is rebuilt. Completed lessons stay completed.</p>
-    <button class="btn sec" id="retake">Retake</button></div>
+  <div class="card"><div class="h3">Placement</div>
+    <p class="muted" style="margin:6px 0 0">Your baseline was set by your placement check and is fixed from then on. Your path grows as you verify lessons.</p></div>
+  <div class="row" style="margin-top:14px"><button class="btn sec" id="logout">${svg('out')} Sign out</button></div>
 </div>`;
-</script>
-<script>
+};
+
 /* ---------- SKILL TREE ---------- */
 const TV={x:0,y:0,k:1};
 function renderTree(){
-  const el=$('#tree'); if(!el) return;
+  const el=$('#tree'); if(!el||!S.pathway) return;
   const tierColor=t=>getComputedStyle(document.documentElement).getPropertyValue('--'+t).trim();
+  const lessons=allLessons(), byId=new Map(lessons.map(l=>[l.id,l]));
   const dots=[]; for(let x=0;x<1140;x+=38){ for(let y=0;y<620;y+=38){ dots.push(`<circle cx="${x}" cy="${y}" r="1" fill="currentColor" opacity=".16"/>`);} }
-  const edges=EDGES.map(([a,b])=>{
-    const A=NODES.find(n=>n.id===a), B=NODES.find(n=>n.id===b);
-    const mx=(A.x+B.x)/2;
-    const done=S.completed.includes(a)&&(S.completed.includes(b)||nodeState(B)==='open');
-    return `<path d="M${A.x+46} ${A.y} C ${mx} ${A.y}, ${mx} ${B.y}, ${B.x-46} ${B.y}"
-      fill="none" stroke="${done?tierColor(B.tier):'currentColor'}" stroke-opacity="${done?'.85':'.28'}"
+  const edges=lessons.flatMap(b=>b.requires.filter(id=>byId.has(id)).map(id=>{
+    const A=byId.get(id), pa=layoutFor(A), pb=layoutFor(b), mx=(pa.x+pb.x)/2;
+    const done=A.state==='done';
+    return `<path d="M${pa.x+46} ${pa.y} C ${mx} ${pa.y}, ${mx} ${pb.y}, ${pb.x-46} ${pb.y}"
+      fill="none" stroke="${done?tierColor(b.tier):'currentColor'}" stroke-opacity="${done?'.85':'.28'}"
       stroke-width="${done?3:2}" stroke-dasharray="${done?'':'6 6'}" stroke-linecap="round"/>`;
-  }).join('');
-  const nodes=NODES.map(n=>{
-    const st=nodeState(n), c=tierColor(n.tier);
+  })).join('');
+  const nodes=lessons.map(n=>{
+    const st=n.state, c=tierColor(n.tier), p=layoutFor(n);
     const fill = st==='done'? c : st==='open'? 'var(--surface)' : 'var(--surface-2)';
     const stroke = st==='locked'? 'currentColor' : c;
     return `<g class="node" data-id="${n.id}" style="cursor:pointer">
-      <circle cx="${n.x}" cy="${n.y}" r="42" fill="${fill}" stroke="${stroke}" stroke-width="${st==='open'?3.4:2}"
+      <circle cx="${p.x}" cy="${p.y}" r="42" fill="${fill}" stroke="${stroke}" stroke-width="${st==='open'?3.4:2}"
         stroke-opacity="${st==='locked'?.4:1}" stroke-dasharray="${st==='locked'?'7 6':''}"/>
-      ${st==='open'?`<circle cx="${n.x}" cy="${n.y}" r="42" fill="none" stroke="${c}" stroke-width="2" opacity=".45">
+      ${st==='open'?`<circle cx="${p.x}" cy="${p.y}" r="42" fill="none" stroke="${c}" stroke-width="2" opacity=".45">
         <animate attributeName="r" values="42;52;42" dur="2.6s" repeatCount="indefinite"/>
         <animate attributeName="opacity" values=".45;0;.45" dur="2.6s" repeatCount="indefinite"/></circle>`:''}
-      <g transform="translate(${n.x-11},${n.y-13}) scale(.92)" fill="none"
+      <g transform="translate(${p.x-11},${p.y-13}) scale(.92)" fill="none"
          stroke="${st==='done'?'#fff':st==='locked'?'currentColor':c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
          opacity="${st==='locked'?.5:1}">
         ${st==='done'?I.check:st==='locked'?I.lock:I.play}</g>
-      <text x="${n.x}" y="${n.y+66}" text-anchor="middle" font-family="Poppins" font-size="13.5" font-weight="700"
-        fill="currentColor" opacity="${st==='locked'?.45:.95}">${esc(n.t)}</text>
-      <text x="${n.x}" y="${n.y+84}" text-anchor="middle" font-family="Nunito Sans" font-size="11.5"
-        fill="currentColor" opacity=".5">${TIERS[n.tier].name} · ${n.mins} min</text>
-      ${st==='done'?`<circle cx="${n.x+31}" cy="${n.y-31}" r="11" fill="var(--ok)"/>
-        <g transform="translate(${n.x+25},${n.y-37})" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round">${I.check}</g>`:''}
+      <text x="${p.x}" y="${p.y+66}" text-anchor="middle" font-family="Poppins" font-size="13.5" font-weight="700"
+        fill="currentColor" opacity="${st==='locked'?.45:.95}">${esc(n.title)}</text>
+      <text x="${p.x}" y="${p.y+84}" text-anchor="middle" font-family="Nunito Sans" font-size="11.5"
+        fill="currentColor" opacity=".5">${TIERS[n.tier].name} · ${n.minutes} min</text>
+      ${st==='done'?`<circle cx="${p.x+31}" cy="${p.y-31}" r="11" fill="var(--ok)"/>
+        <g transform="translate(${p.x+25},${p.y-37})" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round">${I.check}</g>`:''}
     </g>`;
   }).join('');
   el.innerHTML=`<g id="world" transform="translate(${TV.x},${TV.y}) scale(${TV.k})" color="var(--ink)">
@@ -1076,183 +969,179 @@ function renderTree(){
 }
 function bindPanZoom(el){
   let drag=false,sx=0,sy=0,ox=0,oy=0,moved=false;
-  el.onpointerdown=e=>{drag=true;moved=false;sx=e.clientX;sy=e.clientY;ox=TV.x;oy=TV.y;el.classList.add('drag');el.setPointerCapture(e.pointerId);};
+  el.onpointerdown=e=>{ if(e.target.closest('.node')) return; drag=true;moved=false;sx=e.clientX;sy=e.clientY;ox=TV.x;oy=TV.y;el.classList.add('drag');el.setPointerCapture(e.pointerId);};
   el.onpointermove=e=>{ if(!drag) return; const dx=e.clientX-sx, dy=e.clientY-sy;
     if(Math.abs(dx)+Math.abs(dy)>4) moved=true;
     TV.x=ox+dx*(1140/el.clientWidth); TV.y=oy+dy*(620/el.clientHeight);
     const w=el.querySelector('#world'); if(w) w.setAttribute('transform',`translate(${TV.x},${TV.y}) scale(${TV.k})`); };
-  el.onpointerup=e=>{drag=false;el.classList.remove('drag');};
+  el.onpointerup=()=>{drag=false;el.classList.remove('drag');};
   el.onclick=()=>{ if(!moved) closePopover(); };
   el.onwheel=e=>{e.preventDefault(); zoom(e.deltaY<0?1.12:1/1.12);};
-  const z=(f)=>()=>zoom(f);
-  if($('#zin')) $('#zin').onclick=z(1.2);
-  if($('#zout')) $('#zout').onclick=z(1/1.2);
+  if($('#zin')) $('#zin').onclick=()=>zoom(1.2);
+  if($('#zout')) $('#zout').onclick=()=>zoom(1/1.2);
   if($('#zfit')) $('#zfit').onclick=()=>{TV.x=0;TV.y=0;TV.k=1;renderTree();};
 }
 function zoom(f){ TV.k=clamp(TV.k*f,.55,2.2); const w=$('#world'); if(w) w.setAttribute('transform',`translate(${TV.x},${TV.y}) scale(${TV.k})`); }
-
 function closePopover(){ const p=$('#pop'); if(p) p.remove(); }
 function openPopover(id){
   closePopover();
-  const n=NODES.find(x=>x.id===id), st=nodeState(n), gate=nodeGate(n);
-  const el=$('#tree'), box=el.getBoundingClientRect(), wrapEl=el.parentElement;
-  const sx=box.width/1140, sy=box.height/620, sc=Math.min(sx,sy);
+  const n=lessonById(id); if(!n) return;
+  const el=$('#tree'), box=el.getBoundingClientRect(), wrapEl=el.parentElement, pos=layoutFor(n);
+  const sc=Math.min(box.width/1140, box.height/620);
   const offX=(box.width-1140*sc)/2, offY=(box.height-620*sc)/2;
-  const px=clamp(offX+(n.x*TV.k+TV.x)*sc-134, 8, box.width-276);
-  const py=clamp(offY+(n.y*TV.k+TV.y)*sc+52, 8, box.height-250);
+  const px=clamp(offX+(pos.x*TV.k+TV.x)*sc-134, 8, box.width-276);
+  const py=clamp(offY+(pos.y*TV.k+TV.y)*sc+52, 8, box.height-250);
   const d=document.createElement('div'); d.className='popover'; d.id='pop';
   d.style.left=px+'px'; d.style.top=py+'px';
   d.innerHTML=`
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <span class="tag ${n.tier}">${TIERS[n.tier].name}</span>
-      <span class="tiny">${n.mod}</span></div>
-    <div class="h3" style="margin:9px 0 2px">${n.t}</div>
-    <div class="tiny">${n.mins} minutes · 3 step lesson</div>
-    <div class="steps"><i class="${st==='done'?'done':''}">1</i><i class="${st==='done'?'done':''}">2</i><i class="${st==='done'?'done':''}">3</i><i class="star">★</i></div>
-    <div class="reward"><span>${svg('bolt')}+${n.xp} XP</span><span>${svg('coin')}+${n.coins}</span></div>
-    ${st==='locked'
-      ? `<div class="rationale wrong" style="margin:0 0 10px"><b>LOCKED</b>${gate}</div><button class="btn sec" style="width:100%" id="popClose">Close</button>`
-      : `<button class="btn" style="width:100%" id="popGo">${st==='done'?'Revisit lesson':'Start lesson'} ${svg('arrow')}</button>`}
-  `;
+      <span class="tiny">Module ${n.position}</span></div>
+    <div class="h3" style="margin:9px 0 2px">${esc(n.title)}</div>
+    <div class="tiny">${esc(n.course)} · ${n.minutes} minutes</div>
+    <div class="reward"><span>${svg('bolt')}+${n.xp} XP</span>${n.state==='done'?`<span>${svg('check')}Verified</span>`:''}</div>
+    ${n.state==='locked'
+      ? `<div class="rationale wrong" style="margin:0 0 10px"><b>LOCKED</b>${esc(n.gateReason)}</div><button class="btn sec" style="width:100%" id="popClose">Close</button>`
+      : `<button class="btn" style="width:100%" id="popGo">${n.state==='done'?'Revisit lesson':'Start lesson'} ${svg('arrow')}</button>`}`;
   wrapEl.appendChild(d);
   const g=$('#popGo'); if(g) g.onclick=()=>openLesson(n.id);
   const c=$('#popClose'); if(c) c.onclick=closePopover;
 }
 
-/* ---------- LESSON / CHECK ---------- */
+/* ---------- LESSON AND CHECK ---------- */
 function openLesson(id){
-  S.node=id; S.tab='watch'; S.section=0;
-  if(S.lifecycle==='Placed'){ setLifecycle('Activated learner'); }
-  go('lesson');
-  emit('lesson.started',{node_id:id, title:NODES.find(n=>n.id===id).t, tier:NODES.find(n=>n.id===id).tier});
+  return run(async ()=>{
+    S.lesson = await api('GET','/lessons/'+id);
+    S.tab='watch';
+    go('lesson');
+    await loadEvents();
+  });
 }
+
 function openCheck(){
-  const n=NODES.find(x=>x.id===S.node), qs=checkFor(n);
-  let i=0, correct=0, answered=false;
+  return run(async ()=>{
+    const paper = await api('POST','/lessons/'+S.lesson.id+'/checks');
+    showCheck(paper);
+  });
+}
+
+function showCheck(paper){
+  const qs=paper.questions, chosen={}; let i=0;
   const host=document.createElement('div'); host.className='veil';
-  host.innerHTML=`<div class="modal dark" role="dialog" aria-modal="true">
+  host.innerHTML=`<div class="modal dark" role="dialog" aria-modal="true" aria-label="Knowledge check">
     <div class="mh"><div><div class="eyebrow" style="color:var(--accent)">Knowledge check</div>
-      <div class="h3" id="ckTitle" style="color:inherit">${n.t}</div></div>
-      <button class="iconbtn" id="ckX" style="background:transparent;border-color:#2A3D58">${svg('close')}</button></div>
+      <div class="h3" style="color:inherit">${esc(S.lesson.title)}</div></div>
+      <button class="iconbtn" id="ckX" aria-label="Close" style="background:transparent;border-color:#2A3D58">${svg('close')}</button></div>
     <div class="mb" id="ckBody"></div></div>`;
   $('#modalHost').appendChild(host);
   host.querySelector('#ckX').onclick=()=>host.remove();
   const paint=()=>{
-    const q=qs[i];
+    const q=qs[i], all=qs.every(x=>chosen[x.id]);
     host.querySelector('#ckBody').innerHTML=`
       <div class="qhead"><span class="tiny" style="color:#9FB3CE">${i+1} of ${qs.length}</span>
-        <div class="qdots">${qs.map((_,k)=>`<i class="${k<i?'done':k===i?'now':''}"></i>`).join('')}</div></div>
-      <div class="h2" style="line-height:1.35;color:inherit">${q.q}</div>
+        <div class="qdots">${qs.map((x,k)=>`<i class="${chosen[x.id]?'done':k===i?'now':''}"></i>`).join('')}</div></div>
+      <div class="h2" style="line-height:1.35;color:inherit">${esc(q.prompt)}</div>
       <div id="ckOpts" style="margin-top:16px">
-        ${q.opts.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${'ABC'[k]}</span><span class="txt">${o}</span></button>`).join('')}
+        ${q.options.map((o,k)=>`<button class="opt ${chosen[q.id]===o.key?'sel':''}" data-k="${esc(o.key)}"><span class="k">${'ABCDE'[k]}</span><span class="txt">${esc(o.text)}</span></button>`).join('')}
       </div>
-      <div id="ckFeed"></div>`;
-    answered=false;
-    host.querySelectorAll('#ckOpts .opt').forEach(b=>b.onclick=()=>{
-      if(answered) return; answered=true;
-      const k=+b.dataset.k, right=k===q.a; if(right) correct++;
-      host.querySelectorAll('#ckOpts .opt').forEach(x=>{
-        const kk=+x.dataset.k;
-        if(kk===q.a) x.classList.add('right');
-        else if(kk===k) x.classList.add('wrong');
-      });
-      host.querySelector('#ckFeed').innerHTML=`
-        <div class="rationale ${right?'right':'wrong'}"><b>${right?'CORRECT':'NOT QUITE'}</b>${q.why[k]}</div>
-        <button class="btn" id="ckNext" style="width:100%">${i<qs.length-1?'Next question':'See result'} ${svg('arrow')}</button>`;
-      host.querySelector('#ckNext').onclick=()=>{ i++; if(i<qs.length) paint(); else finish(); };
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <button class="btn ghost" id="ckPrev" ${i===0?'disabled':''}>Back</button>
+        ${i<qs.length-1
+          ? `<button class="btn" id="ckNext" ${chosen[q.id]?'':'disabled'}>Next question ${svg('arrow')}</button>`
+          : `<button class="btn" id="ckSubmit" ${all?'':'disabled'}>Submit answers ${svg('arrow')}</button>`}
+      </div>
+      <p class="tiny" style="color:#9FB3CE;margin-top:12px">Your answers are marked together when you submit. Two of three correct is a verified progression.</p>`;
+    host.querySelectorAll('#ckOpts .opt').forEach(b=>b.onclick=()=>{ chosen[q.id]=b.dataset.k; paint(); });
+    const prev=host.querySelector('#ckPrev'); if(prev) prev.onclick=()=>{ i--; paint(); };
+    const next=host.querySelector('#ckNext'); if(next) next.onclick=()=>{ i++; paint(); };
+    const sub=host.querySelector('#ckSubmit'); if(sub) sub.onclick=()=>run(async ()=>{
+      const xpBefore=S.me.stats.xp;
+      const result=await api('POST','/checks/'+paper.attemptId+'/submission',{answers:chosen});
+      await refreshAll();
+      showResult(host, paper, result, S.me.stats.xp-xpBefore);
     });
-  };
-  const finish=()=>{
-    const passed=correct>=2, stars=correct===3?3:correct===2?2:1;
-    if(passed && !S.completed.includes(n.id)){
-      S.completed.push(n.id);
-      setLifecycle('Active');
-      award(n.xp,n.coins,'verified progression');
-      emit('progression.verified',{node_id:n.id, tier:n.tier, score:correct+'/3', stars, north_star:true, lifecycle:'Active'});
-      emit('lesson.completed',{node_id:n.id, minutes:n.mins});
-      burst();
-    } else if(!passed){
-      S.fails[n.id]=(S.fails[n.id]||0)+1;
-      if(S.fails[n.id]>=2) emit('churn_risk.flagged',{node_id:n.id, reason:'failed_check_twice', suggested_action:'support_outreach'});
-    }
-    host.querySelector('#ckBody').innerHTML=`
-      <div style="text-align:center" class="pop">
-        <div class="stars">${[1,2,3].map(s=>`<svg class="${s<=stars&&passed?'on':''}" viewBox="0 0 24 24">${I.star}</svg>`).join('')}</div>
-        <div class="h1" style="font-size:25px;margin:10px 0 4px;color:inherit">${passed?'Verified progression':'Not this time'}</div>
-        <p class="muted" style="margin-bottom:16px">${correct} of ${qs.length} correct. ${passed?'This one counts towards your certificate.':'Two of three are needed. The lesson is open, and the questions change each attempt.'}</p>
-        ${passed?`<div class="row" style="justify-content:center;margin-bottom:16px">
-          <span class="chip xp">${svg('bolt')}+${n.xp} XP</span><span class="chip coin">${svg('coin')}+${n.coins}</span></div>`:''}
-        <div class="row" style="justify-content:center">
-          ${passed?`<button class="btn" id="ckDone">Continue ${svg('arrow')}</button>`
-                  :`<button class="btn" id="ckRetry">Try again</button><button class="btn sec" id="ckBack">Back to lesson</button>`}
-        </div>
-      </div>`;
-    const d=host.querySelector('#ckDone'); if(d) d.onclick=()=>{ host.remove(); go('path'); renderTree(); };
-    const r=host.querySelector('#ckRetry'); if(r) r.onclick=()=>{ i=0; correct=0; paint(); };
-    const b=host.querySelector('#ckBack'); if(b) b.onclick=()=>host.remove();
-    renderHud();
   };
   paint();
 }
 
+function showResult(host, paper, r, xpGained){
+  const text=(q,key)=>{ const o=q.options.find(x=>x.key===key); return o?o.text:'No answer'; };
+  const byId=new Map(r.feedback.map(f=>[f.questionId,f]));
+  host.querySelector('#ckBody').innerHTML=`
+    <div style="text-align:center" class="pop">
+      <div class="stars">${[1,2,3].map(s=>`<svg class="${s<=r.stars?'on':''}" viewBox="0 0 24 24">${I.star}</svg>`).join('')}</div>
+      <div class="h1" style="font-size:25px;margin:10px 0 4px;color:inherit">${r.passed?'Verified progression':'Not this time'}</div>
+      <p class="muted" style="margin-bottom:14px">${r.correct} of ${r.total} correct. ${r.passed
+        ? (xpGained>0?'This lesson is now verified.':'You had already verified this lesson.')
+        : 'Two of three are needed. The lesson stays open, and a new paper is drawn each attempt.'}</p>
+      ${xpGained>0?`<div class="row" style="justify-content:center;margin-bottom:14px"><span class="chip xp">${svg('bolt')}+${xpGained} XP</span></div>`:''}
+      ${r.certificate?`<div class="rationale right" style="text-align:left"><b>CERTIFICATE ISSUED</b>You completed ${esc(r.certificate.courseTitle)}. Serial ${esc(r.certificate.serial)}.</div>`:''}
+    </div>
+    <div style="margin-top:8px">
+      ${paper.questions.map((q,k)=>{ const f=byId.get(q.id); if(!f) return ''; const right=f.chosenKey===f.correctKey;
+        return `<div style="margin-bottom:14px"><div class="tiny" style="color:#9FB3CE">Question ${k+1}</div>
+          <div style="font-weight:700;margin:3px 0 6px">${esc(q.prompt)}</div>
+          <div class="rationale ${right?'right':'wrong'}"><b>${right?'CORRECT':'NOT QUITE'}</b>
+            ${right?'':`You chose: ${esc(text(q,f.chosenKey))}<br>Answer: ${esc(text(q,f.correctKey))}<br>`}${esc(f.rationale)}</div></div>`; }).join('')}
+    </div>
+    <div class="row" style="justify-content:center">
+      ${r.certificate?`<button class="btn accent" id="ckCert">${svg('award')} View your certificate</button>`:''}
+      ${r.passed?`<button class="btn" id="ckDone">Continue ${svg('arrow')}</button>`
+               :`<button class="btn" id="ckRetry">Try again</button><button class="btn sec" id="ckBack">Back to lesson</button>`}
+    </div>`;
+  host.querySelector('.mb').scrollTop=0;
+  if (xpGained>0 || r.certificate) burst();
+  const d=host.querySelector('#ckDone'); if(d) d.onclick=()=>{ host.remove(); go('path'); };
+  const c=host.querySelector('#ckCert'); if(c) c.onclick=()=>{ host.remove(); openCert(r.certificate.serial); };
+  const t=host.querySelector('#ckRetry'); if(t) t.onclick=()=>{ host.remove(); openCheck(); };
+  const b=host.querySelector('#ckBack'); if(b) b.onclick=()=>host.remove();
+}
+
 /* ---------- CERTIFICATE ---------- */
-function openCert(){
-  if(!S.certSerial){
-    S.certSerial='PA-'+Math.random().toString(36).slice(2,6).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
-    setLifecycle('Certified');
-    emit('certificate.issued',{serial:S.certSerial, course:'Foundations of digital assets', verify_url:'https://'+THEMES[S.theme].host+'/verify/'+S.certSerial, tamper_evident:true});
-    burst();
-  }
+function openCert(serial){
+  const cert=S.me.certificates.find(c=>c.serial===serial);
+  if(!cert){ toast('That certificate is not on your record.'); return; }
+  const url=location.origin+'/verify/'+encodeURIComponent(cert.serial);
   const host=document.createElement('div'); host.className='veil';
-  const qr=(()=>{let o='';for(let y=0;y<8;y++)for(let x=0;x<8;x++){ if(((x*7+y*13+((x*y)%5))%3)===0) o+=`<rect x="${x*7+1}" y="${y*7+1}" width="6" height="6" fill="#0E1826"/>`;}
-    return o+'<rect x="1" y="1" width="18" height="18" fill="none" stroke="#0E1826" stroke-width="3"/><rect x="37" y="1" width="18" height="18" fill="none" stroke="#0E1826" stroke-width="3"/><rect x="1" y="37" width="18" height="18" fill="none" stroke="#0E1826" stroke-width="3"/>';})();
   host.innerHTML=`<div class="modal">
-    <div class="mh"><div class="h3">Your certificate</div><button class="iconbtn" id="cX">${svg('close')}</button></div>
+    <div class="mh"><div class="h3">Your certificate</div><button class="iconbtn" id="cX" aria-label="Close">${svg('close')}</button></div>
     <div class="mb">
       <div class="cert">
-        <div class="cap">${THEMES[S.theme].name.toUpperCase()}</div>
-        <h3>${esc(S.name)}</h3>
+        <div class="cap">${esc(ACADEMY.name.toUpperCase())}</div>
+        <h3>${esc(S.me.user.displayName)}</h3>
         <p style="opacity:.9;font-size:14px">has completed and verified</p>
-        <div style="font-family:Poppins;font-size:18px;font-weight:700;margin-top:4px">Foundations of Digital Assets</div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:22px;position:relative">
-          <div><div class="cap" style="margin-bottom:5px">VERIFICATION SERIAL</div>
-            <div class="serial">${S.certSerial}</div>
-            <div style="font-size:12px;opacity:.85;margin-top:5px">Issued ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></div>
-          <div class="qr"><svg viewBox="0 0 56 56">${qr}</svg></div>
+        <div style="font-family:Poppins;font-size:18px;font-weight:700;margin-top:4px">${esc(cert.courseTitle)}</div>
+        <div style="margin-top:22px;position:relative">
+          <div class="cap" style="margin-bottom:5px">VERIFICATION SERIAL</div>
+          <div class="serial">${esc(cert.serial)}</div>
+          <div style="font-size:12px;opacity:.85;margin-top:5px">Issued ${fmtDate(cert.issuedAt)}</div>
         </div>
       </div>
       <div class="card" style="margin-top:14px;padding:16px">
         <div class="tiny" style="margin-bottom:6px">PUBLIC VERIFICATION PAGE</div>
-        <div style="font-family:ui-monospace,monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;word-break:break-all">
-          https://${THEMES[S.theme].host}/verify/${S.certSerial}</div>
+        <div style="font-family:ui-monospace,monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;word-break:break-all">${esc(url)}</div>
         <p class="tiny" style="margin-top:9px">Anyone can check this without an account. It shows the name, the course and the date, and nothing else.</p>
       </div>
       <div class="row" style="margin-top:14px">
         <button class="btn sec sm" id="cCopy">${svg('copy')} Copy link</button>
-        <button class="btn sec sm" id="cPdf">${svg('down')} PDF</button>
-        <button class="btn sec sm" id="cImg">${svg('down')} Image</button>
-        <button class="btn sec sm" id="cShare">${svg('share')} LinkedIn</button>
+        <a class="btn sec sm" href="${esc(url)}" target="_blank" rel="noopener">${svg('arrow')} Open verification page</a>
       </div>
     </div></div>`;
   $('#modalHost').appendChild(host);
   host.querySelector('#cX').onclick=()=>host.remove();
   host.querySelector('#cCopy').onclick=()=>{
-    const url='https://'+THEMES[S.theme].host+'/verify/'+S.certSerial;
-    if(navigator.clipboard) navigator.clipboard.writeText(url).catch(()=>{});
-    toast('Verification link copied');
+    if(navigator.clipboard) navigator.clipboard.writeText(url).then(()=>toast('Verification link copied'),()=>toast(url));
+    else toast(url);
   };
-  host.querySelector('#cPdf').onclick=()=>toast('PDF is rendered server-side in production');
-  host.querySelector('#cImg').onclick=()=>toast('Share image is rendered server-side in production');
-  host.querySelector('#cShare').onclick=()=>{ emit('certificate.shared',{serial:S.certSerial, channel:'linkedin'}); toast('Share intent recorded'); };
 }
 
 /* ---------- DRAWERS ---------- */
 function renderSpec(){
-  const key = ['path','catalogue'].includes(S.route)?'path' : S.route==='me'?'progress' : S.route;
+  const key = S.route==='catalogue'?'path' : S.route==='me'?'progress' : S.route;
   const sp = SPEC[key] || SPEC.path;
   $('#specDrawer').innerHTML=`
     <div class="dh"><div><div class="eyebrow">Spec mode</div><div class="h3">${sp.title}</div></div>
-      <button class="iconbtn" id="specX">${svg('close')}</button></div>
+      <button class="iconbtn" id="specX" aria-label="Close">${svg('close')}</button></div>
     <div class="db">
       <div class="kv">
         <b>Phase</b><span>${sp.phase}</span>
@@ -1268,23 +1157,31 @@ function renderSpec(){
           <span class="pri ${x[1]}">${x[1]}</span></div>
           <div class="tiny" style="margin-top:5px">${x[2]}</div></div>`}).join('')}
       <div class="sep"></div>
-      <div class="eyebrow" style="margin-bottom:8px">Rules in force</div>
+      <div class="eyebrow" style="margin-bottom:8px">Rules in force (enforced by the server)</div>
       <div class="specrow"><b style="font-size:13px">Baseline</b><div class="tiny" style="margin-top:4px">placement × 0.60 + self-rating × 0.40, per tier</div></div>
-      <div class="specrow"><b style="font-size:13px">Gates</b><div class="tiny" style="margin-top:4px">Learn and Safeguard open · Apply at Learn ≥ 50 · Specialise at Learn ≥ 70 and Safeguard ≥ 50</div></div>
-      <div class="specrow"><b style="font-size:13px">Verified progression</b><div class="tiny" style="margin-top:4px">2 of 3 knowledge check questions correct. North Star metric.</div></div>
-      <div class="specrow"><b style="font-size:13px">Lifecycle</b><div class="tiny" style="margin-top:4px">Registered → Onboarded → Placed → Activated → Active → Certified. Currently: <b>${S.lifecycle}</b></div></div>
+      <div class="specrow"><b style="font-size:13px">Gates</b><div class="tiny" style="margin-top:4px">Learn and Safeguard open · Apply at Learn ≥ 50 · Specialise at Learn ≥ 70 and Safeguard ≥ 50 · plus each lesson's prerequisites</div></div>
+      <div class="specrow"><b style="font-size:13px">Verified progression</b><div class="tiny" style="margin-top:4px">2 of 3 knowledge check questions correct. North Star metric, counted once per lesson.</div></div>
+      <div class="specrow"><b style="font-size:13px">Certificate</b><div class="tiny" style="margin-top:4px">Issued when every lesson in a course is verified. E14-F02 course assessments will replace this trigger.</div></div>
+      <div class="specrow"><b style="font-size:13px">Lifecycle</b><div class="tiny" style="margin-top:4px">Registered → Onboarded → Placed → Activated → Certified. Currently: <b>${S.me?LIFECYCLE[S.me.user.lifecycle]:'Visitor'}</b></div></div>
     </div>`;
   const x=$('#specX'); if(x) x.onclick=()=>{S.spec=false;$('#specDrawer').classList.remove('open');renderChrome();};
 }
+function jsonHTML(o){
+  return esc(JSON.stringify(o,null,2))
+    .replace(/&quot;([^&]+?)&quot;:/g,'<span class="k">&quot;$1&quot;</span>:')
+    .replace(/: &quot;(.*?)&quot;/g,': <span class="s">&quot;$1&quot;</span>')
+    .replace(/: (-?\d+\.?\d*)/g,': <span class="n">$1</span>');
+}
 function renderOutbox(){
   $('#outboxDrawer').innerHTML=`
-    <div class="dh"><div><div class="eyebrow">Enterprise outbox</div><div class="h3">CRM events</div></div>
-      <button class="iconbtn" id="obX">${svg('close')}</button></div>
+    <div class="dh"><div><div class="eyebrow">Enterprise outbox</div><div class="h3">Your events, from the database</div></div>
+      <button class="iconbtn" id="obX" aria-label="Close">${svg('close')}</button></div>
     <div class="db">
-      <p class="tiny" style="margin-bottom:14px">Every learning milestone is written to a transactional outbox in the same database transaction as the milestone itself, then delivered to the broker CRM with retries, an idempotency key and the introducing broker tag. Nothing here is a payment instruction.</p>
+      <p class="tiny" style="margin-bottom:14px">Every learning milestone is written to a transactional outbox in the same database transaction as the milestone itself, then delivered to the broker CRM with retries and an idempotency key. These are your events as the database holds them, newest first. Nothing here is a payment instruction.</p>
       ${S.events.length? S.events.map(e=>`
-        <div class="ev"><div class="eh"><span class="dot"></span>${e.type}<time>${e.at}</time></div>
-        <pre>${jsonHTML(e.body)}</pre></div>`).join('')
+        <div class="ev"><div class="eh"><span class="dot"></span>${esc(e.type)}<span class="tag ${e.status==='delivered'?'ok':'lock'}" style="margin-left:6px">${esc(e.status)}</span><time>${fmtTime(e.createdAt)}</time></div>
+        <div class="tiny" style="padding:6px 13px 0">key <code>${esc(e.idempotencyKey)}</code></div>
+        <pre>${jsonHTML(e.payload)}</pre></div>`).join('')
         : '<p class="muted">No events yet. Sign up, get placed, or pass a knowledge check to see them arrive.</p>'}
     </div>`;
   const x=$('#obX'); if(x) x.onclick=()=>{S.outbox=false;$('#outboxDrawer').classList.remove('open');renderChrome();};
@@ -1293,52 +1190,75 @@ function renderOutbox(){
 /* ---------- BINDINGS ---------- */
 function bind(){
   const on=(sel,fn)=>{const e=$(sel); if(e) e.onclick=fn;};
-  on('#goAbout',()=>{ S.name=$('#inName')?$('#inName').value||'Amara':'Amara'; setLifecycle('Registered');
-    emit('lead.registered',{name:S.name, source:'organic', consent:true}); go('about'); });
-  on('#goAbout2',()=>{ setLifecycle('Registered'); emit('lead.registered',{name:S.name, source:'google_oauth', consent:true}); go('about'); });
 
-  document.querySelectorAll('[data-goal]').forEach(b=>b.onclick=()=>{S.goal=b.dataset.goal;render();});
-  document.querySelectorAll('[data-min]').forEach(b=>b.onclick=()=>{S.minutes=b.dataset.min;render();});
+  document.querySelectorAll('[data-auth]').forEach(b=>b.onclick=()=>{ S.authMode=b.dataset.auth; S.authError=''; render(); });
+  const form=$('#authForm');
+  if(form) form.onsubmit=e=>{
+    e.preventDefault();
+    const signup=S.authMode==='signup';
+    const email=$('#inEmail').value.trim(), password=$('#inPass').value;
+    if(signup && !$('#inConsent').checked){ S.authError='Please agree to the terms and privacy policy.'; render(); return; }
+    run(async ()=>{
+      try {
+        if(signup) await api('POST','/auth/signup',{email,password,displayName:$('#inName').value.trim(),...(IB_REF?{ibRefCode:IB_REF}:{})});
+        else await api('POST','/auth/login',{email,password});
+      } catch(err){ if(err.status===401||err.status===409||err.status===400||err.status===429){ S.authError=err.message; render(); return; } throw err; }
+      S.authError='';
+      await loadMe(); await loadPathway(); await loadEvents();
+      await resume();
+    });
+  };
+
+  document.querySelectorAll('[data-goal]').forEach(b=>b.onclick=()=>{S.onboarding.goal=b.dataset.goal;render();});
+  document.querySelectorAll('[data-min]').forEach(b=>b.onclick=()=>{S.onboarding.dailyMinutes=+b.dataset.min;render();});
   document.querySelectorAll('[data-cf]').forEach(sl=>sl.oninput=()=>{
-    S.confidence[sl.dataset.cf]=+sl.value; const o=$('#cf-'+sl.dataset.cf); if(o) o.textContent=sl.value;});
-  on('#goPlace',()=>{ setLifecycle('Onboarded'); S.qi=0; S.answers=[]; go('placement'); });
+    S.onboarding.selfRating[sl.dataset.cf]=+sl.value; const o=$('#cf-'+sl.dataset.cf); if(o) o.textContent=sl.value;});
+  on('#goPlace',()=>run(async ()=>{
+    await api('PUT','/onboarding',S.onboarding);
+    await loadMe(); await loadEvents();
+    await startPlacement();
+  }));
 
-  document.querySelectorAll('.opt[data-a]').forEach(b=>b.onclick=()=>{
-    S.answers[S.qi]=+b.dataset.a; nextPlacement();});
-  on('#skipQ',()=>{ S.answers[S.qi]=null; nextPlacement(); });
+  const answer=key=>run(async ()=>{
+    const q=S.paper.questions[S.qi]; S.answers[q.id]=key;
+    if(S.qi<S.paper.questions.length-1){ S.qi++; render(); return; }
+    await api('POST','/placement/'+S.paper.attemptId+'/submission',{answers:S.answers});
+    S.paper=null;
+    await refreshAll();
+    go('baseline');
+  });
+  document.querySelectorAll('.opt[data-a]').forEach(b=>b.onclick=()=>answer(b.dataset.a));
+  on('#skipQ',()=>answer(null));
 
-  on('#goPath',()=>{ go('path'); setTimeout(renderTree,0); });
+  on('#goPath',()=>go('path'));
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
-    const n=NODES.find(x=>x.id===b.dataset.open);
-    if(nodeState(n)==='locked'){ toast(nodeGate(n)); return; }
-    openLesson(n.id);});
+    const l=lessonById(b.dataset.open);
+    if(l&&l.state==='locked'){ toast(l.gateReason); return; }
+    openLesson(b.dataset.open);
+  });
+  document.querySelectorAll('[data-cert]').forEach(b=>b.onclick=()=>openCert(b.dataset.cert));
 
-  on('#backPath',()=>{ go('path'); setTimeout(renderTree,0); });
-  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;render();});
-  document.querySelectorAll('[data-sec]').forEach(a=>a.onclick=e=>{e.preventDefault();S.section=+a.dataset.sec;
-    if(S.section===3){ openCheck(); } else { render(); }});
-  document.querySelectorAll('[data-noop]').forEach(a=>a.onclick=e=>{e.preventDefault();toast('Additional material opens in the full build');});
+  on('#backPath',()=>run(async ()=>{ await loadPathway(); go('path'); }));
+  document.querySelectorAll('[data-tab]').forEach(b=>{ if(b.closest('#authForm')) return; b.onclick=()=>{S.tab=b.dataset.tab;render();}; });
+  document.querySelectorAll('[data-sec]').forEach(a=>a.onclick=e=>{e.preventDefault();
+    if(a.dataset.last==='1') openCheck(); else { S.tab='read'; render(); }});
   on('#tdrawBtn',()=>$('#tdraw').classList.toggle('open'));
   document.querySelectorAll('[data-jump]').forEach(l=>l.onclick=()=>toast('Jumped to '+l.dataset.jump+' in the video'));
   on('#player',()=>toast('Video playback uses signed, expiring links in production'));
-  document.querySelectorAll('[data-scn]').forEach(b=>b.onclick=()=>{
-    document.querySelectorAll('[data-scn]').forEach(x=>x.classList.remove('right','wrong'));
-    b.classList.add(b.dataset.scn==='0'?'right':'wrong');
-    toast(b.dataset.scn==='0'?'Correct. The plan comes first, every time.':'The plan comes first. Everything else is noise at the moment of decision.');});
   on('#startCheck',openCheck);
-  on('#openCert',openCert);
-  on('#retake',()=>{S.qi=0;S.answers=[];S.baseline=null;go('placement');});
+  on('#logout',()=>run(async ()=>{
+    await api('POST','/auth/logout');
+    S.me=null; S.pathway=null; S.events=[]; S.authMode='login'; renderOutbox(); go('welcome');
+  }));
   bindSim();
-}
-function nextPlacement(){
-  if(S.qi<PLACEMENT.length-1){ S.qi++; render(); return; }
-  S.baseline=computeBaseline(); S.level=levelFor(S.baseline); setLifecycle('Placed');
-  emit('diagnostic.placed',{level:S.level, baseline:S.baseline, unlocked:Object.keys(TIERS).filter(tierUnlocked), skipped:S.answers.filter(a=>a==null).length});
-  go('baseline');
 }
 
 /* ---------- RENDER ---------- */
 function render(){
+  // Screens that need a placed learner fall back to the start if there is none.
+  if(['path','catalogue','progress','me','baseline','lesson'].includes(S.route) && !placed()) S.route = S.me ? 'about' : 'welcome';
+  if(S.route==='lesson' && !S.lesson) S.route='path';
+  if(S.route==='placement' && !S.paper) S.route = S.me ? 'about' : 'welcome';
   const v=V[S.route]||V.welcome;
   $('#view').innerHTML=v();
   renderChrome(); renderSpec(); bind();
@@ -1347,10 +1267,10 @@ function render(){
 }
 
 /* ---------- GLOBAL UI ---------- */
-$('#btnPhone').onclick=()=>{ S.phone=!S.phone; $('#stage').classList.toggle('phone',S.phone); render();
-  if(S.route==='path') setTimeout(renderTree,60); };
+$('#btnPhone').onclick=()=>{ S.phone=!S.phone; $('#stage').classList.toggle('phone',S.phone); render(); };
 $('#btnSpec').onclick=()=>{ S.spec=!S.spec; $('#specDrawer').classList.toggle('open',S.spec); renderSpec(); renderChrome(); };
-$('#btnOutbox').onclick=()=>{ S.outbox=!S.outbox; $('#outboxDrawer').classList.toggle('open',S.outbox); renderOutbox(); renderChrome(); };
+$('#btnOutbox').onclick=()=>{ S.outbox=!S.outbox; $('#outboxDrawer').classList.toggle('open',S.outbox); renderChrome();
+  if(S.outbox) run(loadEvents); };
 addEventListener('keydown',e=>{
   if(e.target.matches('input,textarea')) return;
   const k=e.key.toLowerCase();
@@ -1360,7 +1280,13 @@ addEventListener('keydown',e=>{
   if(k==='escape'){ document.querySelectorAll('.veil').forEach(v=>v.remove()); closePopover(); }
 });
 setTimeout(()=>$('#hint').classList.add('hide'),6000);
+
+/* ---------- START: ask the server who this is ---------- */
 renderOutbox(); render();
+(async ()=>{
+  try { await loadMe(); } catch(e){ if(e.status!==401) toast(e.message); return; }
+  await run(async ()=>{ await loadPathway(); await loadEvents(); await resume(); });
+})();
 </script>
 </body>
 </html>
