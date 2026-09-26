@@ -15,6 +15,9 @@ the backend that enforces it.
     db/tests/seed.sql      academies, courses and certificates for the proof tests
     db/tests/rls_proof.sql 51 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
+    db/seed/demo.sql       the demo: three academies, the eleven-lesson curriculum
+    db/tests/demo_seed.sh  proves the demo seed loads twice cleanly and is complete
+    scripts/demo.sh        npm run demo
 
     src/config.ts               environment-backed configuration
     src/logger.ts               structured logging
@@ -75,6 +78,33 @@ the server sits behind one, or any client could choose an academy.
 Every tenant route is rate limited per client IP (300 a minute),
 counted before the host is resolved, and login and certificate
 verification have their own tighter limits (10 and 30 a minute).
+
+## The local demo
+
+    npm run demo          # build, migrate and seed academy_demo, then serve on :3000
+    npm run demo:reset    # remove the demo learners; keep the academies and curriculum
+    npm run test:demo-seed
+
+The demo runs against its own database, `academy_demo`, never the test
+database: its placement questions would otherwise join every test
+learner's paper. It seeds three academies on `gtl.academy.test`,
+`pocketfolio.academy.test` and `meridian.academy.test`, each with its own
+brand tokens, and the prototype's curriculum as four courses, one per
+tier: eleven lessons with their prerequisites, five knowledge-check
+questions per lesson and eight placement questions, every option with a
+rationale.
+
+The script prints the `/etc/hosts` line the three hosts need and never
+edits the file itself. It starts the server on 127.0.0.1 with
+`DEV_INSECURE_COOKIE=1`, so the session cookie works over plain HTTP.
+
+All lesson content is a draft: author "Draft, Global Tutoring Lab
+curriculum", reviewer "Pending compliance review", no review date. It
+must be read by a real person before any of it is presented as reviewed.
+
+**Deferred from the demo:** badges (E17-F02, a Should) need rules the
+server does not hold yet, so the demo shows none rather than letting the
+browser award them. Coins are left out altogether.
 
 ## Deployment
 
