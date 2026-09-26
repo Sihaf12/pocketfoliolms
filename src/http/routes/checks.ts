@@ -1,7 +1,8 @@
 /**
- * Knowledge-check submission. Two of three correct is a pass, and a pass
- * is the North Star: progression.verified, keyed by the attempt so a
- * retried submission can never count twice.
+ * Knowledge-check submission. Two of three correct is a pass, and the
+ * first pass of a lesson is the North Star: progression.verified, keyed
+ * by learner and lesson. A retake is graded and gets full feedback, but
+ * the learner has already verified that lesson, so it emits nothing.
  *
  * The first pass also activates a placed learner. Every pass updates
  * course progress: the share of the course's lessons with a passed check.
@@ -90,9 +91,9 @@ export async function checkRoutes(app: FastifyInstance): Promise<void> {
         const learner = await requireLearner(db, req);
         // Locked, so two submissions racing each other grade once.
         const attempt = await db.maybeOne<{
-          courseId: string; questionIds: string[]; stored: Record<string, string>; submitted: boolean;
+          courseId: string; lessonId: string; questionIds: string[]; stored: Record<string, string>; submitted: boolean;
         }>(
-          `SELECT course_id AS "courseId", question_ids AS "questionIds", answers AS stored,
+          `SELECT course_id AS "courseId", lesson_id AS "lessonId", question_ids AS "questionIds", answers AS stored,
                   submitted_at IS NOT NULL AS submitted
              FROM app.quiz_attempts
             WHERE id = $1 AND user_id = $2 AND kind = 'knowledge_check'
@@ -122,15 +123,26 @@ export async function checkRoutes(app: FastifyInstance): Promise<void> {
         );
         if (!result.passed) return result;
 
-        await db.enqueue({
-          type: 'progression.verified',
-          payload: {
-            user_id: learner.id, attempt_id: attemptId, course_id: attempt.courseId,
-            correct: result.correct, total: result.total, stars: result.stars,
-          },
-          idempotencyKey: `check.passed:${attemptId}`,
-          partitionKey: learner.id,
-        });
+        // Checked here rather than left to the idempotency key alone, so the
+        // rule holds even once delivered outbox rows are pruned. Only one
+        // paper per lesson can be open, so no other pass can race this one.
+        const passedBefore = await db.maybeOne(
+          `SELECT 1 FROM app.quiz_attempts
+            WHERE user_id = $1 AND lesson_id = $2 AND kind = 'knowledge_check' AND passed AND id <> $3
+            LIMIT 1`,
+          [learner.id, attempt.lessonId, attemptId],
+        );
+        if (!passedBefore) {
+          await db.enqueue({
+            type: 'progression.verified',
+            payload: {
+              user_id: learner.id, attempt_id: attemptId, course_id: attempt.courseId, lesson_id: attempt.lessonId,
+              correct: result.correct, total: result.total, stars: result.stars,
+            },
+            idempotencyKey: `check.passed:${learner.id}:${attempt.lessonId}`,
+            partitionKey: learner.id,
+          });
+        }
 
         const activated = await db.maybeOne(
           `UPDATE app.users SET lifecycle = 'activated' WHERE id = $1 AND lifecycle = 'placed' RETURNING id`,

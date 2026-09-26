@@ -51,6 +51,14 @@ function answersFor(paper: Paper, right: number): Record<string, string> {
   return Object.fromEntries(paper.questions.map((q, i) => [q.id, i < right ? 'a' : 'b']));
 }
 
+const northStarKey = (userId: string, lessonKey: string) => `check.passed:${userId}:${lessonIds[lessonKey]}`;
+
+async function northStarCount(userId: string): Promise<number> {
+  return withControl(async (c) => Number((await c.query<{ n: string }>(
+    `SELECT count(*)::text AS n FROM app.outbox_events
+      WHERE event_type = 'progression.verified' AND payload->>'user_id' = $1`, [userId])).rows[0]!.n));
+}
+
 const submit = (host: string, token: string, attemptId: string, answers: Record<string, string>) =>
   app.inject({
     method: 'POST', url: `/api/v1/checks/${attemptId}/submission`, headers: { host, ...asLearner(token) },
@@ -164,19 +172,19 @@ test('two of three passes, emits the North Star once and activates the learner o
   assert.equal(body.feedback[2].correctKey, 'a');
   assert.equal(body.feedback[2].rationale, 'That confuses the two sides.');
 
-  const verified = await outboxRows(`check.passed:${paper.attemptId}`);
+  const verified = await outboxRows(northStarKey(userId, 'how-markets-work/1'));
   assert.equal(verified.length, 1);
   assert.equal(verified[0]!.event_type, 'progression.verified');
   assert.equal((await outboxRows(`activated:${userId}`)).length, 1);
 
   const replay = await submit(NORTHGATE, token, paper.attemptId, answersFor(paper, 3));
   assert.deepEqual(replay.json(), body, 'the first grading stands');
-  assert.equal((await outboxRows(`check.passed:${paper.attemptId}`)).length, 1);
+  assert.equal((await outboxRows(northStarKey(userId, 'how-markets-work/1'))).length, 1);
 
   // A second pass is another North Star event, but not another activation.
   const second = (await drawCheck(NORTHGATE, token, 'how-markets-work/2')).json<Paper>();
   await submit(NORTHGATE, token, second.attemptId, answersFor(second, 3));
-  assert.equal((await outboxRows(`check.passed:${second.attemptId}`)).length, 1);
+  assert.equal((await outboxRows(northStarKey(userId, 'how-markets-work/2'))).length, 1);
   assert.equal((await outboxRows(`activated:${userId}`)).length, 1);
 
   const lifecycle = await withControl(async (c) =>
@@ -189,13 +197,49 @@ test('two of three passes, emits the North Star once and activates the learner o
   assert.equal(markets.state, 'completed');
 });
 
+test('a retake of a passed lesson still grades, but cannot emit a second North Star', async () => {
+  const { token, userId } = await placedLearner(app, NORTHGATE);
+  const first = (await drawCheck(NORTHGATE, token, 'how-markets-work/1')).json<Paper>();
+  assert.equal((await submit(NORTHGATE, token, first.attemptId, answersFor(first, 2))).json().passed, true);
+
+  const draw = await drawCheck(NORTHGATE, token, 'how-markets-work/1');
+  assert.equal(draw.statusCode, 201, 'a submitted paper is closed, so a retake is a fresh paper');
+  const retake = draw.json<Paper>();
+  assert.notEqual(retake.attemptId, first.attemptId);
+
+  const res = await submit(NORTHGATE, token, retake.attemptId, answersFor(retake, 3));
+  assert.equal(res.statusCode, 200);
+  const body = res.json();
+  assert.equal(body.passed, true);
+  assert.equal(body.stars, 3);
+  assert.equal(body.feedback.length, 3, 'the retake is graded with full feedback');
+
+  const events = await outboxRows(northStarKey(userId, 'how-markets-work/1'));
+  assert.equal(events.length, 1);
+  assert.equal(events[0]!.payload.attempt_id, first.attemptId, 'the event is the first pass');
+  assert.equal(await northStarCount(userId), 1, 'one lesson, one North Star event, however often it is passed');
+});
+
+test('a lesson failed first and passed on a retake emits the North Star once, on the pass', async () => {
+  const { token, userId } = await placedLearner(app, NORTHGATE);
+  const failed = (await drawCheck(NORTHGATE, token, 'how-markets-work/1')).json<Paper>();
+  await submit(NORTHGATE, token, failed.attemptId, answersFor(failed, 0));
+  assert.equal(await northStarCount(userId), 0);
+
+  const retake = (await drawCheck(NORTHGATE, token, 'how-markets-work/1')).json<Paper>();
+  await submit(NORTHGATE, token, retake.attemptId, answersFor(retake, 2));
+  const events = await outboxRows(northStarKey(userId, 'how-markets-work/1'));
+  assert.equal(events.length, 1);
+  assert.equal(events[0]!.payload.attempt_id, retake.attemptId);
+});
+
 test('one of three fails and emits nothing', async () => {
   const { token, userId } = await placedLearner(app, NORTHGATE);
   const paper = (await drawCheck(NORTHGATE, token, 'how-markets-work/1')).json<Paper>();
   const res = await submit(NORTHGATE, token, paper.attemptId, answersFor(paper, 1));
   assert.equal(res.json().passed, false);
   assert.equal(res.json().stars, 1);
-  assert.equal((await outboxRows(`check.passed:${paper.attemptId}`)).length, 0);
+  assert.equal((await outboxRows(northStarKey(userId, 'how-markets-work/1'))).length, 0);
   assert.equal((await outboxRows(`activated:${userId}`)).length, 0);
 });
 
