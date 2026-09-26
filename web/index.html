@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="gtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pocketfolio Academy: solution prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --brand:#1A6DC2; --brand-d:#12508F; --brand-t:#E8F1FB; --accent:#F5C400; --accent-ink:#1F1A00;
+  --bg:#F2F6FB; --surface:#FFFFFF; --surface-2:#F7FAFD; --line:#DDE6F1; --line-2:#EAF0F7;
+  --ink:#14203A; --muted:#5D6D85; --faint:#93A3B8;
+  --ok:#1E8E4E; --ok-t:#E3F5EB; --warn:#B4790E; --warn-t:#FCF3DC; --bad:#B23A3A; --bad-t:#FBEAEA;
+  --r:16px; --r-s:11px; --r-l:22px;
+  --learn:#2F7DD1; --safeguard:#0F8A7E; --apply:#B4790E; --specialise:#7B3F98;
+  --sh-1:0 1px 2px rgba(20,32,58,.06); --sh-2:0 6px 20px -6px rgba(20,32,58,.16); --sh-3:0 20px 48px -16px rgba(20,32,58,.32);
+  --brandtext:#fff;
+}
+html[data-theme="pocketfolio"]{
+  --brand:#3D6D67; --brand-d:#2C524D; --brand-t:#E6F0EE; --accent:#FACC15; --accent-ink:#231F00;
+  --bg:#F3F7F6; --surface:#FFFFFF; --surface-2:#F7FBFA; --line:#DCE7E5; --line-2:#EAF2F1;
+  --ink:#152624; --muted:#5C6F6C; --faint:#93A5A2;
+  --r:20px; --r-s:14px; --r-l:26px;
+  --learn:#3D6D67; --safeguard:#2F8F84; --apply:#C08A1E; --specialise:#6E5AA8;
+}
+html[data-theme="institutional"]{
+  --brand:#C9A227; --brand-d:#A8851B; --brand-t:#22314B; --accent:#C9A227; --accent-ink:#121E2F;
+  --bg:#0E1826; --surface:#18263C; --surface-2:#1E2F49; --line:#2A3C58; --line-2:#22334E;
+  --ink:#EEF3FA; --muted:#A3B3CA; --faint:#7B8DA8;
+  --ok:#4FC98A; --ok-t:#16311F; --warn:#E0B34C; --warn-t:#332913; --bad:#E38080; --bad-t:#3A1E1E;
+  --r:10px; --r-s:7px; --r-l:14px;
+  --learn:#5B9BE0; --safeguard:#3FB5A6; --apply:#DCAE4A; --specialise:#A783D6;
+  --brandtext:#121E2F;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Nunito Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+  -webkit-font-smoothing:antialiased;overflow:hidden;transition:background .3s,color .3s}
+h1,h2,h3,h4,h5,.ff{font-family:Poppins,system-ui,sans-serif;letter-spacing:-.02em}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select{font:inherit;color:inherit}
+a{color:var(--brand)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}
+
+/* ============ SHELL ============ */
+#app{height:100%;display:flex;flex-direction:column}
+.topbar{height:60px;flex:none;background:var(--surface);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:14px;padding:0 18px;position:relative;z-index:40}
+.brandmark{display:flex;align-items:center;gap:10px;min-width:0}
+.brandmark .bm{width:34px;height:34px;border-radius:10px;background:var(--brand);display:grid;place-items:center;flex:none}
+.brandmark .bm svg{width:19px;height:19px;fill:none;stroke:var(--brandtext);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.brandmark b{font-family:Poppins;font-size:15.5px;font-weight:700;white-space:nowrap}
+.brandmark small{display:block;font-size:10.5px;color:var(--faint);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.spacer{flex:1}
+.hud{display:flex;align-items:center;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.chip svg{width:14px;height:14px;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.chip.xp svg{stroke:var(--brand)} .chip.streak svg{stroke:#E0692B} .chip.coin svg{stroke:var(--accent)}
+.iconbtn{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);
+  display:grid;place-items:center;transition:.15s}
+.iconbtn:hover{background:var(--surface-2);border-color:var(--brand)}
+.iconbtn svg{width:17px;height:17px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.iconbtn.on{background:var(--brand);border-color:var(--brand)}
+.iconbtn.on svg{stroke:var(--brandtext)}
+
+.themepick{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px}
+.themepick button{width:26px;height:26px;border-radius:50%;border:2px solid transparent;transition:.15s;position:relative}
+.themepick button.on{border-color:var(--ink)}
+.stage{flex:1;display:flex;min-height:0;position:relative}
+.stage.phone{padding:16px;justify-content:center;background:
+  radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 60%), var(--bg)}
+.viewport{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.stage.phone .viewport{max-width:400px;border:1px solid var(--line);border-radius:26px;background:var(--bg);
+  box-shadow:var(--sh-3);overflow:hidden}
+.scroll{flex:1;overflow-y:auto;overscroll-behavior:contain}
+.wrap{max-width:1080px;margin:0 auto;padding:22px 22px 90px;width:100%}
+.stage.phone .wrap{padding:16px 14px 90px}
+
+/* ============ NAV ============ */
+.tabbar{flex:none;background:var(--surface);border-top:1px solid var(--line);display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;border-radius:12px;color:var(--faint);font-size:10.5px;font-weight:700}
+.tabbar button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tabbar button.on{color:var(--brand);background:var(--brand-t)}
+
+/* ============ PRIMITIVES ============ */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--sh-1)}
+.card+.card{margin-top:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:var(--brand);color:var(--brandtext);
+  border-radius:var(--r-s);padding:12px 20px;font-family:Poppins;font-weight:600;font-size:14.5px;
+  box-shadow:var(--sh-1);transition:transform .12s,box-shadow .12s,background .15s}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--sh-2)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn.sec{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost{background:transparent;color:var(--brand);box-shadow:none}
+.btn.accent{background:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:8px 14px;font-size:13px}
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.eyebrow{font-family:Poppins;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--brand)}
+.h1{font-size:30px;font-weight:800;line-height:1.14;margin:9px 0 10px}
+.h2{font-size:21px;font-weight:700;margin-bottom:6px}
+.h3{font-size:16.5px;font-weight:700}
+.lead{color:var(--muted);font-size:15px;line-height:1.55}
+.muted{color:var(--muted);font-size:13px;line-height:1.5}
+.tiny{font-size:11.5px;color:var(--faint)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.sep{height:1px;background:var(--line-2);margin:16px 0}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;font-family:Poppins;
+  border-radius:7px;padding:3px 9px;letter-spacing:.03em;text-transform:uppercase}
+.tag.learn{background:color-mix(in srgb,var(--learn) 14%,transparent);color:var(--learn)}
+.tag.safeguard{background:color-mix(in srgb,var(--safeguard) 14%,transparent);color:var(--safeguard)}
+.tag.apply{background:color-mix(in srgb,var(--apply) 16%,transparent);color:var(--apply)}
+.tag.specialise{background:color-mix(in srgb,var(--specialise) 15%,transparent);color:var(--specialise)}
+.tag.ok{background:var(--ok-t);color:var(--ok)}
+.tag.lock{background:var(--surface-2);color:var(--faint)}
+.bar{height:9px;border-radius:9px;background:var(--line-2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:9px;background:var(--brand);transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:var(--muted)}
+.field input{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--r-s);padding:12px 14px;font-size:14.5px}
+.field input:focus{outline:2px solid var(--brand);outline-offset:-1px;background:var(--surface)}
+.pillbtn{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 15px;font-size:13.5px;font-weight:600;transition:.15s}
+.pillbtn:hover{border-color:var(--brand)}
+.pillbtn.on{background:var(--brand);border-color:var(--brand);color:var(--brandtext)}
+.fade{animation:fade .34s cubic-bezier(.2,.8,.2,1)}
+@keyframes fade{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+.pop{animation:pop .4s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{0%{transform:scale(.82);opacity:0}100%{transform:scale(1);opacity:1}}
+
+/* ============ WELCOME ============ */
+.hero{background:linear-gradient(140deg,var(--brand),var(--brand-d));color:#fff;border-radius:var(--r-l);padding:30px;position:relative;overflow:hidden}
+html[data-theme="institutional"] .hero{color:var(--accent-ink)}
+.hero::after{content:"";position:absolute;right:-70px;top:-90px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.12)}
+.hero h1{font-size:28px;font-weight:800;line-height:1.16;margin-bottom:10px;position:relative}
+.hero p{opacity:.92;font-size:15px;line-height:1.55;position:relative;max-width:46ch}
+.promise{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);
+  border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;margin-bottom:14px;position:relative}
+
+/* ============ PLACEMENT ============ */
+.qhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.qdots{display:flex;gap:5px}
+.qdots i{width:22px;height:5px;border-radius:5px;background:var(--line);display:block}
+.qdots i.done{background:var(--brand)} .qdots i.now{background:var(--accent)}
+.opt{display:flex;gap:13px;align-items:flex-start;width:100%;text-align:left;border:1.5px solid var(--line);
+  background:var(--surface);border-radius:var(--r-s);padding:15px 16px;margin-bottom:10px;transition:.16s}
+.opt:hover{border-color:var(--brand);transform:translateX(2px)}
+.opt .k{width:26px;height:26px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;
+  font-weight:800;font-size:12.5px;flex:none;color:var(--muted)}
+.opt.sel{border-color:var(--brand);background:var(--brand-t)}
+.opt.right{border-color:var(--ok);background:var(--ok-t)}
+.opt.wrong{border-color:var(--warn);background:var(--warn-t)}
+.opt .txt{font-size:14px;line-height:1.45}
+.rationale{border-radius:var(--r-s);padding:13px 15px;margin:4px 0 12px;font-size:13.5px;line-height:1.5}
+.rationale.right{background:var(--ok-t);border-left:3px solid var(--ok)}
+.rationale.wrong{background:var(--warn-t);border-left:3px solid var(--warn)}
+.rationale b{display:block;font-family:Poppins;font-size:11.5px;letter-spacing:.12em;margin-bottom:4px}
+.rationale.right b{color:var(--ok)} .rationale.wrong b{color:var(--warn)}
+.slider{width:100%;appearance:none;height:7px;border-radius:7px;background:var(--line-2);outline:none}
+.slider::-webkit-slider-thumb{appearance:none;width:24px;height:24px;border-radius:50%;background:var(--brand);border:3px solid var(--surface);box-shadow:var(--sh-2);cursor:pointer}
+.slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--brand);border:3px solid var(--surface);cursor:pointer}
+
+/* ============ SKILL TREE ============ */
+.treewrap{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+  height:min(60vh,520px);box-shadow:var(--sh-1)}
+.stage.phone .treewrap{height:56vh}
+#tree{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#tree.drag{cursor:grabbing}
+.treectl{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:6px;z-index:5}
+.treectl button{width:34px;height:34px;border-radius:9px;background:var(--surface);border:1px solid var(--line);
+  display:grid;place-items:center;box-shadow:var(--sh-1);font-weight:800;font-size:16px}
+.treectl button:hover{border-color:var(--brand);color:var(--brand)}
+.treelegend{position:absolute;left:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;z-index:5;max-width:70%}
+.popover{position:absolute;width:268px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--sh-3);padding:16px;z-index:20;animation:pop .28s cubic-bezier(.2,1.3,.4,1)}
+.popover .steps{display:flex;align-items:center;gap:5px;margin:10px 0}
+.popover .steps i{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;
+  font-size:10.5px;font-weight:800;color:var(--faint);font-style:normal}
+.popover .steps i.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.popover .steps i.star{border-color:var(--accent);color:var(--accent)}
+.reward{display:flex;gap:8px;margin:10px 0 12px}
+.reward span{display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:800}
+
+/* ============ LESSON ============ */
+.lessongrid{display:grid;grid-template-columns:232px 1fr;gap:16px;align-items:start}
+.stage.phone .lessongrid,body.narrow .lessongrid{grid-template-columns:1fr}
+.contents{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;position:sticky;top:0}
+.contents h5{font-family:Poppins;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+.contents a{display:flex;gap:9px;align-items:center;padding:8px 9px;border-radius:9px;font-size:13px;color:var(--ink);
+  text-decoration:none;font-weight:600}
+.contents a.on{background:var(--brand-t);color:var(--brand)}
+.contents a i{width:19px;height:19px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;
+  font-size:10px;font-weight:800;font-style:normal;flex:none;color:var(--muted)}
+.contents a.on i{background:var(--brand);color:var(--brandtext)}
+.tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:16px;width:fit-content}
+.tabs button{display:flex;align-items:center;gap:7px;border-radius:999px;padding:8px 16px;font-size:13.5px;font-weight:700;color:var(--muted)}
+.tabs button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.tabs button.on{background:var(--surface);color:var(--brand);box-shadow:var(--sh-1)}
+.player{position:relative;background:linear-gradient(150deg,#16233A,#0B1424);border-radius:var(--r);aspect-ratio:16/9;
+  display:grid;place-items:center;overflow:hidden}
+.player .play{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.16);border:2px solid rgba(255,255,255,.4);
+  display:grid;place-items:center;transition:.2s}
+.player:hover .play{transform:scale(1.07);background:rgba(255,255,255,.26)}
+.player .play svg{width:24px;height:24px;fill:#fff;stroke:none;margin-left:3px}
+.player .meta{position:absolute;left:14px;bottom:12px;color:#fff;font-size:12px;opacity:.9}
+.player .track{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.2)}
+.player .track i{display:block;height:100%;width:38%;background:var(--accent)}
+.drawer-t{border:1px solid var(--line);border-radius:var(--r-s);margin-top:12px;overflow:hidden}
+.drawer-t>button{width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 15px;
+  font-weight:700;font-size:13.5px;background:var(--surface-2)}
+.drawer-t .body{padding:6px 15px 14px;display:none}
+.drawer-t.open .body{display:block}
+.tline{display:flex;gap:12px;padding:7px 0;font-size:13.5px;line-height:1.5;border-bottom:1px solid var(--line-2);cursor:pointer}
+.tline:last-child{border-bottom:0}
+.tline b{color:var(--brand);font-variant-numeric:tabular-nums;font-size:12.5px;flex:none;padding-top:1px}
+.tline:hover{background:var(--surface-2)}
+.step{display:flex;gap:14px;margin-bottom:16px}
+.step .n{width:30px;height:30px;border-radius:9px;background:var(--brand);color:var(--brandtext);display:grid;place-items:center;
+  font-family:Poppins;font-weight:800;font-size:13.5px;flex:none}
+.step h4{font-size:15.5px;margin-bottom:4px}
+.step p{font-size:14px;line-height:1.6;color:var(--muted)}
+.callout{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--surface-2);
+  border-radius:var(--r-s);padding:14px 16px;margin:14px 0}
+.callout h5{font-family:Poppins;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:5px}
+.callout p{font-size:13.5px;line-height:1.55}
+.term{border-bottom:2px dotted var(--brand);color:var(--brand);font-weight:700;cursor:help;position:relative}
+.term:hover::after{content:attr(data-def);position:absolute;left:0;bottom:130%;width:230px;background:var(--ink);color:var(--surface);
+  font-size:12px;font-weight:400;line-height:1.45;padding:10px 12px;border-radius:10px;z-index:30;box-shadow:var(--sh-3)}
+html[data-theme="institutional"] .term:hover::after{background:#050B14;color:#EEF3FA}
+
+/* experience */
+.sim{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.simrow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.simout{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.simout div{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-s);padding:12px;text-align:center}
+.simout b{display:block;font-family:Poppins;font-size:21px;font-weight:800;margin-bottom:2px}
+.simout span{font-size:11px;color:var(--faint);font-weight:700}
+.verdict{margin-top:14px;border-radius:var(--r-s);padding:13px 15px;font-size:13.5px;font-weight:600;line-height:1.5}
+
+/* ============ MODAL ============ */
+.veil{position:fixed;inset:0;background:rgba(10,18,32,.55);backdrop-filter:blur(3px);z-index:60;display:grid;place-items:center;padding:18px}
+.modal{background:var(--surface);border-radius:var(--r-l);width:min(560px,100%);max-height:88vh;overflow-y:auto;
+  box-shadow:var(--sh-3);animation:pop .32s cubic-bezier(.2,1.3,.4,1)}
+.modal .mh{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;background:var(--surface);z-index:2}
+.modal .mb{padding:22px}
+.modal.dark{background:#101C2E;color:#EAF1FA;border:1px solid #24364F}
+.modal.dark .mh{background:#101C2E;border-color:#24364F}
+.modal.dark .opt{background:#16253B;border-color:#2A3D58;color:#EAF1FA}
+.modal.dark .opt .k{background:#22344E;color:#9FB3CE}
+.modal.dark .opt.right{border-color:#4FC98A;background:#14301F}
+.modal.dark .opt.wrong{border-color:#E0B34C;background:#332913}
+.modal.dark .muted,.modal.dark .tiny{color:#9FB3CE}
+.stars{display:flex;gap:7px;justify-content:center;margin:6px 0 4px}
+.stars svg{width:34px;height:34px;stroke:var(--accent);fill:none;stroke-width:1.6}
+.stars svg.on{fill:var(--accent)}
+
+/* certificate */
+.cert{background:linear-gradient(150deg,var(--brand),var(--brand-d));border-radius:var(--r);padding:26px;color:#fff;position:relative;overflow:hidden}
+html[data-theme="institutional"] .cert{color:var(--accent-ink)}
+.cert::after{content:"";position:absolute;inset:11px;border:1px solid rgba(255,255,255,.35);border-radius:calc(var(--r) - 5px);pointer-events:none}
+.cert .cap{font-family:Poppins;font-size:10.5px;letter-spacing:.2em;opacity:.85}
+.cert h3{font-size:25px;font-weight:800;margin:9px 0 3px}
+.cert .serial{font-family:ui-monospace,monospace;font-size:15px;font-weight:700;letter-spacing:.05em}
+.cert .qr{width:64px;height:64px;background:#fff;border-radius:9px;padding:6px}
+
+/* ============ DRAWERS ============ */
+.drawer{position:fixed;top:0;bottom:0;right:0;width:min(430px,100%);background:var(--surface);border-left:1px solid var(--line);
+  box-shadow:var(--sh-3);z-index:70;transform:translateX(102%);transition:transform .32s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+.drawer.open{transform:none}
+.drawer .dh{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.drawer .db{flex:1;overflow-y:auto;padding:16px 18px 30px}
+.ev{border:1px solid var(--line);border-radius:var(--r-s);margin-bottom:10px;overflow:hidden;animation:fade .3s}
+.ev .eh{display:flex;align-items:center;gap:9px;padding:10px 13px;background:var(--surface-2);font-size:12.5px;font-weight:800;font-family:Poppins}
+.ev .eh .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.ev .eh time{margin-left:auto;font-weight:600;color:var(--faint);font-size:11px}
+.ev pre{margin:0;padding:12px 13px;font-family:ui-monospace,SFMono-Regular,monospace;font-size:11.5px;line-height:1.6;
+  overflow-x:auto;background:var(--surface);color:var(--ink)}
+.ev pre .k{color:var(--brand)} .ev pre .s{color:var(--ok)} .ev pre .n{color:var(--warn)}
+.specrow{border:1px solid var(--line);border-radius:var(--r-s);padding:12px 13px;margin-bottom:9px}
+.specrow .id{font-family:ui-monospace,monospace;font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-t);
+  border-radius:5px;padding:2px 6px;margin-right:7px}
+.pri{font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px;font-family:Poppins;letter-spacing:.04em}
+.pri.Must{background:#E3F2EF;color:#1F8A7E} .pri.Should{background:#E5EEFB;color:#2F6FD1}
+.pri.Could{background:#EEE9F8;color:#8A6FD6} .pri.TBC{background:#FBF0DF;color:#D98B2B}
+html[data-theme="institutional"] .pri{filter:brightness(.9)}
+.kv{display:grid;grid-template-columns:118px 1fr;gap:7px 12px;font-size:13px;margin-bottom:14px}
+.kv b{color:var(--faint);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
+
+/* toast + confetti */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,120%);background:var(--ink);color:var(--surface);
+  padding:12px 20px;border-radius:999px;font-size:13.5px;font-weight:700;z-index:90;transition:transform .35s cubic-bezier(.2,1.3,.4,1);box-shadow:var(--sh-3)}
+#toast.show{transform:translate(-50%,0)}
+.burst{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
+.burst i{position:absolute;width:9px;height:14px;border-radius:2px;animation:fall 1.5s ease-in forwards}
+@keyframes fall{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(105vh) rotate(680deg);opacity:0}}
+
+.hintbar{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:50;background:var(--ink);color:var(--surface);
+  border-radius:999px;padding:8px 16px;font-size:12px;font-weight:600;opacity:.92;transition:opacity .4s}
+.hintbar.hide{opacity:0;pointer-events:none}
+@media (max-width:820px){
+  .g2,.g3{grid-template-columns:1fr}
+  .wrap{padding:16px 14px 90px}
+  .h1{font-size:25px}
+  .hud .chip.hideSm{display:none}
+  .topbar{gap:8px;padding:0 12px}
+  .brandmark small{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brandmark">
+      <span class="bm" id="bm"></span>
+      <span><b id="brandName">GTL Academy</b><small id="brandSub">Pocketfolio LXP</small></span>
+    </div>
+    <div class="spacer"></div>
+    <div class="hud" id="hud"></div>
+    <div class="themepick" id="themepick"></div>
+    <button class="iconbtn" id="btnPhone" title="Toggle phone view"></button>
+    <button class="iconbtn" id="btnSpec" title="Spec mode (D)"></button>
+    <button class="iconbtn" id="btnOutbox" title="Enterprise outbox"></button>
+  </header>
+  <div class="stage" id="stage">
+    <div class="viewport">
+      <div class="scroll" id="scroll"><div class="wrap" id="view"></div></div>
+      <nav class="tabbar" id="tabbar"></nav>
+    </div>
+  </div>
+</div>
+<div class="drawer" id="specDrawer"></div>
+<div class="drawer" id="outboxDrawer"></div>
+<div id="modalHost"></div>
+<div id="toast"></div>
+<div class="hintbar" id="hint">Press D for spec mode, E for the enterprise outbox</div>
+<script>
+/* =========================================================
+   Pocketfolio Academy: solution prototype
+   Single file. Vanilla JS. No build step.
+   ========================================================= */
+
+/* ---------- ICONS ---------- */
+const I = {
+  logo:'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/>',
+  home:'<path d="M3 10l9-7 9 7v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/>',
+  map:'<path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/>',
+  chart:'<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
+  bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  flame:'<path d="M12 2s5 5 5 9a5 5 0 01-10 0c0-1.6.7-3 1.6-4.2C9.5 8.4 12 7 12 2z"/><path d="M12 22a4 4 0 004-4c0-2-2-3-4-6-2 3-4 4-4 6a4 4 0 004 4z"/>',
+  coin:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.8 1.8 0 010 3.6h-3a1.8 1.8 0 000 3.6h4"/>',
+  play:'<path d="M8 5l12 7-12 7z"/>',
+  book:'<path d="M4 4h7a3 3 0 013 3v13a2.5 2.5 0 00-2.5-2.5H4z"/><path d="M20 4h-3a3 3 0 00-3 3v13a2.5 2.5 0 012.5-2.5H20z"/>',
+  flask:'<path d="M10 2v7L4 19a2 2 0 001.7 3h12.6A2 2 0 0020 19l-6-10V2"/><path d="M9 2h6M7.5 14h9"/>',
+  lock:'<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/>',
+  check:'<path d="M5 12l5 5L20 6"/>',
+  close:'<path d="M6 6l12 12M18 6L6 18"/>',
+  code:'<path d="M9 18l-6-6 6-6M15 6l6 6-6 6"/>',
+  layers:'<path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/>',
+  phone:'<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18.5h2"/>',
+  award:'<circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5L7 22l5-3 5 3-1.5-8.5"/>',
+  star:'<path d="M12 3l2.7 5.8 6.3.8-4.6 4.3 1.2 6.1L12 17l-5.6 3 1.2-6.1L3 9.6l6.3-.8z"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-4M8.6 13.4l6.8 4"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/>',
+  down:'<path d="M12 3v13M7 12l5 5 5-5M4 21h16"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  chev:'<path d="M6 9l6 6 6-6"/>',
+  zap:'<path d="M12 2v6M12 16v6M5 12H2M22 12h-3"/><circle cx="12" cy="12" r="4"/>'
+};
+const svg=(n,cls='')=>`<svg class="${cls}" viewBox="0 0 24 24">${I[n]}</svg>`;
+
+/* ---------- THEMES ---------- */
+const THEMES = {
+  gtl:{name:'GTL Academy', sub:'Global Tutoring Lab', swatch:'#1A6DC2', accent:'#F5C400', tenant:'gtl-academy', host:'academy.globaltutoringlab.com'},
+  pocketfolio:{name:'Pocketfolio Academy', sub:'Zento Era', swatch:'#3D6D67', accent:'#FACC15', tenant:'pocketfolio', host:'academy.pocketfolio.app'},
+  institutional:{name:'Meridian Institute', sub:'Institutional', swatch:'#C9A227', accent:'#C9A227', tenant:'meridian-inst', host:'learn.meridian.institute'}
+};
+
+/* ---------- TIERS ---------- */
+const TIERS = {
+  learn:{key:'learn',name:'Learn',blurb:'Fundamentals'},
+  safeguard:{key:'safeguard',name:'Safeguard',blurb:'Risk and protection'},
+  apply:{key:'apply',name:'Apply',blurb:'Practical execution'},
+  specialise:{key:'specialise',name:'Specialise',blurb:'Advanced and institutional'}
+};
+
+/* ---------- PLACEMENT: 8 scenarios, 2 per tier ---------- */
+const PLACEMENT = [
+ {tier:'learn', q:'A friend says a token "went up 8% today". Eight per cent of what exactly?',
+  opts:['Of its price at the start of the period being measured','Of the total money invested in it worldwide','Of the exchange\u2019s daily trading limit'],
+  a:0, why:'A percentage move is always measured against a starting price over a stated period. Without the period, the number means nothing.'},
+ {tier:'learn', q:'What is actually being exchanged when you "buy" on an exchange?',
+  opts:['A promise from the exchange to pay you later','Your money for an asset at a price someone else agreed to sell at','A share of the exchange\u2019s reserves'],
+  a:1, why:'Every trade needs a willing seller at your price. That is why thin markets move sharply: there are fewer people on the other side.'},
+ {tier:'safeguard', q:'You open a position with 10x leverage. The asset falls 10%. What has happened to your capital?',
+  opts:['You have lost about 10% of it','You have lost roughly all of it','Nothing until you close the position'],
+  a:1, why:'Leverage multiplies both directions. At 10x, a 10% adverse move wipes out roughly the whole position margin. This single idea prevents more losses than any other.'},
+ {tier:'safeguard', q:'Someone offers guaranteed 5% monthly returns with no risk. The most useful response is:',
+  opts:['Ask which regulator authorises them and check the register yourself','Start small to test whether it pays','Ask for testimonials from existing members'],
+  a:0, why:'Guaranteed returns are the oldest signal there is. Testimonials and small test deposits are exactly what a scheme is designed to survive.'},
+ {tier:'apply', q:'You have a 2% risk limit per trade and a stop 5% below entry. Roughly what position size fits?',
+  opts:['About 40% of your account','About 10% of your account','The full account, since the stop protects you'],
+  a:0, why:'Risk equals position size times distance to stop. 40% of the account moving 5% loses 2% of the account. Sizing is arithmetic, not instinct.'},
+ {tier:'apply', q:'Your plan says exit at a 6% loss. You are down 7% and convinced it will recover. The disciplined action is:',
+  opts:['Hold, since you have new information','Exit as planned and review the rule afterwards','Add more to lower your average price'],
+  a:1, why:'Plans are written precisely for the moment they feel wrong. Review the rule when flat, never while carrying the position.'},
+ {tier:'specialise', q:'What does a perpetual futures funding rate actually do?',
+  opts:['Pays the exchange for holding a position overnight','Transfers payments between long and short holders to keep price near spot','Sets the maximum leverage available that day'],
+  a:1, why:'Funding is a periodic payment between the two sides that anchors the perpetual to spot. Persistently high funding is a crowding signal.'},
+ {tier:'specialise', q:'Two assets both returned 20% last year. What would most change how you weight them?',
+  opts:['Which had the larger single-day gain','How they moved relative to each other and to the rest of the portfolio','Which is more widely discussed'],
+  a:1, why:'Portfolio construction is about correlation and contribution to total risk, not about ranking returns side by side.'}
+];
+
+/* ---------- SKILL TREE ---------- */
+const NODES = [
+ {id:'L1',tier:'learn',t:'How markets work',mod:'Module 1',x:120,y:300,pre:[],xp:120,coins:20,mins:9},
+ {id:'L2',tier:'learn',t:'Assets and instruments',mod:'Module 2',x:290,y:190,pre:['L1'],xp:140,coins:25,mins:11},
+ {id:'L3',tier:'learn',t:'Orders and execution',mod:'Module 3',x:290,y:410,pre:['L1'],xp:140,coins:25,mins:10},
+ {id:'S1',tier:'safeguard',t:'Risk, plainly',mod:'Module 1',x:470,y:105,pre:['L2'],xp:160,coins:30,mins:8},
+ {id:'S2',tier:'safeguard',t:'Leverage and margin',mod:'Module 2',x:640,y:190,pre:['S1'],xp:200,coins:40,mins:12},
+ {id:'S3',tier:'safeguard',t:'Scams and protection',mod:'Module 3',x:470,y:300,pre:['S1'],xp:160,coins:30,mins:9},
+ {id:'A1',tier:'apply',t:'Reading a chart',mod:'Module 1',x:470,y:500,pre:['L3'],xp:180,coins:35,mins:11},
+ {id:'A2',tier:'apply',t:'Position sizing',mod:'Module 2',x:660,y:420,pre:['A1','S2'],xp:220,coins:45,mins:12},
+ {id:'A3',tier:'apply',t:'Writing a plan',mod:'Module 3',x:840,y:340,pre:['A2'],xp:220,coins:45,mins:10},
+ {id:'X1',tier:'specialise',t:'Derivatives basics',mod:'Module 1',x:1010,y:230,pre:['A3'],xp:260,coins:55,mins:13},
+ {id:'X2',tier:'specialise',t:'Portfolio construction',mod:'Module 2',x:1010,y:450,pre:['A3'],xp:260,coins:55,mins:13}
+];
+const EDGES = NODES.flatMap(n=>n.pre.map(p=>[p,n.id]));
+
+/* ---------- LESSON CONTENT ---------- */
+const LESSONS = {
+ S2:{
+  sections:['What leverage really is','The margin call','Sizing it sensibly','Check your understanding'],
+  transcript:[['0:00','Leverage is borrowed size. You put up part of the position and the venue lends the rest.'],
+    ['0:38','Here is the part people miss. Leverage multiplies the outcome in both directions, equally.'],
+    ['1:24','At ten times, a ten per cent move against you takes roughly all of your margin.'],
+    ['2:05','A margin call is not a warning. It is the venue closing your position for you.'],
+    ['2:51','So the question is never how much leverage is available. It is how much you can survive.']],
+  read:[
+   {h:'Leverage is borrowed size',p:'You put up part of the position value as <span class="term" data-def="The cash you put up to open and hold a leveraged position. It is not a fee, it is collateral.">margin</span>, and the venue lends the rest. Ten times leverage means you control ten dollars of exposure for every dollar you have posted.'},
+   {h:'It multiplies both directions',p:'A 10% favourable move at 10x roughly doubles your margin. A 10% adverse move at 10x roughly erases it. The mechanism has no preference for which way it works.'},
+   {h:'The margin call is not a warning',p:'When your equity falls below the venue\u2019s maintenance level, the position is closed for you, at whatever price the market offers. You do not get to wait for the recovery.'}],
+  callout:{h:'In practice',p:'Before opening any leveraged position, work out the percentage move that would take you to zero. If that number is smaller than a normal day for the asset, the size is wrong, not the market.'},
+  sim:true
+ }
+};
+function lessonFor(node){
+  if(LESSONS[node.id]) return LESSONS[node.id];
+  return {
+    sections:['Why this matters','How it works','Applying it','Check your understanding'],
+    transcript:[['0:00','An introduction to '+node.t.toLowerCase()+' and why it matters before you risk anything.'],
+      ['0:42','The core mechanism, in plain language, with one worked example.'],
+      ['1:30','Two mistakes people make here, and the cheap way to avoid both.'],
+      ['2:18','A short recap, then the knowledge check.']],
+    read:[
+     {h:'Why this matters',p:'<b>'+node.t+'</b> sits in the '+TIERS[node.tier].name+' tier. Everything after it assumes you can do this without thinking about it.'},
+     {h:'How it works',p:'The mechanism in plain language, with one worked example using real numbers rather than abstractions.'},
+     {h:'Applying it',p:'Where this shows up in a live decision, and the one question to ask yourself before acting.'}],
+    callout:{h:'In practice',p:'Write the rule down before you need it. Decisions made while carrying a position are the ones people regret.'},
+    sim:false
+  };
+}
+
+/* ---------- KNOWLEDGE CHECKS ---------- */
+const CHECKS = {
+ S2:[
+  {q:'You open a position at 10x. The asset moves 9% against you. What is the most accurate description of your position?',
+   opts:['Down about 9%','Down about 90% and close to being closed for you','Unchanged until you sell'],a:1,
+   why:{0:'That would be true without leverage. At 10x the move is multiplied by ten.',
+        1:'Correct. Roughly 90% of your margin is gone, and most venues would be at or near a margin call.',
+        2:'Unrealised losses are still losses when leverage is involved, because the venue acts on them.'}},
+  {q:'What does a margin call actually mean on most venues?',
+   opts:['A request to add funds within 24 hours','Your position is closed automatically at market','A temporary pause on the position'],a:1,
+   why:{0:'Some traditional brokers work that way. Most retail crypto and CFD venues do not wait.',
+        1:'Correct. Liquidation is automatic and happens at whatever price is available, not the one you hoped for.',
+        2:'Nothing is paused. The position is closed and the loss is realised.'}},
+  {q:'Which question is the useful one before choosing leverage?',
+   opts:['What is the maximum this venue offers?','What move would take me to zero, and is that a normal day for this asset?','What are other traders using?'],a:1,
+   why:{0:'Maximum available leverage tells you about the venue\u2019s risk appetite, not yours.',
+        1:'Correct. If the distance to zero is smaller than the asset\u2019s ordinary daily range, the size is wrong.',
+        2:'Other people\u2019s size tells you nothing about your own capital or plan.'}}
+ ]
+};
+function checkFor(node){
+  if(CHECKS[node.id]) return CHECKS[node.id];
+  const T=TIERS[node.tier].name;
+  return [
+   {q:'What is the single idea "'+node.t+'" is built around?',
+    opts:['A rule you apply before you act','A prediction about what happens next','A signal to follow other traders'],a:0,
+    why:{0:'Correct. Everything in the '+T+' tier is a rule you set in advance, not a forecast.',
+         1:'Nothing in this course predicts prices. It teaches decisions you control.',
+         2:'Following others removes the one thing that protects you: your own plan.'}},
+   {q:'When should you decide the rule that applies here?',
+    opts:['While the position is open','Before you open anything','After reviewing the outcome'],a:1,
+    why:{0:'Decisions made while carrying risk are the ones people regret.',
+         1:'Correct. Write it down when you are flat and calm, then follow it.',
+         2:'Reviewing afterwards is useful, but too late to protect this decision.'}},
+   {q:'What would tell you that you have understood this properly?',
+    opts:['You can explain it to someone else in a minute','You memorised the terms','You feel confident'],a:0,
+    why:{0:'Correct. Explaining it simply is the only reliable test of understanding.',
+         1:'Terminology is the surface. The mechanism underneath is what matters.',
+         2:'Confidence is not knowledge. This is exactly what the placement check measures separately.'}}
+  ];
+}
+
+/* ---------- MoSCoW SPEC (from the Zento journey model) ---------- */
+const FEAT = {
+ 'E01-F01':['Learner sign-up and login','Must','Identity and access'],
+ 'E01-F02':['Social login','Should','Identity and access'],
+ 'E03-F01':['Consent, terms and privacy capture','Must','Security, privacy and compliance'],
+ 'E04-F01':['Tenant branding and domain','Must','Multi-tenancy'],
+ 'E05-F01':['Learner profile','Must','Learner profile'],
+ 'E05-F02':['Goals and preferences','Must','Learner profile'],
+ 'E05-F03':['Skills map per tier','Must','Learner profile'],
+ 'E06-F02':['Onboarding questions','Must','Onboarding and placement'],
+ 'E06-F03':['Placement diagnostic, randomised bank','Must','Onboarding and placement'],
+ 'E06-F04':['Baseline scoring and level','Must','Onboarding and placement'],
+ 'E06-F05':['Skip and resume placement','Should','Onboarding and placement'],
+ 'E07-F01':['Personalised pathway','Must','Learning pathways'],
+ 'E07-F02':['Knowledge gates with published thresholds','Must','Learning pathways'],
+ 'E07-F03':['Reason shown on every node','Should','Learning pathways'],
+ 'E10-F01':['Course catalogue and search','Must','Content and catalogue'],
+ 'E10-F03':['Lock states that explain themselves','Must','Content and catalogue'],
+ 'E11-F01':['Lesson player, multi-modal','Must','Lesson experience'],
+ 'E11-F03':['Transcript and captions','Should','Lesson experience'],
+ 'E11-F05':['Named author and reviewer','Must','Lesson experience'],
+ 'E14-F01':['In-lesson knowledge check','Must','Assessment'],
+ 'E14-F03':['Rationale on every option','Must','Assessment'],
+ 'E14-F04':['Randomised question bank','Must','Assessment'],
+ 'E15-F01':['Verified progression event','Must','Progression'],
+ 'E15-F02':['Transparent thresholds','Must','Progression'],
+ 'E16-F01':['Certificate issuance','Must','Certification'],
+ 'E16-F02':['Public verification page','Must','Certification'],
+ 'E17-F01':['Streaks and XP','Should','Engagement'],
+ 'E17-F02':['Badges on verified knowledge only','Should','Engagement'],
+ 'E17-F03':['Leaderboard','Could','Engagement'],
+ 'E20-F04':['Accessibility and reduced motion','Should','Quality'],
+ 'E22-F01':['CRM outbox events','Must','Integrations'],
+ 'E22-F02':['Introducing broker attribution','Must','Integrations'],
+ 'E25-F02':['Plans and entitlements','TBC','Monetisation']
+};
+const SPEC = {
+ welcome:{title:'Welcome and sign-up',phase:'Discover and join',state:'Registered',goal:'Is this worth my time? Can I trust it?',
+   principle:'No deposit, no trading. Say it first.',metric:'Sign-up conversion',
+   feats:['E01-F01','E01-F02','E03-F01','E04-F01','E22-F02']},
+ about:{title:'About you',phase:'Get to know you',state:'Onboarded',goal:'Get to something relevant, fast',
+   principle:'Ask only what changes the path. About 90 seconds.',metric:'Profile completion',
+   feats:['E05-F02','E06-F02']},
+ placement:{title:'Placement check',phase:'Get placed',state:'Onboarded',goal:'Show what I already know',
+   principle:'Placement, not an exam. Randomised bank, skipping allowed.',metric:'Assessment completion',
+   feats:['E06-F03','E06-F05','E14-F04']},
+ baseline:{title:'Your baseline',phase:'Get placed',state:'Placed',goal:'Where do I stand?',
+   principle:'Knowledge gates only, with published thresholds. Framed by what is unlocked.',metric:'Continue-to-pathway rate',
+   feats:['E06-F04','E05-F03','E15-F02','E22-F01']},
+ path:{title:'My path',phase:'Get placed',state:'Placed',goal:'What next, and why?',
+   principle:'Level, duration and reason on every node. Safeguard always available.',metric:'Pathway acceptance',
+   feats:['E07-F01','E07-F02','E07-F03','E10-F01','E10-F03']},
+ lesson:{title:'Lesson',phase:'Learn',state:'Activated learner',goal:'Learn something real in the time I have',
+   principle:'Named author and reviewer. Twelve minutes or less.',metric:'Lesson completion',
+   feats:['E11-F01','E11-F03','E11-F05','E20-F04']},
+ check:{title:'Knowledge check',phase:'Prove and progress',state:'Activated learner',goal:'Did I get it?',
+   principle:'Cannot be gamed. An explanation on every option. Two of three to pass.',metric:'Verified progressions (North Star)',
+   feats:['E14-F01','E14-F03','E15-F01','E22-F01']},
+ progress:{title:'Progress',phase:'Prove and progress',state:'Active',goal:'Is my time adding up?',
+   principle:'Progress is knowledge-based and earned. Never bought.',metric:'North Star, 30-day retention',
+   feats:['E05-F03','E17-F01','E17-F02','E17-F03']},
+ certify:{title:'Certificate',phase:'Certify and continue',state:'Certified',goal:'Show it, and keep going',
+   principle:'Public verification for every certificate.',metric:'Certification rate',
+   feats:['E16-F01','E16-F02','E22-F01']}
+};
+
+/* ---------- STATE ---------- */
+const S = {
+  theme:'gtl', route:'welcome', phone:false, spec:false, outbox:false,
+  name:'Amara', goal:null, exp:null, minutes:null,
+  confidence:{learn:50,safeguard:50,apply:50,specialise:50},
+  qi:0, answers:[], baseline:null, level:null,
+  lifecycle:'Visitor', node:null, tab:'watch', section:0,
+  completed:[], xp:0, coins:0, streak:1, badges:[], events:[], fails:{},
+  certSerial:null, ibRef:'IB-4417'
+};
+const $ = s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- BUSINESS RULES ---------- */
+function computeBaseline(){
+  const out={};
+  for(const t of Object.keys(TIERS)){
+    const qs=PLACEMENT.map((q,i)=>({q,i})).filter(x=>x.q.tier===t);
+    let correct=0;
+    qs.forEach(x=>{ if(S.answers[x.i]!=null && S.answers[x.i]===x.q.a) correct++; });
+    const test=(correct/qs.length)*100;
+    out[t]=Math.round(test*0.60 + S.confidence[t]*0.40);
+  }
+  return out;
+}
+function levelFor(b){
+  const avg=(b.learn+b.safeguard+b.apply+b.specialise)/4;
+  if(avg<35) return 'Explorer'; if(avg<55) return 'Learner';
+  if(avg<75) return 'Practitioner'; return 'Specialist';
+}
+function tierUnlocked(t){
+  if(!S.baseline) return t==='learn'||t==='safeguard';
+  if(t==='learn'||t==='safeguard') return true;
+  if(t==='apply') return S.baseline.learn>=50;
+  if(t==='specialise') return S.baseline.learn>=70 && S.baseline.safeguard>=50;
+  return false;
+}
+function tierGateText(t){
+  if(t==='apply') return 'Unlocks at Learn 50 or above. You are at '+(S.baseline?S.baseline.learn:0)+'.';
+  if(t==='specialise') return 'Unlocks at Learn 70 and Safeguard 50. You are at '+(S.baseline?S.baseline.learn:0)+' and '+(S.baseline?S.baseline.safeguard:0)+'.';
+  return 'Open from the start.';
+}
+function nodeState(n){
+  if(S.completed.includes(n.id)) return 'done';
+  if(!tierUnlocked(n.tier)) return 'locked';
+  if(n.pre.some(p=>!S.completed.includes(p))) return 'locked';
+  return 'open';
+}
+function nodeGate(n){
+  if(!tierUnlocked(n.tier)) return tierGateText(n.tier);
+  const missing=n.pre.filter(p=>!S.completed.includes(p)).map(p=>NODES.find(x=>x.id===p).t);
+  return missing.length? 'Requires: '+missing.join(' and ') : '';
+}
+function nextNode(){ return NODES.find(n=>nodeState(n)==='open') || null; }
+</script>
+<script>
+/* ---------- EVENTS (enterprise outbox) ---------- */
+function emit(type, payload){
+  const ev={type, at:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    body:Object.assign({tenant_id:THEMES[S.theme].tenant, learner_id:'lnr_8f21c4', ib_ref_code:S.ibRef}, payload)};
+  S.events.unshift(ev);
+  renderOutbox();
+  const b=$('#btnOutbox'); if(b && !S.outbox){ b.classList.add('on'); setTimeout(()=>b.classList.remove('on'),900); }
+}
+function jsonHTML(o){
+  return JSON.stringify(o,null,2)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span class="s">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g,': <span class="n">$1</span>');
+}
+function setLifecycle(s){ if(S.lifecycle!==s){ S.lifecycle=s; } }
+
+/* ---------- FEEDBACK ---------- */
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2300); }
+function burst(){
+  const wrap=document.createElement('div'); wrap.className='burst';
+  const cs=[getComputedStyle(document.documentElement).getPropertyValue('--brand'),
+            getComputedStyle(document.documentElement).getPropertyValue('--accent'),'#1E8E4E'];
+  for(let i=0;i<46;i++){ const p=document.createElement('i');
+    p.style.left=(10+Math.random()*80)+'%'; p.style.top=(-8-Math.random()*16)+'%';
+    p.style.background=cs[i%3]; p.style.animationDelay=(Math.random()*.35)+'s';
+    p.style.animationDuration=(1.1+Math.random()*.7)+'s'; wrap.appendChild(p); }
+  document.body.appendChild(wrap); setTimeout(()=>wrap.remove(),2100);
+}
+function award(xp,coins,why){
+  S.xp+=xp; S.coins+=coins; renderHud();
+  toast('+'+xp+' XP  ·  +'+coins+' coins  ·  '+why);
+}
+
+/* ---------- SHELL RENDER ---------- */
+function renderChrome(){
+  const t=THEMES[S.theme];
+  document.documentElement.dataset.theme=S.theme;
+  $('#bm').innerHTML=svg('logo');
+  $('#brandName').textContent=t.name; $('#brandSub').textContent=t.sub;
+  $('#themepick').innerHTML=Object.entries(THEMES).map(([k,v])=>
+    `<button data-theme="${k}" class="${S.theme===k?'on':''}" title="${esc(v.name)}"
+      style="background:linear-gradient(135deg,${v.swatch} 55%,${v.accent} 55%)"></button>`).join('');
+  $('#themepick').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    S.theme=b.dataset.theme; renderChrome(); renderTree();
+    toast('Tenant theme: '+THEMES[S.theme].name+'  ·  tokens swapped at runtime');
+  });
+  $('#btnPhone').innerHTML=svg('phone'); $('#btnSpec').innerHTML=svg('layers'); $('#btnOutbox').innerHTML=svg('code');
+  $('#btnPhone').classList.toggle('on',S.phone);
+  $('#btnSpec').classList.toggle('on',S.spec);
+  $('#btnOutbox').classList.toggle('on',S.outbox);
+  renderHud(); renderTabs();
+}
+function renderHud(){
+  const on=['path','lesson','progress','certify','me'].includes(S.route)||S.completed.length>0;
+  $('#hud').innerHTML = on ? `
+    <span class="chip xp">${svg('bolt')}${S.xp} XP</span>
+    <span class="chip streak hideSm">${svg('flame')}${S.streak}</span>
+    <span class="chip coin hideSm">${svg('coin')}${S.coins}</span>` : '';
+}
+function renderTabs(){
+  const live=['path','lesson','progress','me','certify'].includes(S.route);
+  const bar=$('#tabbar');
+  if(!S.baseline){ bar.style.display='none'; return; }
+  bar.style.display='flex';
+  const items=[['path','home','Path'],['catalogue','map','Explore'],['progress','chart','Progress'],['me','user','Me']];
+  bar.innerHTML=items.map(([r,ic,label])=>
+    `<button data-r="${r}" class="${S.route===r?'on':''}">${svg(ic)}<span>${label}</span></button>`).join('');
+  bar.querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.r));
+}
+function go(r){ S.route=r; render(); $('#scroll').scrollTop=0; }
+
+/* ---------- VIEWS ---------- */
+const V={};
+
+V.welcome=()=>`
+<div class="fade">
+  <div class="hero">
+    <span class="promise">${svg('check')} No deposit. No trading. Ever.</span>
+    <h1>Learn digital assets properly, and prove it.</h1>
+    <p>We find out what you already know, teach only what you need next, and give you a credential anyone can verify. Progress is earned through knowledge checks, never through deposits.</p>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card">
+      <div class="eyebrow">Create your account</div>
+      <div class="field" style="margin-top:12px"><label>Name</label><input id="inName" value="${esc(S.name)}"></div>
+      <div class="field"><label>Email</label><input value="amara@example.com"></div>
+      <div class="field"><label>Password</label><input type="password" value="••••••••••"></div>
+      <label class="muted" style="display:flex;gap:9px;align-items:flex-start;margin:6px 0 14px">
+        <input type="checkbox" checked style="margin-top:3px"> I agree to the terms and privacy policy</label>
+      <div class="row">
+        <button class="btn" id="goAbout">Create account ${svg('arrow')}</button>
+        <button class="btn sec" id="goAbout2">Continue with Google</button>
+      </div>
+      <p class="tiny" style="margin-top:12px">Referred by broker partner <b>${S.ibRef}</b>. That tag travels with every learning event.</p>
+    </div>
+    <div class="card">
+      <div class="eyebrow">What you get</div>
+      <div style="margin-top:14px">
+        ${[['bolt','A 3 minute placement check','Eight scenarios. Skip anything. We use it to remove lessons you do not need.'],
+           ['map','A path with reasons','Every step says why it is next, and what it unlocks.'],
+           ['award','A verifiable certificate','A public page anyone can check, without an account.']]
+          .map(([ic,h,p])=>`<div style="display:flex;gap:13px;margin-bottom:15px">
+            <span style="width:38px;height:38px;border-radius:11px;background:var(--brand-t);display:grid;place-items:center;flex:none">
+              <span style="display:grid;place-items:center">${svg(ic)}</span></span>
+            <div><div class="h3">${h}</div><div class="muted">${p}</div></div></div>`).join('')}
+      </div>
+      <div class="sep"></div>
+      <p class="tiny">This academy is operated for you by your broker. Your learning record belongs to your academy, and is never shared with another.</p>
+    </div>
+  </div>
+</div>`;
+
+V.about=()=>{
+  const goals=['I am completely new','I have traded a little','I want to stop losing money','I want to go deeper'];
+  const mins=['10 minutes','20 minutes','30 minutes or more'];
+  return `<div class="fade">
+  <div class="eyebrow">Step 1 of 2</div>
+  <div class="h1">About you</div>
+  <p class="lead">Three questions, about ninety seconds. We only ask what changes your path.</p>
+  <div class="card" style="margin-top:16px">
+    <div class="h3">What do you want from this?</div>
+    <div class="row" style="margin:12px 0 22px">${goals.map(g=>`<button class="pillbtn ${S.goal===g?'on':''}" data-goal="${esc(g)}">${g}</button>`).join('')}</div>
+    <div class="h3">How much time on a typical day?</div>
+    <div class="row" style="margin:12px 0 22px">${mins.map(m=>`<button class="pillbtn ${S.minutes===m?'on':''}" data-min="${esc(m)}">${m}</button>`).join('')}</div>
+    <div class="h3">How confident do you feel in each area?</div>
+    <p class="muted" style="margin:4px 0 14px">This is your own read. It counts for 40% of your starting level, the check counts for 60%.</p>
+    ${Object.values(TIERS).map(t=>`
+      <div style="margin-bottom:16px">
+        <div class="simrow"><span class="tag ${t.key}">${t.name}</span><b id="cf-${t.key}" style="font-family:Poppins">${S.confidence[t.key]}</b></div>
+        <input class="slider" type="range" min="0" max="100" step="5" value="${S.confidence[t.key]}" data-cf="${t.key}">
+        <div class="tiny" style="display:flex;justify-content:space-between;margin-top:3px"><span>New to this</span><span>${t.blurb}</span><span>Very confident</span></div>
+      </div>`).join('')}
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="goPlace" ${S.goal&&S.minutes?'':'disabled'}>Start the placement check ${svg('arrow')}</button>
+      <span class="tiny">About 3 minutes. Skipping allowed.</span>
+    </div>
+  </div></div>`;
+};
+
+V.placement=()=>{
+  const q=PLACEMENT[S.qi], n=PLACEMENT.length;
+  return `<div class="fade">
+  <div class="qhead">
+    <div><span class="tag ${q.tier}">${TIERS[q.tier].name}</span>
+      <span class="tiny" style="margin-left:8px">Question ${S.qi+1} of ${n}</span></div>
+    <div class="qdots">${PLACEMENT.map((_,i)=>`<i class="${i<S.qi?'done':i===S.qi?'now':''}"></i>`).join('')}</div>
+  </div>
+  <div class="card">
+    <div class="h2" style="line-height:1.35">${q.q}</div>
+    <p class="tiny" style="margin:6px 0 16px">There is no penalty for a wrong answer. This decides what you skip, not whether you pass.</p>
+    ${q.opts.map((o,i)=>`<button class="opt" data-a="${i}"><span class="k">${'ABC'[i]}</span><span class="txt">${o}</span></button>`).join('')}
+    <div class="row" style="margin-top:10px;justify-content:space-between">
+      <button class="btn ghost" id="skipQ">Skip this one</button>
+      <span class="tiny">Skipped questions become lessons in your path</span>
+    </div>
+  </div></div>`;
+};
+
+V.baseline=()=>{
+  const b=S.baseline, unlocked=Object.keys(TIERS).filter(tierUnlocked);
+  const skipped=NODES.filter(n=>n.tier==='learn'&&b.learn>=60).slice(0,1);
+  return `<div class="fade">
+  <div class="eyebrow">Your starting point</div>
+  <div class="h1">You are starting as a ${S.level}</div>
+  <p class="lead">Here is what you already showed, and what that unlocks. Nothing here is a pass or a fail.</p>
+  <div class="card" style="margin-top:16px">
+    ${Object.values(TIERS).map(t=>{
+      const v=b[t.key], open=tierUnlocked(t.key);
+      return `<div style="margin-bottom:17px">
+        <div class="simrow">
+          <span><span class="tag ${t.key}">${t.name}</span> <span class="tiny">${t.blurb}</span></span>
+          <b style="font-family:Poppins;font-size:15px">${v}${open?'':' '+svg('lock')}</b></div>
+        <div class="bar"><i style="width:${v}%;background:var(--${t.key})"></i></div>
+        <div class="tiny" style="margin-top:5px">${open?'Open now':tierGateText(t.key)}</div>
+      </div>`;}).join('')}
+    <div class="sep"></div>
+    <div class="grid g2">
+      <div><div class="eyebrow">Unlocked today</div>
+        <p class="muted" style="margin-top:6px">${unlocked.map(u=>TIERS[u].name).join(', ')}. That is ${NODES.filter(n=>tierUnlocked(n.tier)).length} lessons available right now.</p></div>
+      <div><div class="eyebrow">You can skip</div>
+        <p class="muted" style="margin-top:6px">${b.learn>=60?'Two introductory lessons, because you already answered their content correctly.':'Nothing yet. Your path starts at the beginning, which is the right place.'}</p></div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn" id="goPath">See my path ${svg('arrow')}</button>
+    <span class="tiny">Baseline = placement × 0.6 + your own rating × 0.4</span>
+  </div></div>`;
+};
+
+V.path=()=>{
+  const nx=nextNode();
+  return `<div class="fade">
+  <div class="row" style="justify-content:space-between;align-items:flex-end;margin-bottom:12px">
+    <div><div class="eyebrow">${S.level} · ${S.lifecycle}</div><div class="h1" style="margin:6px 0 0">Your path</div></div>
+    <span class="tiny">Drag to pan · scroll to zoom</span>
+  </div>
+  ${nx?`<div class="card" style="display:flex;gap:16px;align-items:center;margin-bottom:14px;border-color:var(--brand)">
+    <span style="width:46px;height:46px;border-radius:14px;background:var(--brand);display:grid;place-items:center;flex:none">
+      <span style="filter:brightness(3)">${svg('play')}</span></span>
+    <div style="flex:1;min-width:0">
+      <div class="tiny">${S.completed.length?'Continue where you stopped':'Start here'}</div>
+      <div class="h3">${nx.t}</div>
+      <div class="tiny">${TIERS[nx.tier].name} · ${nx.mod} · ${nx.mins} min</div>
+    </div>
+    <button class="btn" data-open="${nx.id}">${S.completed.length?'Continue':'Start'} ${svg('arrow')}</button>
+  </div>`:''}
+  <div class="treewrap">
+    <div class="treelegend">
+      ${Object.values(TIERS).map(t=>`<span class="tag ${t.key}">${t.name}${tierUnlocked(t.key)?'':' '+svg('lock')}</span>`).join('')}
+    </div>
+    <svg id="tree" viewBox="0 0 1140 620" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="treectl">
+      <button id="zin">+</button><button id="zout">−</button><button id="zfit" style="font-size:11px">fit</button>
+    </div>
+  </div>
+  <p class="tiny" style="margin-top:10px">Locked nodes tell you exactly what opens them. Thresholds are published and identical for every learner.</p>
+</div>`;
+};
+
+V.catalogue=()=>`
+<div class="fade">
+  <div class="eyebrow">Explore</div><div class="h1">All courses</div>
+  <p class="lead">Everything in the academy, including what is not on your path yet.</p>
+  ${Object.values(TIERS).map(t=>`
+    <div class="card" style="margin-top:14px">
+      <div class="row" style="justify-content:space-between">
+        <span><span class="tag ${t.key}">${t.name}</span> <span class="tiny">${t.blurb}</span></span>
+        <span class="tiny">${tierUnlocked(t.key)?'Open':tierGateText(t.key)}</span>
+      </div>
+      <div class="grid g3" style="margin-top:12px">
+        ${NODES.filter(n=>n.tier===t.key).map(n=>{const st=nodeState(n);
+          return `<button class="card" style="padding:14px;text-align:left;${st==='locked'?'opacity:.6':''}" data-open="${n.id}">
+            <div class="tiny">${n.mod} · ${n.mins} min</div>
+            <div class="h3" style="margin:4px 0 8px">${n.t}</div>
+            <span class="tag ${st==='done'?'ok':st==='locked'?'lock':t.key}">${st==='done'?'Completed':st==='locked'?'Locked':'Available'}</span>
+          </button>`}).join('')}
+      </div>
+    </div>`).join('')}
+</div>`;
+
+V.lesson=()=>{
+  const n=NODES.find(x=>x.id===S.node), L=lessonFor(n);
+  return `<div class="fade">
+  <button class="btn ghost sm" id="backPath" style="margin-bottom:10px">← Back to path</button>
+  <div class="lessongrid">
+    <aside class="contents">
+      <h5>Lesson contents</h5>
+      ${L.sections.map((s,i)=>`<a href="#" data-sec="${i}" class="${S.section===i?'on':''}"><i>${i+1}</i>${s}</a>`).join('')}
+      <div class="sep" style="margin:12px 0"></div>
+      <h5>Additional material</h5>
+      <a href="#" data-noop="1"><i>+</i>Glossary terms</a>
+      <a href="#" data-noop="1"><i>+</i>One-page summary</a>
+    </aside>
+    <div>
+      <span class="tag ${n.tier}">${TIERS[n.tier].name}</span>
+      <div class="h1" style="margin:8px 0 4px;font-size:26px">${n.t}</div>
+      <p class="tiny" style="margin-bottom:14px">${n.mod} · ${n.mins} minutes · Written by R. Fernando · Reviewed by the compliance team, 14 Sep 2026</p>
+      <div class="tabs">
+        <button data-tab="watch" class="${S.tab==='watch'?'on':''}">${svg('play')}Watch</button>
+        <button data-tab="read" class="${S.tab==='read'?'on':''}">${svg('book')}Read</button>
+        <button data-tab="do" class="${S.tab==='do'?'on':''}">${svg('flask')}Experience</button>
+      </div>
+      ${S.tab==='watch'?`
+        <div class="player" id="player">
+          <div class="play">${svg('play')}</div>
+          <div class="meta">${n.t} · ${n.mins}:00</div>
+          <div class="track"><i></i></div>
+        </div>
+        <div class="drawer-t" id="tdraw">
+          <button id="tdrawBtn"><span>Video transcript</span>${svg('chev')}</button>
+          <div class="body">${L.transcript.map(([t,x])=>`<div class="tline" data-jump="${t}"><b>${t}</b><span>${x}</span></div>`).join('')}</div>
+        </div>`:''}
+      ${S.tab==='read'?`
+        ${L.read.map((r,i)=>`<div class="step"><span class="n">${i+1}</span><div><h4>${r.h}</h4><p>${r.p}</p></div></div>`).join('')}
+        <div class="callout"><h5>${L.callout.h}</h5><p>${L.callout.p}</p></div>`:''}
+      ${S.tab==='do'?(L.sim?simHTML():`
+        <div class="sim"><div class="h3">Scenario</div>
+        <p class="muted" style="margin:8px 0 14px">A learner in your situation is about to act. What would you tell them to check first?</p>
+        ${['Their plan, written before today','The current price chart','What other people are doing'].map((o,i)=>
+          `<button class="opt" data-scn="${i}"><span class="k">${'ABC'[i]}</span><span class="txt">${o}</span></button>`).join('')}
+        </div>`):''}
+      <div class="row" style="margin-top:18px;justify-content:space-between">
+        <span class="tiny">Two of three correct to earn a verified progression.</span>
+        <button class="btn" id="startCheck">Check your understanding ${svg('arrow')}</button>
+      </div>
+    </div>
+  </div></div>`;
+};
+
+function simHTML(){
+  return `<div class="sim">
+    <div class="h3">What a 5% move does to you</div>
+    <p class="muted" style="margin:6px 0 16px">Move the sliders. This is the arithmetic the lesson describes, live.</p>
+    <div class="simrow"><label class="tiny"><b>Leverage</b></label><b id="lvOut" style="font-family:Poppins">5x</b></div>
+    <input class="slider" type="range" id="lv" min="1" max="25" value="5">
+    <div class="simrow" style="margin-top:16px"><label class="tiny"><b>Adverse move</b></label><b id="mvOut" style="font-family:Poppins">5%</b></div>
+    <input class="slider" type="range" id="mv" min="1" max="30" value="5">
+    <div class="simout">
+      <div><b id="o1">25%</b><span>OF MARGIN LOST</span></div>
+      <div><b id="o2">20%</b><span>MOVE TO ZERO</span></div>
+      <div><b id="o3">Survivable</b><span>VERDICT</span></div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+  </div>`;
+}
+function bindSim(){
+  const lv=$('#lv'), mv=$('#mv'); if(!lv) return;
+  const upd=()=>{
+    const L=+lv.value, M=+mv.value;
+    const lost=Math.min(100, L*M), toZero=(100/L);
+    $('#lvOut').textContent=L+'x'; $('#mvOut').textContent=M+'%';
+    $('#o1').textContent=Math.round(lost)+'%';
+    $('#o2').textContent=toZero.toFixed(1)+'%';
+    const ok=lost<50, warn=lost>=50&&lost<100;
+    $('#o3').textContent= lost>=100?'Liquidated':ok?'Survivable':'Critical';
+    $('#o3').style.color= lost>=100?'var(--bad)':ok?'var(--ok)':'var(--warn)';
+    const v=$('#verdict');
+    v.style.background= lost>=100?'var(--bad-t)':ok?'var(--ok-t)':'var(--warn-t)';
+    v.innerHTML= lost>=100
+      ? `At ${L}x, a ${M}% move erases your margin entirely. The position is closed for you, at whatever price the market offers.`
+      : ok ? `At ${L}x you lose ${Math.round(lost)}% of your margin on a ${M}% move. You would need a ${toZero.toFixed(1)}% move to reach zero.`
+      : `At ${L}x you are down ${Math.round(lost)}% of margin. Most venues would be issuing a margin call well before this point.`;
+  };
+  lv.oninput=upd; mv.oninput=upd; upd();
+}
+
+V.progress=()=>{
+  const done=S.completed.length, total=NODES.length;
+  const pct=Math.round(done/total*100);
+  return `<div class="fade">
+  <div class="eyebrow">${S.lifecycle}</div><div class="h1">Your progress</div>
+  <div class="grid g3" style="margin-top:14px">
+    ${[['bolt',S.xp,'XP earned'],['flame',S.streak+' day','Learning streak'],['award',done,'Verified progressions']]
+      .map(([ic,v,l])=>`<div class="card" style="text-align:center">
+        <div style="display:grid;place-items:center;margin-bottom:6px"><span style="width:40px;height:40px;border-radius:12px;background:var(--brand-t);display:grid;place-items:center">${svg(ic)}</span></div>
+        <div style="font-family:Poppins;font-size:26px;font-weight:800">${v}</div><div class="tiny">${l}</div></div>`).join('')}
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="row" style="justify-content:space-between"><div class="h3">Course completion</div><b>${pct}%</b></div>
+    <div class="bar" style="margin-top:10px"><i style="width:${pct}%"></i></div>
+    <div class="sep"></div>
+    <div class="h3" style="margin-bottom:12px">Knowledge by tier</div>
+    ${Object.values(TIERS).map(t=>{
+      const tot=NODES.filter(n=>n.tier===t.key).length, dn=NODES.filter(n=>n.tier===t.key&&S.completed.includes(n.id)).length;
+      const v=S.baseline?Math.min(100,S.baseline[t.key]+dn*12):0;
+      return `<div style="margin-bottom:14px"><div class="simrow"><span class="tag ${t.key}">${t.name}</span><b class="tiny">${dn} of ${tot} lessons · score ${v}</b></div>
+      <div class="bar"><i style="width:${v}%;background:var(--${t.key})"></i></div></div>`}).join('')}
+  </div>
+  <div class="card">
+    <div class="h3">Badges</div>
+    <p class="tiny" style="margin:4px 0 12px">Earned only for verified knowledge. Never for deposits, trades or volume.</p>
+    <div class="row">
+      ${[['First progression',done>=1],['Risk aware',S.completed.includes('S2')],['Three in a row',done>=3],['Tier complete',NODES.filter(n=>n.tier==='learn').every(n=>S.completed.includes(n.id))]]
+        .map(([b,on])=>`<span class="tag ${on?'ok':'lock'}" style="padding:8px 12px">${on?svg('check'):svg('lock')} ${b}</span>`).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><div class="h3">Recent activity</div><span class="tiny">This month</span></div>
+    ${S.completed.length? S.completed.slice().reverse().map(id=>{const n=NODES.find(x=>x.id===id);
+      return `<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-2)">
+        <span style="width:30px;height:30px;border-radius:9px;background:var(--ok-t);display:grid;place-items:center">
+          <span style="color:var(--ok)">${svg('check')}</span></span>
+        <div style="flex:1"><b style="font-size:14px">${n.t}</b><div class="tiny">${TIERS[n.tier].name} · verified progression</div></div>
+        <span class="tiny">+${n.xp} XP</span></div>`}).join('')
+      : '<p class="muted">Nothing yet. Your first knowledge check will appear here.</p>'}
+  </div>
+  ${S.completed.length>=2?`<div class="row" style="margin-top:14px"><button class="btn accent" id="openCert">${svg('award')} View your certificate</button></div>`:
+    `<p class="tiny" style="margin-top:14px">Complete two lessons to unlock your first certificate. You have ${S.completed.length}.</p>`}
+</div>`;
+};
+
+V.me=()=>`
+<div class="fade">
+  <div class="eyebrow">Profile</div><div class="h1">${esc(S.name)}</div>
+  <div class="card" style="margin-top:14px">
+    <div class="kv">
+      <b>Level</b><span>${S.level||'Not placed yet'}</span>
+      <b>Lifecycle</b><span>${S.lifecycle}</span>
+      <b>Goal</b><span>${S.goal||'Not set'}</span>
+      <b>Time per day</b><span>${S.minutes||'Not set'}</span>
+      <b>Academy</b><span>${THEMES[S.theme].name} · ${THEMES[S.theme].host}</span>
+      <b>Referred by</b><span>${S.ibRef}</span>
+    </div>
+    <div class="sep"></div>
+    <p class="tiny">Your learning record belongs to this academy only. Certificates are verifiable publicly, and carry no personal data beyond your name and the course.</p>
+  </div>
+  <div class="card"><div class="h3">Retake the placement check</div>
+    <p class="muted" style="margin:6px 0 12px">Your baseline updates and your path is rebuilt. Completed lessons stay completed.</p>
+    <button class="btn sec" id="retake">Retake</button></div>
+</div>`;
+</script>
+<script>
+/* ---------- SKILL TREE ---------- */
+const TV={x:0,y:0,k:1};
+function renderTree(){
+  const el=$('#tree'); if(!el) return;
+  const tierColor=t=>getComputedStyle(document.documentElement).getPropertyValue('--'+t).trim();
+  const dots=[]; for(let x=0;x<1140;x+=38){ for(let y=0;y<620;y+=38){ dots.push(`<circle cx="${x}" cy="${y}" r="1" fill="currentColor" opacity=".16"/>`);} }
+  const edges=EDGES.map(([a,b])=>{
+    const A=NODES.find(n=>n.id===a), B=NODES.find(n=>n.id===b);
+    const mx=(A.x+B.x)/2;
+    const done=S.completed.includes(a)&&(S.completed.includes(b)||nodeState(B)==='open');
+    return `<path d="M${A.x+46} ${A.y} C ${mx} ${A.y}, ${mx} ${B.y}, ${B.x-46} ${B.y}"
+      fill="none" stroke="${done?tierColor(B.tier):'currentColor'}" stroke-opacity="${done?'.85':'.28'}"
+      stroke-width="${done?3:2}" stroke-dasharray="${done?'':'6 6'}" stroke-linecap="round"/>`;
+  }).join('');
+  const nodes=NODES.map(n=>{
+    const st=nodeState(n), c=tierColor(n.tier);
+    const fill = st==='done'? c : st==='open'? 'var(--surface)' : 'var(--surface-2)';
+    const stroke = st==='locked'? 'currentColor' : c;
+    return `<g class="node" data-id="${n.id}" style="cursor:pointer">
+      <circle cx="${n.x}" cy="${n.y}" r="42" fill="${fill}" stroke="${stroke}" stroke-width="${st==='open'?3.4:2}"
+        stroke-opacity="${st==='locked'?.4:1}" stroke-dasharray="${st==='locked'?'7 6':''}"/>
+      ${st==='open'?`<circle cx="${n.x}" cy="${n.y}" r="42" fill="none" stroke="${c}" stroke-width="2" opacity=".45">
+        <animate attributeName="r" values="42;52;42" dur="2.6s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".45;0;.45" dur="2.6s" repeatCount="indefinite"/></circle>`:''}
+      <g transform="translate(${n.x-11},${n.y-13}) scale(.92)" fill="none"
+         stroke="${st==='done'?'#fff':st==='locked'?'currentColor':c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+         opacity="${st==='locked'?.5:1}">
+        ${st==='done'?I.check:st==='locked'?I.lock:I.play}</g>
+      <text x="${n.x}" y="${n.y+66}" text-anchor="middle" font-family="Poppins" font-size="13.5" font-weight="700"
+        fill="currentColor" opacity="${st==='locked'?.45:.95}">${esc(n.t)}</text>
+      <text x="${n.x}" y="${n.y+84}" text-anchor="middle" font-family="Nunito Sans" font-size="11.5"
+        fill="currentColor" opacity=".5">${TIERS[n.tier].name} · ${n.mins} min</text>
+      ${st==='done'?`<circle cx="${n.x+31}" cy="${n.y-31}" r="11" fill="var(--ok)"/>
+        <g transform="translate(${n.x+25},${n.y-37})" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round">${I.check}</g>`:''}
+    </g>`;
+  }).join('');
+  el.innerHTML=`<g id="world" transform="translate(${TV.x},${TV.y}) scale(${TV.k})" color="var(--ink)">
+    <g opacity=".5">${dots.join('')}</g>${edges}${nodes}</g>`;
+  el.querySelectorAll('.node').forEach(g=>{
+    g.addEventListener('click',e=>{e.stopPropagation(); openPopover(g.dataset.id);});
+  });
+  bindPanZoom(el);
+}
+function bindPanZoom(el){
+  let drag=false,sx=0,sy=0,ox=0,oy=0,moved=false;
+  el.onpointerdown=e=>{drag=true;moved=false;sx=e.clientX;sy=e.clientY;ox=TV.x;oy=TV.y;el.classList.add('drag');el.setPointerCapture(e.pointerId);};
+  el.onpointermove=e=>{ if(!drag) return; const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(Math.abs(dx)+Math.abs(dy)>4) moved=true;
+    TV.x=ox+dx*(1140/el.clientWidth); TV.y=oy+dy*(620/el.clientHeight);
+    const w=el.querySelector('#world'); if(w) w.setAttribute('transform',`translate(${TV.x},${TV.y}) scale(${TV.k})`); };
+  el.onpointerup=e=>{drag=false;el.classList.remove('drag');};
+  el.onclick=()=>{ if(!moved) closePopover(); };
+  el.onwheel=e=>{e.preventDefault(); zoom(e.deltaY<0?1.12:1/1.12);};
+  const z=(f)=>()=>zoom(f);
+  if($('#zin')) $('#zin').onclick=z(1.2);
+  if($('#zout')) $('#zout').onclick=z(1/1.2);
+  if($('#zfit')) $('#zfit').onclick=()=>{TV.x=0;TV.y=0;TV.k=1;renderTree();};
+}
+function zoom(f){ TV.k=clamp(TV.k*f,.55,2.2); const w=$('#world'); if(w) w.setAttribute('transform',`translate(${TV.x},${TV.y}) scale(${TV.k})`); }
+
+function closePopover(){ const p=$('#pop'); if(p) p.remove(); }
+function openPopover(id){
+  closePopover();
+  const n=NODES.find(x=>x.id===id), st=nodeState(n), gate=nodeGate(n);
+  const el=$('#tree'), box=el.getBoundingClientRect(), wrapEl=el.parentElement;
+  const sx=box.width/1140, sy=box.height/620, sc=Math.min(sx,sy);
+  const offX=(box.width-1140*sc)/2, offY=(box.height-620*sc)/2;
+  const px=clamp(offX+(n.x*TV.k+TV.x)*sc-134, 8, box.width-276);
+  const py=clamp(offY+(n.y*TV.k+TV.y)*sc+52, 8, box.height-250);
+  const d=document.createElement('div'); d.className='popover'; d.id='pop';
+  d.style.left=px+'px'; d.style.top=py+'px';
+  d.innerHTML=`
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <span class="tag ${n.tier}">${TIERS[n.tier].name}</span>
+      <span class="tiny">${n.mod}</span></div>
+    <div class="h3" style="margin:9px 0 2px">${n.t}</div>
+    <div class="tiny">${n.mins} minutes · 3 step lesson</div>
+    <div class="steps"><i class="${st==='done'?'done':''}">1</i><i class="${st==='done'?'done':''}">2</i><i class="${st==='done'?'done':''}">3</i><i class="star">★</i></div>
+    <div class="reward"><span>${svg('bolt')}+${n.xp} XP</span><span>${svg('coin')}+${n.coins}</span></div>
+    ${st==='locked'
+      ? `<div class="rationale wrong" style="margin:0 0 10px"><b>LOCKED</b>${gate}</div><button class="btn sec" style="width:100%" id="popClose">Close</button>`
+      : `<button class="btn" style="width:100%" id="popGo">${st==='done'?'Revisit lesson':'Start lesson'} ${svg('arrow')}</button>`}
+  `;
+  wrapEl.appendChild(d);
+  const g=$('#popGo'); if(g) g.onclick=()=>openLesson(n.id);
+  const c=$('#popClose'); if(c) c.onclick=closePopover;
+}
+
+/* ---------- LESSON / CHECK ---------- */
+function openLesson(id){
+  S.node=id; S.tab='watch'; S.section=0;
+  if(S.lifecycle==='Placed'){ setLifecycle('Activated learner'); }
+  go('lesson');
+  emit('lesson.started',{node_id:id, title:NODES.find(n=>n.id===id).t, tier:NODES.find(n=>n.id===id).tier});
+}
+function openCheck(){
+  const n=NODES.find(x=>x.id===S.node), qs=checkFor(n);
+  let i=0, correct=0, answered=false;
+  const host=document.createElement('div'); host.className='veil';
+  host.innerHTML=`<div class="modal dark" role="dialog" aria-modal="true">
+    <div class="mh"><div><div class="eyebrow" style="color:var(--accent)">Knowledge check</div>
+      <div class="h3" id="ckTitle" style="color:inherit">${n.t}</div></div>
+      <button class="iconbtn" id="ckX" style="background:transparent;border-color:#2A3D58">${svg('close')}</button></div>
+    <div class="mb" id="ckBody"></div></div>`;
+  $('#modalHost').appendChild(host);
+  host.querySelector('#ckX').onclick=()=>host.remove();
+  const paint=()=>{
+    const q=qs[i];
+    host.querySelector('#ckBody').innerHTML=`
+      <div class="qhead"><span class="tiny" style="color:#9FB3CE">${i+1} of ${qs.length}</span>
+        <div class="qdots">${qs.map((_,k)=>`<i class="${k<i?'done':k===i?'now':''}"></i>`).join('')}</div></div>
+      <div class="h2" style="line-height:1.35;color:inherit">${q.q}</div>
+      <div id="ckOpts" style="margin-top:16px">
+        ${q.opts.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${'ABC'[k]}</span><span class="txt">${o}</span></button>`).join('')}
+      </div>
+      <div id="ckFeed"></div>`;
+    answered=false;
+    host.querySelectorAll('#ckOpts .opt').forEach(b=>b.onclick=()=>{
+      if(answered) return; answered=true;
+      const k=+b.dataset.k, right=k===q.a; if(right) correct++;
+      host.querySelectorAll('#ckOpts .opt').forEach(x=>{
+        const kk=+x.dataset.k;
+        if(kk===q.a) x.classList.add('right');
+        else if(kk===k) x.classList.add('wrong');
+      });
+      host.querySelector('#ckFeed').innerHTML=`
+        <div class="rationale ${right?'right':'wrong'}"><b>${right?'CORRECT':'NOT QUITE'}</b>${q.why[k]}</div>
+        <button class="btn" id="ckNext" style="width:100%">${i<qs.length-1?'Next question':'See result'} ${svg('arrow')}</button>`;
+      host.querySelector('#ckNext').onclick=()=>{ i++; if(i<qs.length) paint(); else finish(); };
+    });
+  };
+  const finish=()=>{
+    const passed=correct>=2, stars=correct===3?3:correct===2?2:1;
+    if(passed && !S.completed.includes(n.id)){
+      S.completed.push(n.id);
+      setLifecycle('Active');
+      award(n.xp,n.coins,'verified progression');
+      emit('progression.verified',{node_id:n.id, tier:n.tier, score:correct+'/3', stars, north_star:true, lifecycle:'Active'});
+      emit('lesson.completed',{node_id:n.id, minutes:n.mins});
+      burst();
+    } else if(!passed){
+      S.fails[n.id]=(S.fails[n.id]||0)+1;
+      if(S.fails[n.id]>=2) emit('churn_risk.flagged',{node_id:n.id, reason:'failed_check_twice', suggested_action:'support_outreach'});
+    }
+    host.querySelector('#ckBody').innerHTML=`
+      <div style="text-align:center" class="pop">
+        <div class="stars">${[1,2,3].map(s=>`<svg class="${s<=stars&&passed?'on':''}" viewBox="0 0 24 24">${I.star}</svg>`).join('')}</div>
+        <div class="h1" style="font-size:25px;margin:10px 0 4px;color:inherit">${passed?'Verified progression':'Not this time'}</div>
+        <p class="muted" style="margin-bottom:16px">${correct} of ${qs.length} correct. ${passed?'This one counts towards your certificate.':'Two of three are needed. The lesson is open, and the questions change each attempt.'}</p>
+        ${passed?`<div class="row" style="justify-content:center;margin-bottom:16px">
+          <span class="chip xp">${svg('bolt')}+${n.xp} XP</span><span class="chip coin">${svg('coin')}+${n.coins}</span></div>`:''}
+        <div class="row" style="justify-content:center">
+          ${passed?`<button class="btn" id="ckDone">Continue ${svg('arrow')}</button>`
+                  :`<button class="btn" id="ckRetry">Try again</button><button class="btn sec" id="ckBack">Back to lesson</button>`}
+        </div>
+      </div>`;
+    const d=host.querySelector('#ckDone'); if(d) d.onclick=()=>{ host.remove(); go('path'); renderTree(); };
+    const r=host.querySelector('#ckRetry'); if(r) r.onclick=()=>{ i=0; correct=0; paint(); };
+    const b=host.querySelector('#ckBack'); if(b) b.onclick=()=>host.remove();
+    renderHud();
+  };
+  paint();
+}
+
+/* ---------- CERTIFICATE ---------- */
+function openCert(){
+  if(!S.certSerial){
+    S.certSerial='PA-'+Math.random().toString(36).slice(2,6).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+    setLifecycle('Certified');
+    emit('certificate.issued',{serial:S.certSerial, course:'Foundations of digital assets', verify_url:'https://'+THEMES[S.theme].host+'/verify/'+S.certSerial, tamper_evident:true});
+    burst();
+  }
+  const host=document.createElement('div'); host.className='veil';
+  const qr=(()=>{let o='';for(let y=0;y<8;y++)for(let x=0;x<8;x++){ if(((x*7+y*13+((x*y)%5))%3)===0) o+=`<rect x="${x*7+1}" y="${y*7+1}" width="6" height="6" fill="#0E1826"/>`;}
+    return o+'<rect x="1" y="1" width="18" height="18" fill="none" stroke="#0E1826" stroke-width="3"/><rect x="37" y="1" width="18" height="18" fill="none" stroke="#0E1826" stroke-width="3"/><rect x="1" y="37" width="18" height="18" fill="none" stroke="#0E1826" stroke-width="3"/>';})();
+  host.innerHTML=`<div class="modal">
+    <div class="mh"><div class="h3">Your certificate</div><button class="iconbtn" id="cX">${svg('close')}</button></div>
+    <div class="mb">
+      <div class="cert">
+        <div class="cap">${THEMES[S.theme].name.toUpperCase()}</div>
+        <h3>${esc(S.name)}</h3>
+        <p style="opacity:.9;font-size:14px">has completed and verified</p>
+        <div style="font-family:Poppins;font-size:18px;font-weight:700;margin-top:4px">Foundations of Digital Assets</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:22px;position:relative">
+          <div><div class="cap" style="margin-bottom:5px">VERIFICATION SERIAL</div>
+            <div class="serial">${S.certSerial}</div>
+            <div style="font-size:12px;opacity:.85;margin-top:5px">Issued ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div></div>
+          <div class="qr"><svg viewBox="0 0 56 56">${qr}</svg></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px;padding:16px">
+        <div class="tiny" style="margin-bottom:6px">PUBLIC VERIFICATION PAGE</div>
+        <div style="font-family:ui-monospace,monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;word-break:break-all">
+          https://${THEMES[S.theme].host}/verify/${S.certSerial}</div>
+        <p class="tiny" style="margin-top:9px">Anyone can check this without an account. It shows the name, the course and the date, and nothing else.</p>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn sec sm" id="cCopy">${svg('copy')} Copy link</button>
+        <button class="btn sec sm" id="cPdf">${svg('down')} PDF</button>
+        <button class="btn sec sm" id="cImg">${svg('down')} Image</button>
+        <button class="btn sec sm" id="cShare">${svg('share')} LinkedIn</button>
+      </div>
+    </div></div>`;
+  $('#modalHost').appendChild(host);
+  host.querySelector('#cX').onclick=()=>host.remove();
+  host.querySelector('#cCopy').onclick=()=>{
+    const url='https://'+THEMES[S.theme].host+'/verify/'+S.certSerial;
+    if(navigator.clipboard) navigator.clipboard.writeText(url).catch(()=>{});
+    toast('Verification link copied');
+  };
+  host.querySelector('#cPdf').onclick=()=>toast('PDF is rendered server-side in production');
+  host.querySelector('#cImg').onclick=()=>toast('Share image is rendered server-side in production');
+  host.querySelector('#cShare').onclick=()=>{ emit('certificate.shared',{serial:S.certSerial, channel:'linkedin'}); toast('Share intent recorded'); };
+}
+
+/* ---------- DRAWERS ---------- */
+function renderSpec(){
+  const key = ['path','catalogue'].includes(S.route)?'path' : S.route==='me'?'progress' : S.route;
+  const sp = SPEC[key] || SPEC.path;
+  $('#specDrawer').innerHTML=`
+    <div class="dh"><div><div class="eyebrow">Spec mode</div><div class="h3">${sp.title}</div></div>
+      <button class="iconbtn" id="specX">${svg('close')}</button></div>
+    <div class="db">
+      <div class="kv">
+        <b>Phase</b><span>${sp.phase}</span>
+        <b>Lifecycle</b><span>${sp.state}</span>
+        <b>Learner goal</b><span><i>${sp.goal}</i></span>
+        <b>Principle</b><span>${sp.principle}</span>
+        <b>Metric</b><span>${sp.metric}</span>
+      </div>
+      <div class="eyebrow" style="margin-bottom:9px">Features on this screen</div>
+      ${sp.feats.map(f=>{const x=FEAT[f]; if(!x) return '';
+        return `<div class="specrow"><div class="row" style="justify-content:space-between;gap:8px">
+          <span><span class="id">${f}</span><b style="font-size:13.5px">${x[0]}</b></span>
+          <span class="pri ${x[1]}">${x[1]}</span></div>
+          <div class="tiny" style="margin-top:5px">${x[2]}</div></div>`}).join('')}
+      <div class="sep"></div>
+      <div class="eyebrow" style="margin-bottom:8px">Rules in force</div>
+      <div class="specrow"><b style="font-size:13px">Baseline</b><div class="tiny" style="margin-top:4px">placement × 0.60 + self-rating × 0.40, per tier</div></div>
+      <div class="specrow"><b style="font-size:13px">Gates</b><div class="tiny" style="margin-top:4px">Learn and Safeguard open · Apply at Learn ≥ 50 · Specialise at Learn ≥ 70 and Safeguard ≥ 50</div></div>
+      <div class="specrow"><b style="font-size:13px">Verified progression</b><div class="tiny" style="margin-top:4px">2 of 3 knowledge check questions correct. North Star metric.</div></div>
+      <div class="specrow"><b style="font-size:13px">Lifecycle</b><div class="tiny" style="margin-top:4px">Registered → Onboarded → Placed → Activated → Active → Certified. Currently: <b>${S.lifecycle}</b></div></div>
+    </div>`;
+  const x=$('#specX'); if(x) x.onclick=()=>{S.spec=false;$('#specDrawer').classList.remove('open');renderChrome();};
+}
+function renderOutbox(){
+  $('#outboxDrawer').innerHTML=`
+    <div class="dh"><div><div class="eyebrow">Enterprise outbox</div><div class="h3">CRM events</div></div>
+      <button class="iconbtn" id="obX">${svg('close')}</button></div>
+    <div class="db">
+      <p class="tiny" style="margin-bottom:14px">Every learning milestone is written to a transactional outbox in the same database transaction as the milestone itself, then delivered to the broker CRM with retries, an idempotency key and the introducing broker tag. Nothing here is a payment instruction.</p>
+      ${S.events.length? S.events.map(e=>`
+        <div class="ev"><div class="eh"><span class="dot"></span>${e.type}<time>${e.at}</time></div>
+        <pre>${jsonHTML(e.body)}</pre></div>`).join('')
+        : '<p class="muted">No events yet. Sign up, get placed, or pass a knowledge check to see them arrive.</p>'}
+    </div>`;
+  const x=$('#obX'); if(x) x.onclick=()=>{S.outbox=false;$('#outboxDrawer').classList.remove('open');renderChrome();};
+}
+
+/* ---------- BINDINGS ---------- */
+function bind(){
+  const on=(sel,fn)=>{const e=$(sel); if(e) e.onclick=fn;};
+  on('#goAbout',()=>{ S.name=$('#inName')?$('#inName').value||'Amara':'Amara'; setLifecycle('Registered');
+    emit('lead.registered',{name:S.name, source:'organic', consent:true}); go('about'); });
+  on('#goAbout2',()=>{ setLifecycle('Registered'); emit('lead.registered',{name:S.name, source:'google_oauth', consent:true}); go('about'); });
+
+  document.querySelectorAll('[data-goal]').forEach(b=>b.onclick=()=>{S.goal=b.dataset.goal;render();});
+  document.querySelectorAll('[data-min]').forEach(b=>b.onclick=()=>{S.minutes=b.dataset.min;render();});
+  document.querySelectorAll('[data-cf]').forEach(sl=>sl.oninput=()=>{
+    S.confidence[sl.dataset.cf]=+sl.value; const o=$('#cf-'+sl.dataset.cf); if(o) o.textContent=sl.value;});
+  on('#goPlace',()=>{ setLifecycle('Onboarded'); S.qi=0; S.answers=[]; go('placement'); });
+
+  document.querySelectorAll('.opt[data-a]').forEach(b=>b.onclick=()=>{
+    S.answers[S.qi]=+b.dataset.a; nextPlacement();});
+  on('#skipQ',()=>{ S.answers[S.qi]=null; nextPlacement(); });
+
+  on('#goPath',()=>{ go('path'); setTimeout(renderTree,0); });
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
+    const n=NODES.find(x=>x.id===b.dataset.open);
+    if(nodeState(n)==='locked'){ toast(nodeGate(n)); return; }
+    openLesson(n.id);});
+
+  on('#backPath',()=>{ go('path'); setTimeout(renderTree,0); });
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;render();});
+  document.querySelectorAll('[data-sec]').forEach(a=>a.onclick=e=>{e.preventDefault();S.section=+a.dataset.sec;
+    if(S.section===3){ openCheck(); } else { render(); }});
+  document.querySelectorAll('[data-noop]').forEach(a=>a.onclick=e=>{e.preventDefault();toast('Additional material opens in the full build');});
+  on('#tdrawBtn',()=>$('#tdraw').classList.toggle('open'));
+  document.querySelectorAll('[data-jump]').forEach(l=>l.onclick=()=>toast('Jumped to '+l.dataset.jump+' in the video'));
+  on('#player',()=>toast('Video playback uses signed, expiring links in production'));
+  document.querySelectorAll('[data-scn]').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('[data-scn]').forEach(x=>x.classList.remove('right','wrong'));
+    b.classList.add(b.dataset.scn==='0'?'right':'wrong');
+    toast(b.dataset.scn==='0'?'Correct. The plan comes first, every time.':'The plan comes first. Everything else is noise at the moment of decision.');});
+  on('#startCheck',openCheck);
+  on('#openCert',openCert);
+  on('#retake',()=>{S.qi=0;S.answers=[];S.baseline=null;go('placement');});
+  bindSim();
+}
+function nextPlacement(){
+  if(S.qi<PLACEMENT.length-1){ S.qi++; render(); return; }
+  S.baseline=computeBaseline(); S.level=levelFor(S.baseline); setLifecycle('Placed');
+  emit('diagnostic.placed',{level:S.level, baseline:S.baseline, unlocked:Object.keys(TIERS).filter(tierUnlocked), skipped:S.answers.filter(a=>a==null).length});
+  go('baseline');
+}
+
+/* ---------- RENDER ---------- */
+function render(){
+  const v=V[S.route]||V.welcome;
+  $('#view').innerHTML=v();
+  renderChrome(); renderSpec(); bind();
+  if(S.route==='path') requestAnimationFrame(renderTree);
+  document.body.classList.toggle('narrow', S.phone);
+}
+
+/* ---------- GLOBAL UI ---------- */
+$('#btnPhone').onclick=()=>{ S.phone=!S.phone; $('#stage').classList.toggle('phone',S.phone); render();
+  if(S.route==='path') setTimeout(renderTree,60); };
+$('#btnSpec').onclick=()=>{ S.spec=!S.spec; $('#specDrawer').classList.toggle('open',S.spec); renderSpec(); renderChrome(); };
+$('#btnOutbox').onclick=()=>{ S.outbox=!S.outbox; $('#outboxDrawer').classList.toggle('open',S.outbox); renderOutbox(); renderChrome(); };
+addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea')) return;
+  const k=e.key.toLowerCase();
+  if(k==='d'){ $('#btnSpec').click(); }
+  if(k==='e'){ $('#btnOutbox').click(); }
+  if(k==='m'){ $('#btnPhone').click(); }
+  if(k==='escape'){ document.querySelectorAll('.veil').forEach(v=>v.remove()); closePopover(); }
+});
+setTimeout(()=>$('#hint').classList.add('hide'),6000);
+renderOutbox(); render();
+</script>
+</body>
+</html>
