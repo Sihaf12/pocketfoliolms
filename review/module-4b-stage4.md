@@ -7,7 +7,7 @@
   - On its own, `21b4b3d` does not build. The next commit completes stage 4, and the suites below were run on that complete state.
   - I haven't rewritten the pushed history. If you want the two squashed into one, it needs a force push to `module-4b`; say so and I'll do it.
 - Module 4b is complete on that branch. It is not merged to `main`.
-- The demo's API needs a restart to drop the old routes (below).
+- The demo is running on the finished code.
 
 ## What was retired
 
@@ -62,11 +62,9 @@ Stage 4 adds:
 
 ## Open the learner app in Chrome
 
-The demo still runs the code from before stage 1. To see Module 4b:
+The demo is already running on the finished code. If you restart it (`npm run demo`), stop the running one first.
 
-    npm run demo                    # stop the running one first (Ctrl+C in its terminal)
-
-Then open http://gtl.academy.test:3100/ and http://meridian.academy.test:3100/.
+Open http://gtl.academy.test:3100/ and http://meridian.academy.test:3100/.
 - "Start your placement" goes through sign-up, onboarding, placement, the starting point and the path.
 - Sign-up takes any email and a password of 12 or more characters.
 - The lesson with the simulator is "Leverage and margin", in the Safeguard tier.
