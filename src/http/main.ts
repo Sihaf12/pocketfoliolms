@@ -2,6 +2,7 @@ import { config } from '../config.js';
 import { shutdown } from '../db/unitOfWork.js';
 import { logger } from '../logger.js';
 import { buildServer } from './server.js';
+import { buildTlsAskServer } from './tlsAsk.js';
 
 // Only the limits the environment sets; the rest keep the server's defaults.
 const limits = Object.fromEntries(Object.entries({
@@ -20,8 +21,18 @@ if (config.http.insecureDevCookie) {
 await app.listen({ host: config.http.host, port: config.http.port });
 logger.info({ host: config.http.host, port: config.http.port }, 'http server listening');
 
+// Caddy's on-demand TLS question, on its own internal port.
+const askPort = config.http.tlsAskPort;
+const ask = askPort
+  ? await buildTlsAskServer({ consoleHost: config.console.host, callbackHost: config.google.clientId ? config.google.callbackHost : '' })
+  : null;
+if (ask && askPort) {
+  await ask.listen({ host: config.http.host, port: askPort });
+  logger.info({ host: config.http.host, port: askPort }, 'tls ask server listening');
+}
+
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {
-    void app.close().then(shutdown).then(() => process.exit(0));
+    void Promise.all([app.close(), ask?.close()]).then(shutdown).then(() => process.exit(0));
   });
 }

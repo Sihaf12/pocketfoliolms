@@ -69,7 +69,8 @@ function rememberMiss(host: string, now: number): void {
   unknown.set(host, now + MISS_TTL_MS);
 }
 
-async function tenantFor(host: string): Promise<string | null> {
+/** The active academy at this host, through the same short-lived cache the tenant scope uses. */
+export async function tenantFor(host: string): Promise<string | null> {
   const now = Date.now();
   const hit = resolved.get(host);
   if (hit && hit.until > now) return hit.tenantId;

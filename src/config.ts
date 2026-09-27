@@ -15,6 +15,9 @@ export const config = {
   http: {
     host: process.env.HTTP_HOST ?? '0.0.0.0',
     port: Number(process.env.HTTP_PORT ?? 3000),
+    // A second, internal listener that answers only Caddy's on-demand TLS
+    // question. Unset: not started. Never publish this port.
+    tlsAskPort: optionalNumber(process.env.TLS_ASK_PORT),
     // Shared with the Next.js front end, which sends it with every
     // forwarded request. Forwarded headers without it are refused. Empty
     // means no front end: the Host header alone decides the academy.

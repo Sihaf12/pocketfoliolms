@@ -205,6 +205,10 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
   const limits = { ...DEFAULT_LIMITS, ...opts.limits };
 
 
+  // Liveness for the container's health check: the process answers. It
+  // touches no database and names no academy, on any host.
+  app.get('/healthz', async (_req, reply) => reply.header('cache-control', 'no-store').send({ ok: true }));
+
   await app.register(async (publicScope) => {
     await publicScope.register(certificateRoutes, { prefix: '/api/v1', limit: limits.certificates });
   });

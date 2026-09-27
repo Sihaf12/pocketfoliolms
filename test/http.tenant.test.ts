@@ -163,7 +163,10 @@ test('a tenant id in the body is rejected, not used', async () => {
 });
 
 test('every route sits in exactly one scope: public, academy, or console', async () => {
-  const PUBLIC = new Set(['GET /api/v1/certificates/:serial', 'HEAD /api/v1/certificates/:serial']);
+  const PUBLIC = new Set([
+    'GET /api/v1/certificates/:serial', 'HEAD /api/v1/certificates/:serial', 'GET /healthz', 'HEAD /healthz',
+  ]);
+  assert.ok(!app.routeList.some((r) => r.url.startsWith('/tls')), 'the TLS question is never on the public server');
   const isConsole = (url: string) => url.startsWith('/api/console');
   const isCallback = (url: string) => url.startsWith('/api/auth/google');
   assert.ok(app.routeList.some((r) => isConsole(r.url)), 'the console is registered');
