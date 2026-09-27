@@ -75,7 +75,7 @@ platform console as a Next.js front end.
 
     npm install
     npm run build
-    npm test                                             # 166 tests
+    npm test                                             # 168 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow (75)
     npm run typecheck                                    # the API, the studio and the end-to-end specs

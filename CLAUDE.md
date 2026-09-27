@@ -16,7 +16,7 @@ Multi-tenant learning platform. Each broker gets a branded academy on one engine
 - A knowledge check passes at 2 of 3. That event is the North Star metric.
 
 ## Commands
-- `npm test` runs 166 tests. Run it before saying anything is done.
+- `npm test` runs 168 tests. Run it before saying anything is done.
 - `psql academy -U app_user -f db/tests/rls_proof.sql` proves isolation (59 PASS).
 - `npm run test:studio` proves the studio and console roles and the review workflow (75 PASS).
 - `npm run test:migrate` proves the migrations build a fresh database as the
