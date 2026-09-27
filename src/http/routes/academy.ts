@@ -10,13 +10,17 @@ import { inAcademy } from '../context.js';
 
 const TIER_ORDER = `array_position(ARRAY['learn','safeguard','apply','specialise'], c.tier::text)`;
 
-export async function academyRoutes(app: FastifyInstance): Promise<void> {
+export async function academyRoutes(app: FastifyInstance, opts: { googleSignIn: boolean }): Promise<void> {
   app.get('/academy', {
     schema: {
       response: {
         200: {
-          type: 'object', required: ['name', 'sub', 'tokens'],
-          properties: { name: { type: 'string' }, sub: { type: 'string' }, tokens: { type: 'object', additionalProperties: { type: 'string' } } },
+          type: 'object', required: ['name', 'sub', 'tokens', 'googleSignIn'],
+          properties: {
+            name: { type: 'string' }, sub: { type: 'string' }, tokens: { type: 'object', additionalProperties: { type: 'string' } },
+            // Whether "Continue with Google" is offered.
+            googleSignIn: { type: 'boolean' },
+          },
         },
       },
     },
@@ -24,7 +28,7 @@ export async function academyRoutes(app: FastifyInstance): Promise<void> {
     inAcademy(req, async (db) => {
       const academy = await db.one<{ name: string; brand: unknown }>('SELECT name, brand FROM app.current_tenant_brand()');
       const { sub, tokens } = sanitiseBrand(academy.brand);
-      return { name: academy.name, sub, tokens };
+      return { name: academy.name, sub, tokens, googleSignIn: opts.googleSignIn };
     }));
 
   app.get('/catalogue', {

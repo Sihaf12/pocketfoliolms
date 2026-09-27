@@ -301,6 +301,32 @@ export async function resolveTenantByHost(host: string): Promise<string | null> 
   return res.rows[0]?.id ?? null;
 }
 
+export interface TakenSsoState {
+  tenantId: string;
+  codeVerifier: string;
+  nonce: string;
+  bindingHash: string;
+  ibRefCode: string | null;
+  returnTo: string | null;
+  origin: string;
+  expired: boolean;
+}
+
+/**
+ * The Google callback's one way to a sign-in state, before any academy
+ * is known: a SECURITY DEFINER function that deletes the state holding
+ * this hash and hands it back, once.
+ */
+export async function takeSsoState(stateHash: string): Promise<TakenSsoState | null> {
+  const res = await requestPool.query<TakenSsoState>(
+    `SELECT tenant_id AS "tenantId", code_verifier AS "codeVerifier", nonce, binding_hash AS "bindingHash",
+            ib_ref_code AS "ibRefCode", return_to AS "returnTo", origin, expired
+       FROM app.sso_state_take($1)`,
+    [stateHash],
+  );
+  return res.rows[0] ?? null;
+}
+
 export interface VerifiedCertificate {
   holderName: string;
   courseTitle: string;

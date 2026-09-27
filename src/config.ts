@@ -30,6 +30,19 @@ export const config = {
     loginPerMinute: optionalNumber(process.env.RATE_LOGIN_PER_MIN),
     consolePerMinute: optionalNumber(process.env.RATE_CONSOLE_PER_MIN),
   },
+  // Google sign-in for learners. Empty client id or callback host: off.
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    // The one host Google returns to, for every academy: host[:port].
+    // https always, except localhost in development.
+    callbackHost: (process.env.AUTH_CALLBACK_HOST ?? '').trim().toLowerCase(),
+    // Only the end-to-end run's stand-in for Google sets these.
+    authorizeUrl: process.env.GOOGLE_AUTHORIZE_URL ?? '',
+    tokenUrl: process.env.GOOGLE_TOKEN_URL ?? '',
+    jwksUrl: process.env.GOOGLE_JWKS_URL ?? '',
+    issuer: process.env.GOOGLE_ISSUER ?? '',
+  },
   console: {
     // The one host the platform console answers on. Empty disables the console.
     host: (process.env.CONSOLE_HOST ?? '').trim().toLowerCase(),

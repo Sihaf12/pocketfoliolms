@@ -14,10 +14,13 @@ import { hashPassword } from '../src/auth/password.js';
 import { keyFrom, seal } from '../src/auth/secretBox.js';
 import { newTotpSecret } from '../src/auth/totp.js';
 import type { StaffRole } from '../src/auth/staffSession.js';
+import { CLIENT_ID, CLIENT_SECRET, FakeGoogle } from './googleFake.js';
 
 export const NORTHGATE = 'learn.northgate.ae';
 export const SABLE = 'training.sablewealth.io';
 export const CONSOLE = 'console.academy.test';
+/** The one host Google returns to, for every academy, in tests. */
+export const CALLBACK = 'auth.academy.test';
 export const PASSWORD = 'correct horse battery';
 /** A fixed test key. Real deployments take CONSOLE_TOTP_KEY from the environment. */
 export const TEST_TOTP_KEY = Buffer.alloc(32, 7).toString('base64');
@@ -34,6 +37,7 @@ export const ownerPool = new pg.Pool({
 export async function server(opts: ServerOptions = {}): Promise<FastifyInstance> {
   const app = await buildServer({
     console: { host: CONSOLE, totpKey: TEST_TOTP_KEY },
+    google: { clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, callbackHost: CALLBACK, client: new FakeGoogle() },
     ...opts,
     // Every suite signs in many times from 127.0.0.1. The rate-limit tests
     // set their own limits; everything else runs without them.

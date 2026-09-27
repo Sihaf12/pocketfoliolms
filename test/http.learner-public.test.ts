@@ -17,7 +17,7 @@ const get = (url: string, host = NORTHGATE) => app.inject({ method: 'GET', url, 
 test('the academy\'s name and brand are public; nothing else is', async () => {
   const res = await get('/api/v1/academy');
   assert.equal(res.statusCode, 200, res.body);
-  assert.deepEqual(Object.keys(res.json()).sort(), ['name', 'sub', 'tokens']);
+  assert.deepEqual(Object.keys(res.json()).sort(), ['googleSignIn', 'name', 'sub', 'tokens']);
   assert.equal(res.json().tokens['--brand'], '#1A6DC2');
   assert.equal((await get('/api/v1/academy', 'learn.unknown.example')).statusCode, 404);
 });

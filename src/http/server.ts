@@ -20,6 +20,8 @@ import { HttpError, errorBody, handleError } from './errors.js';
 import { tenantScope } from './tenantScope.js';
 import { authRoutes } from './routes/auth.js';
 import { academyRoutes } from './routes/academy.js';
+import { googleAcademyRoutes, googleCallbackRoutes, type GoogleSignIn } from './routes/google.js';
+import { GOOGLE, HttpGoogleClient, type GoogleClient } from '../auth/google.js';
 import { onboardingRoutes } from './routes/onboarding.js';
 import { placementRoutes } from './routes/placement.js';
 import { pathwayRoutes } from './routes/pathway.js';
@@ -90,6 +92,8 @@ export interface ServerOptions {
    * outright when NODE_ENV is production.
    */
   insecureDevCookie?: boolean;
+  /** Google sign-in for learners. Omitted: from the environment; empty client id or host: off. */
+  google?: { clientId: string; clientSecret: string; callbackHost: string; client?: GoogleClient };
   /** How a domain change's TXT record is looked up. DNS unless a test supplies one. */
   resolveTxt?: ResolveTxt;
 }
@@ -99,6 +103,45 @@ export class ConsoleHostIsAnAcademyError extends Error {
     super(`CONSOLE_HOST ${host} is an academy's primary domain. Refusing to start.`);
     this.name = 'ConsoleHostIsAnAcademyError';
   }
+}
+
+export class GoogleCallbackHostError extends Error {
+  constructor(reason: string) {
+    super(`AUTH_CALLBACK_HOST ${reason}. Refusing to start.`);
+    this.name = 'GoogleCallbackHostError';
+  }
+}
+
+const LOCAL = /^(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
+
+/**
+ * Google sign-in as configured, or null when it is off. The callback URL
+ * is https, except for localhost in development: Google accepts plain http
+ * for localhost only, and production never gets it.
+ */
+async function googleSignIn(opts: ServerOptions['google'], consoleHost: string): Promise<GoogleSignIn | null> {
+  const g = opts ?? {
+    clientId: config.google.clientId, clientSecret: config.google.clientSecret, callbackHost: config.google.callbackHost,
+  };
+  const callbackHost = g.callbackHost.trim().toLowerCase();
+  if (!g.clientId || !callbackHost) return null;
+  const local = LOCAL.test(callbackHost);
+  const hostname = callbackHost.replace(/:\d+$/, '');
+  if (local && process.env.NODE_ENV === 'production') throw new GoogleCallbackHostError(`${callbackHost} is plain-http localhost while NODE_ENV is production`);
+  if (!local && normaliseHost(callbackHost) !== hostname) throw new GoogleCallbackHostError(`${callbackHost} is not a plain host name`);
+  if (hostname === consoleHost) throw new GoogleCallbackHostError(`${callbackHost} is the console's host`);
+  if (!local && await resolveTenantByHost(hostname)) throw new GoogleCallbackHostError(`${callbackHost} is an academy's domain`);
+  const endpoints = {
+    authorize: config.google.authorizeUrl || GOOGLE.authorize,
+    token: config.google.tokenUrl || GOOGLE.token,
+    jwks: config.google.jwksUrl || GOOGLE.jwks,
+    issuers: config.google.issuer ? [config.google.issuer] : GOOGLE.issuers,
+  };
+  return {
+    clientId: g.clientId, clientSecret: g.clientSecret, callbackHost,
+    callbackUrl: `${local ? 'http' : 'https'}://${callbackHost}/api/auth/google/callback`,
+    client: ('client' in g && g.client) || new HttpGoogleClient(endpoints),
+  };
 }
 
 export class InsecureCookieInProductionError extends Error {
@@ -126,6 +169,7 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
     // behind one address. Checked before the server takes a request.
     if (await resolveTenantByHost(consoleHost)) throw new ConsoleHostIsAnAcademyError(consoleHost);
   }
+  const google = await googleSignIn(opts.google, consoleHost);
 
   const app = Fastify({
     logger: false,
@@ -178,8 +222,9 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
       await studio.register(studioOutboxRoutes);
     }, { prefix: '/api/studio' });
     await scope.register(async (api) => {
-      await api.register(academyRoutes);
+      await api.register(academyRoutes, { googleSignIn: !!google });
       await api.register(authRoutes, { loginLimit: limits.login });
+      if (google) await api.register(googleAcademyRoutes, { google, loginLimit: limits.login });
       await api.register(onboardingRoutes);
       await api.register(placementRoutes);
       await api.register(pathwayRoutes);
@@ -199,6 +244,13 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
       await console.register(consoleOutboxRoutes);
       await console.register(contentRoutes, { prefix: '/content', run: consoleContent, platform: true });
     }, { prefix: '/api/console' });
+  }
+
+  // The Google callback: one host for every academy, and nothing else on it.
+  if (google) {
+    await app.register(async (callback) => {
+      await callback.register(googleCallbackRoutes, { google, limit: limits.login });
+    }, { prefix: '/api/auth/google' });
   }
 
   return app;
