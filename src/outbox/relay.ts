@@ -156,6 +156,7 @@ export class OutboxRelay {
   private readonly dispatcher: Dispatcher;
   private running = false;
   private timer: NodeJS.Timeout | null = null;
+  private inFlight: Promise<void> | null = null;
 
   constructor(opts: RelayOptions = {}) {
     this.workerId = opts.workerId ?? `relay-${process.pid}-${randomUUID().slice(0, 8)}`;
@@ -260,20 +261,25 @@ export class OutboxRelay {
     this.running = true;
     const loop = async () => {
       if (!this.running) return;
-      try {
-        const r = await this.pass();
-        if (r.claimed > 0) logger.info(r, 'outbox pass');
-      } catch (err) {
-        logger.error({ err }, 'outbox pass failed');
-      }
-      this.timer = setTimeout(loop, config.outbox.pollMs);
+      this.inFlight = this.pass().then(
+        (r) => { if (r.claimed > 0) logger.info(r, 'outbox pass'); },
+        (err: unknown) => { logger.error({ err }, 'outbox pass failed'); },
+      );
+      await this.inFlight;
+      this.inFlight = null;
+      if (this.running) this.timer = setTimeout(loop, config.outbox.pollMs);
     };
     void loop();
     logger.info({ worker: this.workerId }, 'outbox relay started');
   }
 
-  stop(): void {
+  /**
+   * No new pass starts; resolves once the one under way has finished, so
+   * a restart does not leave claimed events locked until the reaper frees them.
+   */
+  async stop(): Promise<void> {
     this.running = false;
     if (this.timer) clearTimeout(this.timer);
+    await this.inFlight;
   }
 }

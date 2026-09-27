@@ -19,7 +19,7 @@
     "test": "node --test --test-concurrency=1 dist/test/*.test.js",
     "start": "node dist/src/http/main.js",
     "console:create-owner": "node dist/src/cli/createOwner.js",
-    "worker": "node dist/src/outbox/worker.js",
+    "worker": "node dist/src/outbox/main.js",
     "demo:team": "node dist/src/cli/demoTeam.js",
     "demo:code": "node dist/src/cli/demoTeam.js --code",
     "studio:build": "next build studio",

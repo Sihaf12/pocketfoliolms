@@ -285,6 +285,36 @@ test('a failing endpoint backs off, then lands in the dead letter queue', async 
   assert.match(row.last_error, /503/, 'the original error is kept for replay');
 });
 
+test('stopping the relay waits for the delivery under way, and starts no other', async () => {
+  await withControl(async (c) => { await c.query(`DELETE FROM app.outbox_events`); });
+  await withTenant({ tenantId: sable }, async (db) => {
+    await db.enqueue({ type: 'certificate.issued', payload: { serial: 'PA-2' }, idempotencyKey: 'stop:1' });
+  });
+
+  let sends = 0;
+  let delivering = (): void => undefined;
+  let finish = (): void => undefined;
+  const underWay = new Promise<void>((r) => { delivering = r; });
+  const gate = new Promise<void>((r) => { finish = r; });
+  const dispatcher: Dispatcher = { async send() { sends += 1; delivering(); await gate; } };
+  const relay = new OutboxRelay({ dispatcher });
+  relay.start();
+  await underWay;
+
+  let stopped = false;
+  const stopping = relay.stop().then(() => { stopped = true; });
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(stopped, false, 'stop waits while a delivery is under way');
+  finish();
+  await stopping;
+
+  const status = await withControl(async (c) =>
+    (await c.query<{ status: string }>(`SELECT status FROM app.outbox_events WHERE idempotency_key='stop:1'`)).rows[0]!.status);
+  assert.equal(status, 'delivered', 'nothing is left locked for the reaper');
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(sends, 1, 'no pass after stopping');
+});
+
 /* ------------------------------------------------------------------ */
 
 test('ingress blocks advice, predictions, jailbreaks and distress', () => {
