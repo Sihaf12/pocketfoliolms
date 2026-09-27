@@ -155,6 +155,11 @@ It starts Fastify on 127.0.0.1:3000 and the Next.js front end on
 session cookies work over plain HTTP. The two share a secret made once in
 `.demo/proxy.secret`.
 
+With `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and
+`AUTH_CALLBACK_HOST=localhost:3100` in `.env`, the academies' sign-in and
+sign-up pages offer Continue with Google (see Deployment). Without them
+the button is not shown.
+
 It also makes a demo team (`src/cli/demoTeam.ts`): admin@, author@,
 reviewer@ and compliance@ each academy's domain, one role each because
 the separation rule counts people, and owner@, author@, reviewer@ and
@@ -221,6 +226,29 @@ the session on the next request. For local use,
 refuses to start if it is set while `NODE_ENV=production`. Anywhere
 else, put a TLS-terminating proxy in front instead. The API tests are
 unaffected: they use `app.inject()` and send the cookie header directly.
+
+**Google sign-in for learners** is on when `GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET` and `AUTH_CALLBACK_HOST` are set. Every academy
+returns from Google to one platform-owned host, `AUTH_CALLBACK_HOST`,
+at `/api/auth/google/callback`, so Google needs one redirect URI for
+all of them. That host must point at the front end like any academy,
+and must not be an academy's domain or the console's; the server
+refuses to start if it is.
+
+- **Production requires https for the callback host.** The server builds
+  the redirect URI as `https://<AUTH_CALLBACK_HOST>/api/auth/google/callback`
+  for any host other than localhost, and Google rejects plain http
+  redirects except for localhost.
+- **Plain http is for development only**, and only for
+  `localhost[:port]`: `AUTH_CALLBACK_HOST=localhost:3100` gives
+  `http://localhost:3100/api/auth/google/callback`. The server refuses to
+  start with a localhost callback host while `NODE_ENV=production`.
+- Only learners sign in this way. An email that belongs to an account
+  holding any studio role is refused, and nothing is linked. An existing
+  learner with the same email is linked: the password is cleared and the
+  learner's other sessions end. Both are audited.
+- `npm run demo` reads `.env` (or `DEMO_ENV_FILE`). The e2e run never
+  reads it; it plays Google with a local stand-in.
 
 ## Backlog: before production
 
