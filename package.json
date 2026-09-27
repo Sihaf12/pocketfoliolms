@@ -9,7 +9,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && next typegen studio >/dev/null && tsc -p studio --noEmit && tsc -p e2e",
-    "migrate": "psql \"${OWNER_DATABASE_URL:-postgres:///academy}\" -v ON_ERROR_STOP=1 -f db/001_schema.sql -f db/002_rls.sql -f db/003_platform_rls.sql -f db/004_content_versions_rls.sql -f db/005_request_path.sql -f db/006_attempt_lessons.sql -f db/007_pathway_and_branding.sql -f db/008_studio.sql -f db/009_studio_identity.sql -f db/010_academy_settings.sql -f db/011_entitlements.sql",
+    "migrate": "psql \"${OWNER_DATABASE_URL:-postgres:///academy}\" -v ON_ERROR_STOP=1 -f db/001_schema.sql -f db/002_rls.sql -f db/003_platform_rls.sql -f db/004_content_versions_rls.sql -f db/005_request_path.sql -f db/006_attempt_lessons.sql -f db/007_pathway_and_branding.sql -f db/008_studio.sql -f db/009_studio_identity.sql -f db/010_academy_settings.sql -f db/011_entitlements.sql -f db/012_google_signin.sql",
     "test:db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/tests/rls_proof.sql",
     "test:migrate": "sh db/tests/migrate_fresh.sh",
     "test:studio": "psql \"${OWNER_DATABASE_URL:-postgres:///academy}\" -v ON_ERROR_STOP=1 -f db/tests/studio_proof.sql",

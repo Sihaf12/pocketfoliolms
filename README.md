@@ -17,8 +17,9 @@ platform console as a Next.js front end.
     db/009_studio_identity.sql studio roles as a set, staff invitations, TOTP replay guard
     db/010_academy_settings.sql the studio's five functions for brand, domain and CRM settings
     db/011_entitlements.sql which platform courses each academy may offer, enforced on the catalogue
+    db/012_google_signin.sql Google sign-in for learners: sign-in states and handoff codes
     db/tests/seed.sql      academies, courses and certificates for the proof tests
-    db/tests/rls_proof.sql 51 assertions run as the unprivileged app role
+    db/tests/rls_proof.sql 59 assertions run as the unprivileged app role
     db/tests/migrate_fresh.sh proves npm run migrate builds a fresh database
     db/tests/studio_proof.sql proves the studio and console roles and the review workflow
     db/seed/demo.sql       the demo: three academies, the eleven-lesson curriculum
@@ -70,7 +71,7 @@ platform console as a Next.js front end.
     createdb academy
     npm run migrate                                      # as the database owner
     psql academy -f db/tests/seed.sql
-    psql academy -U app_user -f db/tests/rls_proof.sql   # 51 assertions
+    psql academy -U app_user -f db/tests/rls_proof.sql   # 59 assertions
 
     npm install
     npm run build

@@ -488,4 +488,58 @@ BEGIN
   PERFORM pg_temp.expect(out_cols = 2, 'branding returns name and brand only, no id, domain or CRM settings');
 END $$;
 
+-- ---------------------------------------------------------------------
+-- 21. Google sign-in: states and handoffs belong to one academy
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE a uuid; b uuid; u uuid; n integer; blocked boolean; taken record;
+BEGIN
+  SELECT id INTO a FROM app.tenants_seed_view WHERE slug='northgate';
+  SELECT id INTO b FROM app.tenants_seed_view WHERE slug='sable';
+
+  PERFORM pg_temp.expect(
+    (SELECT bool_and(relrowsecurity AND relforcerowsecurity) FROM pg_class WHERE oid IN ('app.sso_states'::regclass, 'app.sso_handoffs'::regclass)),
+    'both sign-in tables have RLS enabled and forced');
+
+  PERFORM set_config('app.tenant_id', a::text, true);
+  INSERT INTO app.sso_states (tenant_id, state_hash, code_verifier, nonce, binding_hash, origin)
+  VALUES (a, 'proof-state', 'verifier', 'nonce', 'binding', 'https://learn.northgate.ae');
+  blocked := false;
+  BEGIN
+    PERFORM 1 FROM app.sso_states;
+  EXCEPTION WHEN insufficient_privilege THEN blocked := true;
+  END;
+  PERFORM pg_temp.expect(blocked, 'a state is written by the request role and never read back by it');
+
+  PERFORM set_config('app.tenant_id', b::text, true);
+  blocked := false;
+  BEGIN
+    INSERT INTO app.sso_states (tenant_id, state_hash, code_verifier, nonce, binding_hash, origin)
+    VALUES (a, 'planted-state', 'v', 'n', 'b', 'https://learn.northgate.ae');
+  EXCEPTION WHEN insufficient_privilege THEN blocked := true;
+  END;
+  PERFORM pg_temp.expect(blocked, 'tenant B cannot start a sign-in for tenant A');
+
+  PERFORM set_config('app.tenant_id', '', true);
+  SELECT * INTO taken FROM app.sso_state_take('proof-state');
+  PERFORM pg_temp.expect(taken.tenant_id = a AND NOT taken.expired, 'the callback takes a state by its value, with no academy in scope');
+  PERFORM pg_temp.expect(NOT EXISTS (SELECT 1 FROM app.sso_state_take('proof-state')), 'and only once');
+
+  PERFORM set_config('app.tenant_id', a::text, true);
+  SELECT id INTO u FROM app.users WHERE email = 'amara@example.com';
+  INSERT INTO app.sso_handoffs (tenant_id, code_hash, user_id, binding_hash) VALUES (a, 'proof-code', u, 'binding');
+  SELECT count(*) INTO n FROM app.sso_handoffs WHERE code_hash = 'proof-code';
+  PERFORM pg_temp.expect(n = 1, 'an academy reads its own handoff');
+
+  PERFORM set_config('app.tenant_id', b::text, true);
+  SELECT count(*) INTO n FROM app.sso_handoffs WHERE code_hash = 'proof-code';
+  PERFORM pg_temp.expect(n = 0, 'tenant B cannot see tenant A''s handoff, even holding its code');
+  UPDATE app.sso_handoffs SET used_at = now() WHERE code_hash = 'proof-code';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  PERFORM pg_temp.expect(n = 0, 'nor redeem it');
+
+  PERFORM set_config('app.tenant_id', a::text, true);
+  DELETE FROM app.sso_handoffs WHERE code_hash = 'proof-code';
+END $$;
+
 SELECT 'ALL MODULE 1 TESTS PASSED' AS result;
