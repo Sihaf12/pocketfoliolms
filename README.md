@@ -1,7 +1,7 @@
 # Trader Academy Platform
 
 Multi-tenant learning platform: the data boundary, the backend that
-enforces it, the learner client, and (Module 4a) the content studio and
+enforces it, the learner app (Module 4b), and (Module 4a) the content studio and
 platform console as a Next.js front end.
 
 ## What is here
@@ -42,8 +42,7 @@ platform console as a Next.js front end.
     src/http/tenantScope.ts     host -> academy, or 404; never a default
     src/http/routes/            the REST routes, one file per area
     src/http/routes/public/     certificate verification: no tenant, no session
-    src/http/routes/pages.ts    GET / (branded client) and GET /verify/:serial
-    src/http/brand.ts           brand tokens: allowlisted, validated, escaped
+    src/http/brand.ts           brand tokens, as the API reads them (the contract is packages/shared)
     src/http/forwarding.ts      public host and client IP; forwarded headers need the front end's secret
     src/http/studioScope.ts     /api/studio: studio sessions, role sets, app_studio
     src/http/consoleScope.ts    /api/console: its own host only, staff sessions, app_console
@@ -52,8 +51,6 @@ platform console as a Next.js front end.
     src/content/                the content workflow: drafts, review, publishing into live rows
     src/http/routes/content.ts  content routes, registered in the studio and the console
 
-    web/index.html              the academy client, served per host at /
-    web/verify.html             the public, unbranded verification page
 
     test/platform.test.ts       integration tests against a real database
     test/http.*.test.ts         the REST routes through app.inject()
@@ -77,12 +74,12 @@ platform console as a Next.js front end.
 
     npm install
     npm run build
-    npm test                                             # 172 tests
+    npm test                                             # 166 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow (75)
     npm run typecheck                                    # the API, the studio and the end-to-end specs
     npx playwright install chromium                      # once
-    npm run test:e2e                                     # 68 browser tests, on academy_e2e
+    npm run test:e2e                                     # 74 browser tests, on academy_e2e
 
 ### Connections
 
@@ -102,8 +99,7 @@ they must run as the owner. `app_user` does not exist until
 `002_rls.sql` creates it, and could not create a schema if it did.
 
 The HTTP server (`npm start`) reads `HTTP_HOST`, `HTTP_PORT`,
-`PROXY_SECRET`, `CONSOLE_HOST`, `CONSOLE_TOTP_KEY`, `WEB_ROOT` (default
-`web`) and `DEV_INSECURE_COOKIE`.
+`PROXY_SECRET`, `CONSOLE_HOST`, `CONSOLE_TOTP_KEY` and `DEV_INSECURE_COOKIE`.
 
 - **The host decides the academy.** Forwarded headers (`X-Forwarded-Host`,
   `-For`, `-Proto`, `Forwarded`) are believed only when the request also

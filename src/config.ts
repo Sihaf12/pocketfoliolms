@@ -19,7 +19,6 @@ export const config = {
     // forwarded request. Forwarded headers without it are refused. Empty
     // means no front end: the Host header alone decides the academy.
     proxySecret: process.env.PROXY_SECRET ?? '',
-    webRoot: process.env.WEB_ROOT ?? 'web',
     // Development only. The server refuses to start with it in production.
     insecureDevCookie: process.env.DEV_INSECURE_COOKIE === '1',
   },

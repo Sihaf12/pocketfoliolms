@@ -14,7 +14,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ScopedDb } from '../../db/unitOfWork.js';
 import type { Learner } from '../../auth/session.js';
-import type { Tier, TierScores } from '../../domain/placement.js';
+import { PASS_THRESHOLD, type Tier, type TierScores } from '../../domain/placement.js';
 import { availability } from '../../domain/pathway.js';
 import { drawCheck } from '../../domain/papers.js';
 import { inAcademy, requireLearner, requirePlacement } from '../context.js';
@@ -45,6 +45,13 @@ const lessonParams = {
   additionalProperties: false,
   required: ['lessonId'],
   properties: { lessonId: uuid },
+} as const;
+
+/** A check paper also says how many right answers verify the lesson, so no client holds the pass mark. */
+const checkPaper = {
+  ...paper,
+  required: [...paper.required, 'passMark'],
+  properties: { ...paper.properties, passMark: { type: 'integer' } },
 } as const;
 
 const lessonSchema = {
@@ -132,7 +139,7 @@ export async function lessonRoutes(app: FastifyInstance): Promise<void> {
     }));
 
   app.post<{ Params: { lessonId: string } }>('/lessons/:lessonId/checks', {
-    schema: { params: lessonParams, response: { 200: paper, 201: paper } },
+    schema: { params: lessonParams, response: { 200: checkPaper, 201: checkPaper } },
   }, async (req, reply) => {
     const { lessonId } = req.params;
     const { status, body } = await inAcademy(req, async (db) => {
@@ -150,7 +157,7 @@ export async function lessonRoutes(app: FastifyInstance): Promise<void> {
             WHERE user_id = $1 AND lesson_id = $2 AND kind = 'knowledge_check' AND submitted_at IS NULL`,
           [learner.id, lessonId],
         );
-        return open && { status: 200 as const, body: { attemptId: open.id, questions: await questionsFor(open.questionIds) } };
+        return open && { status: 200 as const, body: { attemptId: open.id, questions: await questionsFor(open.questionIds), passMark: PASS_THRESHOLD } };
       };
       const existing = await openPaper();
       if (existing) return existing;
@@ -172,7 +179,7 @@ export async function lessonRoutes(app: FastifyInstance): Promise<void> {
          RETURNING id`,
         [learner.id, lesson.courseId, lessonId, ids, ids.length],
       );
-      if (attempt) return { status: 201 as const, body: { attemptId: attempt.id, questions: await questionsFor(ids) } };
+      if (attempt) return { status: 201 as const, body: { attemptId: attempt.id, questions: await questionsFor(ids), passMark: PASS_THRESHOLD } };
       const winner = await openPaper();
       if (!winner) throw new Error('check insert conflicted but no open paper is visible');
       return winner;

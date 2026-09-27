@@ -315,3 +315,77 @@ for (const host of ACADEMIES) {
     await visitor.close();
   });
 }
+
+for (const host of ACADEMIES) {
+  const label = host.split('.')[0]!;
+
+  test(`the verify form, a missed check and a locked lesson in ${label}`, async ({ page }, info) => {
+    await page.goto(at(host, '/verify'));
+    await check(page, info, `${label}-verify-form`, 'Check a certificate');
+    await page.getByLabel('Certificate code').fill('not a code');
+    await page.getByRole('button', { name: 'Check' }).click();
+    await expect(page.getByRole('status')).toHaveText('NOT A CODE is not a certificate code. Codes look like PA-7K3M-9QXD.');
+
+    await placed(page, host);
+    const lessons = await lessonsByTitle(page);
+    const locked = [...lessons.values()].find((l) => l.state === 'locked')!;
+    await page.goto(at(host, `/learn/${locked.id}`));
+    await check(page, info, `${label}-lesson-locked`, 'This lesson is locked');
+    await expect(page.locator('.locked-note')).toHaveText(/^(Requires|Unlocks at)/);
+
+    // Every answer wrong: not this time, and another go draws a new paper.
+    const first = [...lessons.values()].find((l) => l.state === 'open')!;
+    await page.goto(at(host, `/learn/${first.id}/check`));
+    await expect(page.getByText('1 of 3', { exact: true })).toBeVisible();
+    const open = (await api<{ attemptId: string; questions: { id: string; prompt: string }[] }>(page, `/api/v1/lessons/${first.id}/checks`, { method: 'POST' })).body;
+    const keys = await answerKeys(open.questions.map((q) => q.id));
+    for (let n = 0; n < 3; n++) {
+      await expect(page.getByText(`${n + 1} of 3`, { exact: true })).toBeVisible();
+      const prompt = (await page.getByRole('heading', { level: 1 }).textContent())!;
+      const right = keys[open.questions.find((q) => q.prompt === prompt)!.id]!;
+      await page.keyboard.press(right === 'a' ? 'b' : 'a');
+      await page.getByRole('button', { name: n < 2 ? 'Next question' : 'See my result' }).click();
+    }
+    const miss = page.getByRole('dialog', { name: 'Not this time' });
+    await expect(miss).toContainText('0 of 3 correct. Two of three are needed.');
+    await expectAccessible(page, `${label} missed check`);
+    await shot(page, info, `learner-${label}-missed`);
+    await miss.getByRole('button', { name: 'Try again' }).click();
+    await expect(page.getByText('1 of 3', { exact: true })).toBeVisible();
+    const again = (await api<{ attemptId: string }>(page, `/api/v1/lessons/${first.id}/checks`, { method: 'POST' })).body;
+    expect(again.attemptId).not.toBe(open.attemptId);
+  });
+}
+
+test('from sign-up to the starting point with the keyboard alone', async ({ page }) => {
+  const host = ACADEMIES[1];
+  await page.goto(at(host, '/signup'));
+  const type = async (label: string, value: string) => { await page.getByLabel(label).focus(); await page.keyboard.type(value); };
+  await type('Name', 'Keyboard Learner');
+  await type('Email', newEmail());
+  await type('Password', team().password);
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Space');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Create account' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.waitForURL(/\/onboarding$/);
+
+  await page.getByRole('radiogroup', { name: 'What do you want from this?' }).getByRole('radio').first().focus();
+  await page.keyboard.press('Space');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Next' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Start the placement check' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForURL(/\/placement$/);
+
+  for (let n = 1; n <= 8; n++) {
+    await expect(page.getByText(`${n} of 8`, { exact: true })).toBeVisible();
+    await page.keyboard.press('b');
+  }
+  await page.waitForURL(/\/start$/);
+  await expect(page.getByRole('link', { name: 'See my path' })).toBeVisible();
+});

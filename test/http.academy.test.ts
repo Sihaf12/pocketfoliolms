@@ -207,8 +207,8 @@ test('the brand takes the ten tokens only, refuses unreadable pairs by name, and
   assert.deepEqual((await studio(a, a.admin, 'GET', '/settings/brand')).json().brand, { sub: 'Harbour', tokens: { '--brand': '#0B4F8A', '--radius': '12px' } });
   assert.equal((await academyAudit(a.id, 'settings.brand_changed')).length, 1, 'only the change that landed');
 
-  const page = await app.inject({ method: 'GET', url: '/', headers: { host: a.domain } });
-  assert.match(page.body, /#0B4F8A/, 'learners see it at once');
+  const served = await app.inject({ method: 'GET', url: '/api/v1/academy', headers: { host: a.domain } });
+  assert.equal(served.json().tokens['--brand'], '#0B4F8A', 'learners see it at once');
 });
 
 test('review sign-offs are 2 or 3, and the change is audited', async () => {
@@ -277,8 +277,8 @@ test('a domain moves only after its TXT record is found, and every step is audit
   assert.equal(verified.statusCode, 200, verified.body);
   assert.equal(verified.json().domain, target);
 
-  assert.equal((await app.inject({ method: 'GET', url: '/', headers: { host: target } })).statusCode, 200, 'the new host answers');
-  assert.equal((await app.inject({ method: 'GET', url: '/', headers: { host: a.domain } })).statusCode, 404, 'the old one does not');
+  assert.equal((await app.inject({ method: 'GET', url: '/api/v1/academy', headers: { host: target } })).statusCode, 200, 'the new host answers');
+  assert.equal((await app.inject({ method: 'GET', url: '/api/v1/academy', headers: { host: a.domain } })).statusCode, 404, 'the old one does not');
   assert.deepEqual((await academyAudit(a.id, 'domain.changed')).map((r) => r.payload), [{ from: a.domain, to: target, by: 'dns_txt' }]);
   assert.equal((await studio({ domain: target }, a.admin, 'POST', '/settings/domain/verify')).statusCode, 404, 'nothing left to verify');
 });
@@ -301,7 +301,7 @@ test('a waiting domain change can be cancelled, or applied by the platform owner
   const done = await override(owner);
   assert.equal(done.statusCode, 200, done.body);
   assert.equal(done.json().tenant.primaryDomain, target);
-  assert.equal((await app.inject({ method: 'GET', url: '/', headers: { host: target } })).statusCode, 200);
+  assert.equal((await app.inject({ method: 'GET', url: '/api/v1/academy', headers: { host: target } })).statusCode, 200);
 
   const audit = (await ownerPool.query<{ action: string; payload: Record<string, unknown> }>(
     'SELECT action, payload FROM platform.audit_log WHERE entity_id = $1', [pending.id])).rows;

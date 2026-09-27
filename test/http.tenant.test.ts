@@ -163,10 +163,7 @@ test('a tenant id in the body is rejected, not used', async () => {
 });
 
 test('every route sits in exactly one scope: public, academy, or console', async () => {
-  const PUBLIC = new Set([
-    'GET /api/v1/certificates/:serial', 'HEAD /api/v1/certificates/:serial',
-    'GET /verify/:serial', 'HEAD /verify/:serial',
-  ]);
+  const PUBLIC = new Set(['GET /api/v1/certificates/:serial', 'HEAD /api/v1/certificates/:serial']);
   const isConsole = (url: string) => url.startsWith('/api/console');
   assert.ok(app.routeList.some((r) => isConsole(r.url)), 'the console is registered');
   assert.ok(app.routeList.some((r) => r.url.startsWith('/api/studio')), 'the studio is registered');

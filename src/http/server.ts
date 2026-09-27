@@ -13,8 +13,6 @@
  * client's address, and refuses forwarded headers that did not come
  * from the front end.
  */
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
@@ -29,7 +27,6 @@ import { lessonRoutes } from './routes/lessons.js';
 import { checkRoutes } from './routes/checks.js';
 import { meRoutes } from './routes/me.js';
 import { certificateRoutes } from './routes/public/certificates.js';
-import { academyPage, verifyPage } from './routes/pages.js';
 import { studioAccountRoutes } from './routes/studio/account.js';
 import { studioUserRoutes } from './routes/studio/users.js';
 import { consoleAccountRoutes } from './routes/console/account.js';
@@ -87,8 +84,6 @@ export interface ServerOptions {
   limits?: { tenant?: RouteLimit; login?: RouteLimit; certificates?: RouteLimit; console?: RouteLimit };
   /** The console's one host, and the key TOTP secrets are sealed with. No host: no console. */
   console?: { host: string; totpKey: string };
-  /** Where index.html and verify.html are read from. */
-  webRoot?: string;
   /**
    * Development only: send the session cookie without Secure, so a
    * browser keeps it over plain HTTP on a local .test host. Refused
@@ -110,15 +105,6 @@ export class InsecureCookieInProductionError extends Error {
   constructor() {
     super('DEV_INSECURE_COOKIE is set while NODE_ENV is production. Refusing to start.');
     this.name = 'InsecureCookieInProductionError';
-  }
-}
-
-async function readPage(path: string): Promise<string | null> {
-  try {
-    return await readFile(path, 'utf8');
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw err;
   }
 }
 
@@ -174,20 +160,13 @@ export async function buildServer(opts: ServerOptions = {}): Promise<FastifyInst
   });
   const limits = { ...DEFAULT_LIMITS, ...opts.limits };
 
-  const webRoot = opts.webRoot ?? config.http.webRoot;
-  const [academyHtml, verifyHtml] = await Promise.all([
-    readPage(join(webRoot, 'index.html')),
-    readPage(join(webRoot, 'verify.html')),
-  ]);
 
   await app.register(async (publicScope) => {
     await publicScope.register(certificateRoutes, { prefix: '/api/v1', limit: limits.certificates });
-    await publicScope.register(verifyPage, { page: verifyHtml });
   });
 
   await app.register(async (scope) => {
     tenantScope(scope, { limit: limits.tenant, consoleHost });
-    await scope.register(academyPage, { page: academyHtml });
     await scope.register(async (studio) => {
       studioScope(studio);
       await studio.register(studioAccountRoutes, { loginLimit: limits.login });

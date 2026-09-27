@@ -9,8 +9,8 @@
  *   [[term|definition]]   a glossary term
  *
  * Every piece of text is escaped. Nothing from a lesson is ever inserted
- * as markup. The rewired prototype holds a copy of parseLesson and inline
- * until Module 4b replaces it; a test keeps the two identical.
+ * as markup. The learner app renders lessons with these functions, and
+ * the studio's preview does too, so an author sees what a learner reads.
  */
 
 export interface LessonStep {

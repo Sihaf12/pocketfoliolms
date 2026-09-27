@@ -87,7 +87,7 @@ test('the console answers on its host only', async () => {
   assert.equal((await consoleCall('GET', '/me', boss.token, undefined, NORTHGATE)).statusCode, 404, 'not on an academy host');
   const learnerRoute = await app.inject({ method: 'GET', url: '/api/v1/me', headers: { host: CONSOLE } });
   assert.equal(learnerRoute.json().error.code, 'unknown_academy', 'and academy routes are not on the console host');
-  const page = await app.inject({ method: 'GET', url: '/', headers: { host: CONSOLE } });
+  const page = await app.inject({ method: 'GET', url: '/api/v1/academy', headers: { host: CONSOLE } });
   assert.equal(page.statusCode, 404);
 });
 
@@ -102,7 +102,7 @@ test('creating an academy provisions it whole, audits it, and its first admin ca
   assert.equal(tenant.primaryDomain, domain);
   assert.match(link, new RegExp(`^http://${domain.replace(/\./g, '\\.')}/studio/invite/[A-Za-z0-9_-]{40,}$`));
 
-  const page = await app.inject({ method: 'GET', url: '/', headers: { host: domain } });
+  const page = await app.inject({ method: 'GET', url: '/api/v1/academy', headers: { host: domain } });
   assert.equal(page.statusCode, 200, 'the new academy answers at once');
 
   const catalogue = await ownerPool.query(`SELECT count(*)::int AS n FROM app.tenant_catalogues WHERE tenant_id = $1 AND enabled`, [tenant.id]);
@@ -141,9 +141,9 @@ test('suspending an academy takes its host offline, and reactivating brings it b
     slug: domain.split('.')[0], name: 'Pause Test', primaryDomain: domain, adminEmail: uniqueEmail('pause'),
   })).json();
   assert.equal((await consoleCall('PATCH', `/tenants/${tenant.id}`, boss.token, { status: 'suspended' })).statusCode, 200);
-  assert.equal((await app.inject({ method: 'GET', url: '/', headers: { host: domain } })).statusCode, 404);
+  assert.equal((await app.inject({ method: 'GET', url: '/api/v1/academy', headers: { host: domain } })).statusCode, 404);
   await consoleCall('PATCH', `/tenants/${tenant.id}`, boss.token, { status: 'active' });
-  assert.equal((await app.inject({ method: 'GET', url: '/', headers: { host: domain } })).statusCode, 200);
+  assert.equal((await app.inject({ method: 'GET', url: '/api/v1/academy', headers: { host: domain } })).statusCode, 200);
   assert.deepEqual(await platformAudit(tenant.id), ['tenant.created', 'tenant.status_changed', 'tenant.status_changed']);
 });
 

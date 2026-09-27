@@ -72,3 +72,15 @@ export function sanitiseBrand(raw: unknown): Brand {
 export function resolveTokens(tokens: Partial<Tokens>): Tokens {
   return { ...DEFAULT_TOKENS, ...tokens };
 }
+
+/**
+ * The academy's tokens as a stylesheet rule, for a page to write after its
+ * defaults. Only the ten contract tokens, each matching the contract's own
+ * pattern, can appear: nothing typed into a brand can close the style
+ * element or carry anything but a colour or a radius.
+ */
+export function tokenStylesheet(raw: unknown): string {
+  const { tokens } = sanitiseBrand({ tokens: raw });
+  const decls = (Object.entries(tokens) as [BrandToken, string][]).map(([name, value]) => `${name}:${value}`);
+  return decls.length ? `:root{${decls.join(';')}}` : '';
+}

@@ -21,7 +21,7 @@ import type { LessonData } from './Lesson';
 import { TIER_NAME } from './Start';
 
 interface Question { id: string; prompt: string; options: { key: string; text: string }[] }
-interface Paper { attemptId: string; questions: Question[] }
+interface Paper { attemptId: string; questions: Question[]; passMark: number }
 interface Marked { chosen: string; correct: boolean; correctKey: string; rationale: string }
 interface Result { correct: number; total: number; passed: boolean; stars: number; certificate: { serial: string; courseTitle: string } | null }
 
@@ -173,10 +173,12 @@ export function CheckPage() {
     return () => document.removeEventListener('keydown', onKey);
   }, [q, mark, answer, result]);
 
+  // The pass mark comes with the paper: the server's rule, only counted down here.
   const got = marks.filter((m) => m?.correct).length;
-  const left = 3 - marks.filter(Boolean).length;
-  const need = Math.max(0, 2 - got);
-  const standing = got >= 2 ? 'Verified. The last question is a bonus.' : need > left ? 'Not enough left to verify this time. Finish anyway, then try again.' : `${need} more correct to verify.`;
+  const total = paper?.questions.length ?? 3;
+  const left = total - marks.filter(Boolean).length;
+  const need = Math.max(0, (paper?.passMark ?? total) - got);
+  const standing = !need ? 'Enough to verify. The rest are a bonus.' : need > left ? 'Not enough left to verify this time. Finish anyway, then try again.' : `${need} more correct to verify.`;
 
   return (
     <div className="screen">
