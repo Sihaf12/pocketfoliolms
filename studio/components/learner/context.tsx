@@ -7,7 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { usePathname, useRouter } from 'next/navigation';
 import { ApiError, call } from '@/lib/api';
 
-export interface Academy { name: string; sub: string }
+export interface Academy { name: string; sub: string; googleSignIn: boolean }
 
 export type Tier = 'learn' | 'safeguard' | 'apply' | 'specialise';
 export type Scores = Record<Tier, number>;
@@ -32,7 +32,7 @@ interface Session {
   forget(): void;
 }
 
-const AcademyCtx = createContext<Academy>({ name: '', sub: '' });
+const AcademyCtx = createContext<Academy>({ name: '', sub: '', googleSignIn: false });
 const SessionCtx = createContext<Session | null>(null);
 
 export const useAcademy = () => useContext(AcademyCtx);

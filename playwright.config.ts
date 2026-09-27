@@ -31,6 +31,8 @@ export default defineConfig({
     command: 'sh scripts/demo.sh',
     env: {
       DEMO_DATABASE: 'academy_e2e', DEMO_PORT: '3201', DEMO_STUDIO_PORT: String(STUDIO_PORT), DEMO_DIR: '.demo/e2e',
+      // Google is played by a local stand-in; a developer's own .env is not read.
+      DEMO_ENV_FILE: '/dev/null', DEMO_FAKE_GOOGLE_PORT: '3302',
       // Every request comes from 127.0.0.1, so the per-address limits are lifted for the run.
       RATE_TENANT_PER_MIN: '100000', RATE_LOGIN_PER_MIN: '100000', RATE_CONSOLE_PER_MIN: '100000',
     },

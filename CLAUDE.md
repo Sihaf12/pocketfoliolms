@@ -24,7 +24,7 @@ Multi-tenant learning platform. Each broker gets a branded academy on one engine
 - `npm run test:demo-seed` proves db/seed/demo.sql loads twice cleanly and is complete.
 - `npm run demo` serves the three demo academies, their studios and the console
   from academy_demo, never academy (open :3100; Fastify is on :3000).
-- `npm run test:e2e` runs 74 Playwright tests on academy_e2e: every studio and
+- `npm run test:e2e` runs 86 Playwright tests on academy_e2e: every studio and
   console screen in GTL and Meridian, at 390px and desktop, with axe, keyboard
   and reduced motion. `npm run typecheck` covers the API, studio and e2e.
 - The studio and learner UIs follow .claude/skills/academy-design/SKILL.md.

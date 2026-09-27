@@ -8,6 +8,11 @@
 #   DEMO_STUDIO_PORT   Next.js, what you open     (default 3100)
 #   DEMO_PGHOST        Postgres socket directory  (default /tmp)
 #   DEMO_DIR           keys and the demo team     (default .demo)
+#   DEMO_ENV_FILE      your own settings          (default .env)
+#   DEMO_FAKE_GOOGLE_PORT  a local stand-in for Google, for the e2e run
+#
+# Google sign-in is on when the settings file gives GOOGLE_CLIENT_ID,
+# GOOGLE_CLIENT_SECRET and AUTH_CALLBACK_HOST (localhost:3100 here).
 #
 # It builds, migrates, seeds, makes the demo team, prints the /etc/hosts
 # line, and starts both servers on 127.0.0.1 with the development cookie
@@ -21,6 +26,11 @@ SOCKET="${DEMO_PGHOST:-/tmp}"
 export DEMO_DIR="${DEMO_DIR:-.demo}"
 CONSOLE_HOST="console.academy.test"
 HOSTS="gtl.academy.test pocketfolio.academy.test meridian.academy.test $CONSOLE_HOST"
+
+# Your settings first, so everything below wins over them.
+ENV_FILE="${DEMO_ENV_FILE:-.env}"
+case "$ENV_FILE" in /*) ;; *) ENV_FILE="./$ENV_FILE" ;; esac
+if [ -f "$ENV_FILE" ]; then set -a; . "$ENV_FILE"; set +a; fi
 
 # Every connection points at the demo database, whatever the shell exports.
 export OWNER_DATABASE_URL="postgres:///$DB"
@@ -85,9 +95,25 @@ echo "Sign-in details: $DEMO_DIR/team.json. The console owner's code: npm run de
 echo "Reset the demo learners with: npm run demo:reset"
 echo
 
+# The e2e run signs in through a stand-in for Google, never the real one.
+FAKE=""
+if [ -n "${DEMO_FAKE_GOOGLE_PORT:-}" ]; then
+  export GOOGLE_CLIENT_ID="e2e-client.apps.googleusercontent.test" GOOGLE_CLIENT_SECRET="e2e-secret"
+  export AUTH_CALLBACK_HOST="localhost:$STUDIO_PORT" GOOGLE_ISSUER="http://127.0.0.1:$DEMO_FAKE_GOOGLE_PORT"
+  export GOOGLE_AUTHORIZE_URL="$GOOGLE_ISSUER/authorize" GOOGLE_TOKEN_URL="$GOOGLE_ISSUER/token" GOOGLE_JWKS_URL="$GOOGLE_ISSUER/jwks"
+  node dist/test/fakeGoogleServer.js &
+  FAKE=$!
+fi
+if [ -n "${GOOGLE_CLIENT_ID:-}" ] && [ -n "${AUTH_CALLBACK_HOST:-}" ]; then
+  echo "Google sign-in is on, returning to http://$AUTH_CALLBACK_HOST/api/auth/google/callback"
+else
+  echo "Google sign-in is off: set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and AUTH_CALLBACK_HOST in $ENV_FILE"
+fi
+echo
+
 # The API in the background, stopped with this script; the studio in front.
 env NODE_ENV=development DEV_INSECURE_COOKIE=1 HTTP_HOST=127.0.0.1 HTTP_PORT="$PORT" node dist/src/http/main.js &
 API=$!
-trap 'kill $API 2>/dev/null' EXIT INT TERM
+trap 'kill $API $FAKE 2>/dev/null' EXIT INT TERM
 exec env NODE_ENV=production STUDIO_PORT="$STUDIO_PORT" BACKEND_URL="http://127.0.0.1:$PORT" PUBLIC_PROTO=http \
   node dist/src/studio/server.js

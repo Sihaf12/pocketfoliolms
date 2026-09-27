@@ -10,7 +10,7 @@ import './learner.css';
 const poppins = Poppins({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-poppins', display: 'swap' });
 const nunito = Nunito_Sans({ subsets: ['latin'], weight: ['400', '600', '700'], variable: '--font-nunito', display: 'swap' });
 
-interface Academy { name: string; sub: string; tokens: Record<string, string> }
+interface Academy { name: string; sub: string; tokens: Record<string, string>; googleSignIn: boolean }
 
 async function academy(): Promise<Academy | null> {
   return (await backendJson<Academy>('/api/v1/academy', await requestFrom())).body;
@@ -29,7 +29,7 @@ export default async function LearnerLayout({ children }: { children: React.Reac
     <html lang="en" className={`${poppins.variable} ${nunito.variable}`} data-scheme={a && isDark(a.tokens) ? 'dark' : 'light'}>
       <body>
         {a ? <Theme tokens={a.tokens} /> : null}
-        {a ? <LearnerProviders academy={{ name: a.name, sub: a.sub }}>{children}</LearnerProviders> : <main><p>No academy answers at this address.</p></main>}
+        {a ? <LearnerProviders academy={{ name: a.name, sub: a.sub, googleSignIn: a.googleSignIn }}>{children}</LearnerProviders> : <main><p>No academy answers at this address.</p></main>}
       </body>
     </html>
   );

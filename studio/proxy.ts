@@ -2,8 +2,10 @@
  * Which pages a host gets. The console's host serves the console, at its
  * root; every other host is an academy, with the learner app at / and its
  * own paths, the studio under /studio and certificate checks under /verify. A path that
- * belongs to the other surface is a plain 404 on this one. The API
- * enforces the same split again; this keeps the pages apart.
+ * belongs to the other surface is a plain 404 on this one. The Google
+ * callback host (AUTH_CALLBACK_HOST) serves only its API route, so it has
+ * no pages at all. The API enforces the same split again; this keeps the
+ * pages apart.
  *
  * No rewrites: Next.js would build them on the address it listens on,
  * not the host the browser asked for, and send them out as new requests.
@@ -24,8 +26,11 @@ const notFound = () => new NextResponse('Not found.', { status: 404, headers: { 
 
 export function proxy(request: NextRequest) {
   const consoleHost = (process.env.CONSOLE_HOST ?? '').toLowerCase();
+  const callbackHost = (process.env.AUTH_CALLBACK_HOST ?? '').trim().toLowerCase().replace(/:\d+$/, '');
   const path = request.nextUrl.pathname;
   const academyPath = ACADEMY_PATHS.some((p) => p.test(path));
+
+  if (callbackHost && hostOf(request) === callbackHost) return notFound();
 
   if (consoleHost && hostOf(request) === consoleHost) {
     // Built on the host the browser asked for, not the address Next.js listens on.

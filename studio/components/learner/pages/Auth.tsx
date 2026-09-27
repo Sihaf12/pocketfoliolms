@@ -1,21 +1,59 @@
 'use client';
 /**
  * Creating an account and signing in. Moving between the two slides the
- * form across, the way the design does; nothing else moves.
+ * form across, the way the design does; nothing else moves. Where the
+ * academy has Google sign-in, both pages offer it first; a Google
+ * sign-in that could not finish comes back to /signin?sso=<reason>.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { call } from '@/lib/api';
 import { LField, Problem } from '../form';
-import { Tick } from '../icons';
+import { GoogleG, Tick } from '../icons';
 import { Scene } from '../Scene';
 import { PlainTop, SkipLink } from '../Shell';
-import { homeFor, useMe, type Me } from '../context';
+import { homeFor, useAcademy, useMe, type Me } from '../context';
 
 /** A page link from ?next=, only ever within this academy's learner app. */
 function safeNext(raw: string | null): string | null {
   return raw && raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/studio') ? raw : null;
+}
+
+/** Why a Google sign-in came back without signing anyone in, in the learner's terms. */
+const SSO_MESSAGE: Record<string, string> = {
+  cancelled: 'Google sign-in was cancelled. Try again, or sign in with your email.',
+  expired: 'That Google sign-in took too long or was already used. Start it again.',
+  unavailable: 'Google did not answer. Try again in a moment, or sign in with your email.',
+  studio_account: 'This email belongs to a studio account, which cannot sign in with Google. Use the studio sign-in with your password.',
+  unverified: 'Google has not verified that email address yet. Verify it with Google, or sign in with your email.',
+  conflict: 'This email is already linked to a different Google account. Continue with that one.',
+  failed: 'Google sign-in did not work. Try again, or sign in with your email.',
+};
+
+function SsoProblem({ reason }: { reason: string | null }) {
+  const box = useRef<HTMLDivElement>(null);
+  const message = reason ? SSO_MESSAGE[reason] ?? SSO_MESSAGE.failed : null;
+  useEffect(() => { if (message) box.current?.focus({ preventScroll: true }); }, [message]);
+  return message ? <div className="problem" role="alert" tabIndex={-1} ref={box}>{message}</div> : null;
+}
+
+/** Continue with Google, when this academy offers it, then the email form below an "or". */
+function GoogleStart({ ibRef, next, note }: { ibRef?: string | null; next?: string | null; note?: string }) {
+  const { googleSignIn } = useAcademy();
+  if (!googleSignIn) return null;
+  const query = new URLSearchParams();
+  if (ibRef) query.set('ref', ibRef);
+  if (next) query.set('next', next);
+  const search = query.toString();
+  return (
+    <>
+      {/* A full navigation, not a fetch: the API answers with a redirect to Google. */}
+      <a className="btn sec gbtn" href={`/api/v1/auth/google/start${search ? `?${search}` : ''}`}><GoogleG />Continue with Google</a>
+      {note ? <p className="gnote">{note}</p> : null}
+      <div className="or" aria-hidden="true">or</div>
+    </>
+  );
 }
 
 export function SignUp() {
@@ -54,6 +92,7 @@ export function SignUp() {
           <span className="promise"><Tick />No deposit. No trading. Ever.</span>
           <h1>Create your account</h1>
           <p className="lead">Three minutes to your starting point. Your record belongs to this academy only.</p>
+          <GoogleStart ibRef={ref} note="By continuing, you agree that this academy keeps your learning record. It is never shared with another academy." />
           <form onSubmit={submit} noValidate>
             <Problem error={error} names={['displayName', 'email', 'password']} />
             <LField label="Name" name="displayName" error={error} autoComplete="name" required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
@@ -107,6 +146,8 @@ export function SignIn() {
         <div className={`box ${params.get('via') === 'signup' ? 'from-l' : ''}`}>
           <h1>Welcome back</h1>
           <p className="lead">Pick up exactly where you stopped.</p>
+          <SsoProblem reason={params.get('sso')} />
+          <GoogleStart next={safeNext(params.get('next'))} />
           <form onSubmit={submit} noValidate>
             <Problem error={error} names={['email', 'password']} />
             <LField label="Email" name="email" error={error} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

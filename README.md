@@ -80,7 +80,7 @@ platform console as a Next.js front end.
     npm run test:studio                                  # studio and console roles, review workflow (75)
     npm run typecheck                                    # the API, the studio and the end-to-end specs
     npx playwright install chromium                      # once
-    npm run test:e2e                                     # 74 browser tests, on academy_e2e
+    npm run test:e2e                                     # 86 browser tests, on academy_e2e
 
 ### Connections
 
