@@ -23,6 +23,13 @@
 -- academy may set. Tier and status colours are fixed in every academy.
 -- =====================================================================
 \set ON_ERROR_STOP on
+-- The academies' parent domain: academy.test locally; the staging server
+-- passes its own (psql -v demo_domain=academy-staging.example.com). Each
+-- academy keeps its first label: gtl, pocketfolio, meridian.
+\if :{?demo_domain}
+\else
+  \set demo_domain academy.test
+\endif
 BEGIN;
 
 CREATE TEMP TABLE demo (doc jsonb) ON COMMIT DROP;
@@ -1954,7 +1961,7 @@ $demo$);
 -- Academies, with their brand tokens.
 -- ---------------------------------------------------------------------
 INSERT INTO app.tenants (slug, name, primary_domain, brand, status)
-SELECT a->>'slug', a->>'name', a->>'domain', a->'brand', 'active'
+SELECT a->>'slug', a->>'name', split_part(a->>'domain', '.', 1) || '.' || lower(:'demo_domain'), a->'brand', 'active'
   FROM demo, jsonb_array_elements(doc->'academies') a
 ON CONFLICT (slug) DO UPDATE
    SET name = EXCLUDED.name, primary_domain = EXCLUDED.primary_domain,

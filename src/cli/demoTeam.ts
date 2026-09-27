@@ -5,12 +5,12 @@
  *   npm run demo:team        make or refresh the team
  *   npm run demo:code        the owner's current console code
  *
- * Demo and end-to-end databases only: it refuses any database whose name
- * does not end in _demo or _e2e. Everyone shares one generated password,
+ * Demo, end-to-end and staging databases only: it refuses any database
+ * whose name does not end in _demo, _e2e or _staging. Everyone shares one generated password,
  * kept with the owner's TOTP secret in .demo/team.json (git-ignored,
  * readable by you alone). Running it again resets the team to that file.
  *
- * Per academy (*.academy.test): admin@, author@, reviewer@ and
+ * Per academy (*.DEMO_DOMAIN, academy.test unless set): admin@, author@, reviewer@ and
  * compliance@ its domain, one role each, because the separation rule
  * counts people. On the console host: owner@ (with TOTP), author@,
  * reviewer@ and compliance@.
@@ -33,6 +33,8 @@ interface Team {
 }
 
 const dir = process.env.DEMO_DIR ?? '.demo';
+/** The demo academies' parent domain, as the seed was given it. */
+const demoDomain = (process.env.DEMO_DOMAIN ?? 'academy.test').trim().toLowerCase();
 const file = join(dir, 'team.json');
 const STUDIO = [['admin', 'tenant_admin'], ['author', 'author'], ['reviewer', 'reviewer'], ['compliance', 'compliance']] as const;
 const STAFF = [['author', 'platform_author'], ['reviewer', 'platform_reviewer'], ['compliance', 'platform_compliance']] as const;
@@ -46,7 +48,7 @@ async function makeTeam(): Promise<void> {
   const pool = new pg.Pool({ connectionString: process.env.OWNER_DATABASE_URL ?? 'postgres:///academy_demo', max: 1 });
   try {
     const db = (await pool.query<{ name: string }>('SELECT current_database() AS name')).rows[0]!.name;
-    if (!/_(demo|e2e)$/.test(db)) throw new Error(`Refusing to make a demo team in ${db}: only *_demo and *_e2e databases.`);
+    if (!/_(demo|e2e|staging)$/.test(db)) throw new Error(`Refusing to make a demo team in ${db}: only *_demo, *_e2e and *_staging databases.`);
 
     const consoleHost = config.console.host;
     if (!consoleHost) throw new Error('CONSOLE_HOST is not set.');
@@ -56,7 +58,8 @@ async function makeTeam(): Promise<void> {
     const hash = await hashPassword(password);
 
     const academies = (await pool.query<{ id: string; name: string; domain: string }>(
-      `SELECT id, name, primary_domain AS domain FROM app.tenants WHERE primary_domain LIKE '%.academy.test' ORDER BY name`)).rows;
+      `SELECT id, name, primary_domain AS domain FROM app.tenants WHERE primary_domain LIKE '%.' || $1 ORDER BY name`,
+      [demoDomain])).rows;
     const team: Team = { password, consoleHost, owner: { email: `owner@${consoleHost}`, totpSecret }, academies: [], staff: [] };
 
     for (const a of academies) {

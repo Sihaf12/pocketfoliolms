@@ -49,3 +49,14 @@ psql "$url" -tA -F '|' -c "SELECT slug, brand::text FROM app.tenants ORDER BY sl
   if (ok !== 3) { console.error('FAIL  expected 3 brands, saw ' + ok); process.exit(1); }
   console.log('PASS  all three brands keep all ten tokens and pass every contrast pair');
 "
+
+# Staging passes its own parent domain: the same academies move to it in
+# place, keyed by slug, and nothing stays behind on academy.test.
+PGOPTIONS="-c client_min_messages=warning" psql "$url" -v ON_ERROR_STOP=1 -q -v demo_domain=academy-staging.example.com -f db/seed/demo.sql
+moved="$(psql "$url" -tA -c "SELECT string_agg(primary_domain, ' ' ORDER BY primary_domain) FROM app.tenants")"
+if [ "$moved" != "gtl.academy-staging.example.com meridian.academy-staging.example.com pocketfolio.academy-staging.example.com" ]; then
+  echo "FAIL  seeding with demo_domain gave: $moved"
+  exit 1
+fi
+echo "PASS  a staging domain moves the three academies in place"
+
