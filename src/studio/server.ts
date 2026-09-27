@@ -4,10 +4,11 @@
  *
  * It exists for one reason. Next.js keeps an X-Forwarded-For that a
  * browser sent, and only fills it in when it is missing, so the address
- * it reports could be anyone's choosing. This server is the edge: it
- * drops every forwarded header a client sent and writes the socket's
- * address, before Next.js sees the request. The route that forwards to
- * Fastify then signs what it passes on with the shared secret.
+ * it reports could be anyone's choosing. This server decides the
+ * client's address before Next.js sees the request (see edge.ts): the
+ * socket's, or the one a reverse proxy in front names when it presents
+ * the shared secret. The route that forwards to Fastify then signs what
+ * it passes on with the same secret. /healthz is answered here.
  *
  *   STUDIO_PORT      port                    (default 3100)
  *   STUDIO_HOST      address to listen on    (default 127.0.0.1)
@@ -20,6 +21,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { admit, isHealthCheck } from './edge.js';
 
 /**
  * The part of Next.js this file uses. Loaded at run time rather than
@@ -32,7 +34,6 @@ interface NextApp {
 type CreateNext = (opts: { dev: boolean; dir: string; hostname: string; port: number }) => NextApp;
 const next = createRequire(import.meta.url)('next') as CreateNext;
 
-const CLIENT_FORWARDED = ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port', 'forwarded', 'x-real-ip'];
 
 async function main(): Promise<void> {
   if (!process.env.PROXY_SECRET) {
@@ -47,9 +48,16 @@ async function main(): Promise<void> {
   const handle = app.getRequestHandler();
   await app.prepare();
 
+  const secret = process.env.PROXY_SECRET;
   createServer((req, res) => {
-    for (const h of CLIENT_FORWARDED) delete req.headers[h];
-    req.headers['x-forwarded-for'] = req.socket.remoteAddress ?? '';
+    if (isHealthCheck(req.url)) {
+      res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }).end('ok');
+      return;
+    }
+    if (!admit(req, secret)) {
+      res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' }).end('Forwarded requests are accepted only from the academy\'s proxy.');
+      return;
+    }
     void handle(req, res);
   }).listen(port, hostname, () => {
     process.stdout.write(`studio listening on http://${hostname}:${port} (${dev ? 'development' : 'production'})\n`);

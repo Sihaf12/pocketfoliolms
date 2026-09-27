@@ -239,7 +239,8 @@ for (const host of ACADEMIES) {
       const rat = page.locator('.ratwrap');
       await expect(rat).toHaveClass(/open/);
       await expect(page.locator('.rat')).toContainText(n === 1 ? 'Not quite' : 'Correct');
-      expect(await rat.evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(20);
+      // It unfolds from nothing, so its height is measured once the unfold is under way.
+      await expect.poll(() => rat.evaluate((el) => el.getBoundingClientRect().height)).toBeGreaterThan(20);
       if (n === 0) await shot(page, info, `learner-${label}-check-answered`);
       await expect(buttons.first()).toBeDisabled();
       await page.getByRole('button', { name: n < 2 ? 'Next question' : 'See my result' }).click();

@@ -62,7 +62,7 @@ platform console as a Next.js front end.
     studio/proxy.ts             which host gets which pages: studio on academies, console on its host
     studio/app/api/[...path]    every /api request, forwarded to Fastify with the shared secret
     studio/components/LessonPreview.tsx  the lesson as a learner reads it, via packages/shared
-    src/studio/server.ts        the front end's edge server: drops client forwarded headers
+    src/studio/server.ts        the front end's edge server; edge.ts decides whose address a request carries
     src/cli/demoTeam.ts         npm run demo:team and demo:code
     e2e/                        Playwright: every screen, both academies, phone and desktop
 
@@ -214,7 +214,10 @@ Nothing is shared between instances:
   `@fastify/rate-limit`) is needed before the limits mean the same thing
   at scale.
 - The limits are per client IP: the socket's, or `X-Forwarded-For` when
-  it arrived with the front end's secret.
+  it arrived with the front end's secret. The front end's edge server in
+  turn believes only a reverse proxy that presents `PROXY_SECRET` in
+  `X-Academy-Proxy-Secret` (Caddy, in staging); a wrong secret is
+  refused, and without one the socket's address is the client's.
 
 **The session cookie is `Secure`, so browsers only send it over HTTPS.**
 Academies are served on real domain names (the resolver rejects
@@ -251,12 +254,6 @@ refuses to start if it is.
   reads it; it plays Google with a local stand-in.
 
 ## Backlog: before production
-
-- **The Next.js edge server trusts only its socket.** It drops every
-  forwarded header a client sends and records the socket's address, so
-  a load balancer or TLS terminator in front of it would be recorded as
-  every client. Before production, either Next.js is the edge, or it
-  learns to trust exactly one proxy in front of it.
 
 - **TLS provisioning must be tied to domain changes.** Today a verified
   or overridden domain change switches `primary_domain` at once and
