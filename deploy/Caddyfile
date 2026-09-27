@@ -1,0 +1,45 @@
+# Caddy in front of the academy's front end, for staging.
+#
+# Certificates are issued on demand: on the first TLS handshake for a
+# host, Caddy asks the API whether the host is an academy's domain, the
+# console's, or the Google callback's, and gets a certificate from
+# Let's Encrypt only if the answer is yes. Nothing else ever gets one.
+{
+	email {$ACME_EMAIL}
+	on_demand_tls {
+		ask http://api:3001/tls/ask
+	}
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+
+	header {
+		X-Robots-Tag "noindex, nofollow"
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# The console's host is behind basic auth as well as its own sign-in.
+	@console host console.{$STAGING_DOMAIN}
+	basic_auth @console {
+		{$CONSOLE_BASIC_USER} {$CONSOLE_BASIC_HASH}
+	}
+
+	reverse_proxy frontend:3100 {
+		# Caddy replaces any X-Forwarded-For a client sent (no trusted_proxies),
+		# and the secret is how the edge server knows the request came through here.
+		header_up X-Academy-Proxy-Secret {$PROXY_SECRET}
+		# While the front end restarts during a deploy, requests wait rather than fail.
+		lb_try_duration 20s
+		lb_try_interval 250ms
+	}
+}
+
+# On-demand certificates mean Caddy knows no host names in advance, so the
+# redirect to https is written out. ACME's HTTP challenges are answered first.
+http:// {
+	redir https://{host}{uri} 308
+}

@@ -1,0 +1,148 @@
+# Staging on one server: Postgres 16, the migrate step, the API, the
+# outbox relay, the Next.js front end, and Caddy in front.
+#
+# Secrets are interpolated from deploy/.env when compose runs; none is in
+# the image. Only Caddy publishes ports. Each network joins only the
+# services that must talk: Caddy never reaches Postgres, and the front end
+# reaches the API but not the database.
+#
+#   docker compose -f deploy/compose.yml --env-file deploy/.env <command>
+#
+# deploy/deploy.sh is the normal way in.
+name: academy
+
+x-app: &app
+  image: academy-app:${APP_TAG:-current}
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  logging: { driver: local, options: { max-size: 20m, max-file: "5" } }
+
+services:
+  db:
+    image: postgres:16.4-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: academy_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in deploy/.env}
+      POSTGRES_DB: academy_staging
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U academy_owner -d academy_staging"]
+      interval: 5s
+      retries: 20
+    stop_grace_period: 60s
+    logging: { driver: local, options: { max-size: 20m, max-file: "5" } }
+
+  # One-shot: migrations, role passwords, the demo seed (first boot, or
+  # RESEED=1), the demo team. The API and relay start only after it succeeds.
+  migrate:
+    <<: *app
+    build: { context: .., dockerfile: deploy/Dockerfile }
+    restart: "no"
+    command: ["sh", "deploy/migrate.sh"]
+    environment:
+      HOME: /tmp
+      OWNER_DATABASE_URL: postgres://academy_owner:${POSTGRES_PASSWORD}@db:5432/academy_staging
+      APP_USER_PASSWORD: ${APP_USER_PASSWORD:?set in deploy/.env}
+      APP_CONTROL_PASSWORD: ${APP_CONTROL_PASSWORD:?set in deploy/.env}
+      APP_STUDIO_PASSWORD: ${APP_STUDIO_PASSWORD:?set in deploy/.env}
+      APP_CONSOLE_PASSWORD: ${APP_CONSOLE_PASSWORD:?set in deploy/.env}
+      CONSOLE_HOST: console.${STAGING_DOMAIN:?set in deploy/.env}
+      CONSOLE_TOTP_KEY: ${CONSOLE_TOTP_KEY:?set in deploy/.env}
+      DEMO_DOMAIN: ${STAGING_DOMAIN}
+      DEMO_DIR: /demo
+      RESEED: ${RESEED:-0}
+    volumes: [demo:/demo]
+    networks: [data]
+    depends_on: { db: { condition: service_healthy } }
+
+  api:
+    <<: *app
+    command: ["node", "dist/src/http/main.js"]
+    environment:
+      NODE_ENV: production
+      HTTP_HOST: 0.0.0.0
+      HTTP_PORT: "3000"
+      TLS_ASK_PORT: "3001"
+      DATABASE_URL: postgres://app_user:${APP_USER_PASSWORD}@db:5432/academy_staging
+      CONTROL_DATABASE_URL: postgres://app_control:${APP_CONTROL_PASSWORD}@db:5432/academy_staging
+      STUDIO_DATABASE_URL: postgres://app_studio:${APP_STUDIO_PASSWORD}@db:5432/academy_staging
+      CONSOLE_DATABASE_URL: postgres://app_console:${APP_CONSOLE_PASSWORD}@db:5432/academy_staging
+      PROXY_SECRET: ${PROXY_SECRET:?set in deploy/.env}
+      CONSOLE_HOST: console.${STAGING_DOMAIN}
+      CONSOLE_TOTP_KEY: ${CONSOLE_TOTP_KEY}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set in deploy/.env}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set in deploy/.env}
+      AUTH_CALLBACK_HOST: auth.${STAGING_DOMAIN}
+    networks: [data, app, ask, egress]   # egress: Google's token and key endpoints
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      retries: 12
+    stop_grace_period: 20s
+
+  relay:
+    <<: *app
+    command: ["node", "dist/src/outbox/main.js"]
+    environment:
+      NODE_ENV: production
+      CONTROL_DATABASE_URL: postgres://app_control:${APP_CONTROL_PASSWORD}@db:5432/academy_staging
+    networks: [data, egress]             # egress: brokers' webhooks
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    stop_grace_period: 30s
+
+  frontend:
+    <<: *app
+    command: ["node", "dist/src/studio/server.js"]
+    tmpfs: [/tmp, /app/studio/.next/cache]
+    environment:
+      NODE_ENV: production
+      STUDIO_HOST: 0.0.0.0
+      STUDIO_PORT: "3100"
+      BACKEND_URL: http://api:3000
+      PROXY_SECRET: ${PROXY_SECRET}
+      PUBLIC_PROTO: https
+      CONSOLE_HOST: console.${STAGING_DOMAIN}
+      AUTH_CALLBACK_HOST: auth.${STAGING_DOMAIN}
+    networks: [edge, app]
+    depends_on: { api: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      retries: 12
+    stop_grace_period: 20s
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      STAGING_DOMAIN: ${STAGING_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set in deploy/.env}
+      PROXY_SECRET: ${PROXY_SECRET}
+      CONSOLE_BASIC_USER: ${CONSOLE_BASIC_USER:?set in deploy/.env}
+      CONSOLE_BASIC_HASH: ${CONSOLE_BASIC_HASH:?set in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # the certificates: never delete (Let's Encrypt limits)
+      - caddy_config:/config
+    networks: [edge, ask]
+    depends_on: [frontend]
+    logging: { driver: local, options: { max-size: 20m, max-file: "5" } }
+
+networks:
+  edge: {}                      # Caddy and the front end
+  app: { internal: true }       # the front end and the API
+  ask: { internal: true }       # Caddy and the API's TLS ask listener
+  data: { internal: true }      # Postgres and what may reach it
+  egress: {}                    # the way out, for the API and the relay only
+
+volumes:
+  pgdata: {}
+  demo: {}
+  caddy_data: {}
+  caddy_config: {}

@@ -1,0 +1,15 @@
+# Nothing secret and nothing built reaches the image's build context.
+.env
+.env.*
+deploy/.env
+deploy/.deployed
+.demo
+.git
+node_modules
+dist
+studio/.next
+studio/tsconfig.tsbuildinfo
+test-results
+playwright-report
+review
+design

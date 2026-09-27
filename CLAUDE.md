@@ -16,7 +16,7 @@ Multi-tenant learning platform. Each broker gets a branded academy on one engine
 - A knowledge check passes at 2 of 3. That event is the North Star metric.
 
 ## Commands
-- `npm test` runs 177 tests. Run it before saying anything is done.
+- `npm test` runs 189 tests. Run it before saying anything is done.
 - `psql academy -U app_user -f db/tests/rls_proof.sql` proves isolation (59 PASS).
 - `npm run test:studio` proves the studio and console roles and the review workflow (75 PASS).
 - `npm run test:migrate` proves the migrations build a fresh database as the
@@ -31,6 +31,8 @@ Multi-tenant learning platform. Each broker gets a branded academy on one engine
   The learner app (studio/app/(learner)) is built from design/learner-journey.html.
   Components use tokens only; lessons render through packages/shared/markdown.ts,
   in the learner app and the studio's preview alike.
+- Staging: `deploy/deploy.sh` on the server (see review/staging.md). Secrets live
+  only in the server's deploy/.env; never in git or the image.
 - Migrations are forward-only files in db/. Never edit an applied migration.
 
 ## House style

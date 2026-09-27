@@ -8,3 +8,5 @@ studio/next-env.d.ts
 studio/tsconfig.tsbuildinfo
 test-results/
 playwright-report/
+deploy/.env
+deploy/.deployed

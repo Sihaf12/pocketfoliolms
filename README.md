@@ -30,6 +30,9 @@ platform console as a Next.js front end.
     src/logger.ts               structured logging
     src/db/unitOfWork.ts        scoped unit of work, pinned client, SET LOCAL
     src/outbox/relay.ts         fair-share relay, backoff, dead letter queue
+    src/outbox/main.ts          the relay as its own process (npm run worker)
+    src/http/tlsAsk.ts          Caddy's on-demand TLS question, on an internal port
+    deploy/                     staging: Dockerfile, compose.yml, Caddyfile, deploy.sh, migrate.sh
     src/outbox/health.ts        queue health and dead-letter replay, for the studio and the console
     src/net/address.ts          which addresses a CRM delivery may never reach
     src/ai/guardrails.ts        dual-layer ingress and egress guardrails
@@ -75,7 +78,7 @@ platform console as a Next.js front end.
 
     npm install
     npm run build
-    npm test                                             # 177 tests
+    npm test                                             # 189 tests
     npm run test:migrate                                 # migrate a fresh database
     npm run test:studio                                  # studio and console roles, review workflow (75)
     npm run typecheck                                    # the API, the studio and the end-to-end specs
@@ -252,6 +255,36 @@ refuses to start if it is.
   learner's other sessions end. Both are audited.
 - `npm run demo` reads `.env` (or `DEMO_ENV_FILE`). The e2e run never
   reads it; it plays Google with a local stand-in.
+
+## Staging
+
+One Ubuntu server runs everything in `deploy/compose.yml`: Postgres 16,
+a one-shot migrate step, the API, the outbox relay, the Next.js front end
+and Caddy. The academies live on `*.academy-staging.globaltutoringlab.com`
+(`gtl.`, `pocketfolio.`, `meridian.`), with the console on `console.`
+and the Google callback on `auth.`. `review/staging.md` has the server's
+commands in order.
+
+- **Certificates on demand.** Caddy obtains a certificate on a host's
+  first TLS handshake, after asking the API's internal listener
+  (`TLS_ASK_PORT`, `GET /tls/ask?domain=`) whether the host is an active
+  academy's domain, the console's or the Google callback's. Nothing else
+  gets one, and a broker's own verified domain gets its certificate on its
+  first visit.
+- **One trusted proxy.** Caddy sends `X-Academy-Proxy-Secret` with
+  `PROXY_SECRET`; the edge server believes Caddy's `X-Forwarded-For` only
+  then, and the API believes the edge server the same way.
+- **Basic auth on the console host**, in Caddy, in front of the
+  console's own sign-in and TOTP.
+- **Secrets only in `deploy/.env`** on the server (mode 600, never
+  committed, excluded from the image's build context). Compose passes each
+  container only the ones it needs.
+- **Deploys** (`deploy/deploy.sh`) build while the old app serves, run the
+  migrate step, then restart the API and relay and finally the front end.
+  Postgres is never restarted by a deploy; Caddy holds requests for up to
+  20 seconds while the front end swaps. The demo seed runs on first boot
+  only; `deploy.sh --reseed` runs it again, which puts seeded lessons back
+  as the repository has them. The demo team is refreshed on every deploy.
 
 ## Backlog: before production
 
